@@ -1,9 +1,12 @@
+import { getStoredServer, normalizeServerUrl, type BoundServer } from "./storage"
+
 export const DEFAULT_BASE_URL = "http://127.0.0.1:3000"
 
 export type ServerMeta = {
   name: string
   nonce: string
   languages: Array<string>
+  verification_urls: Array<string>
 }
 
 export type LookupResult = {
@@ -11,9 +14,25 @@ export type LookupResult = {
   translation: string
 }
 
-export type LookupRun = {
-  meta: ServerMeta
-  result: LookupResult
+export class SignatureError extends Error {
+  readonly kind = "signature" as const
+
+  constructor() {
+    super("get-meta signature does not match")
+    this.name = "SignatureError"
+  }
+}
+
+export class HandshakeError extends Error {
+  readonly kind: "identity" | "failed"
+  readonly verificationUrls: Array<string>
+
+  constructor(kind: "identity" | "failed", verificationUrls: Array<string> = []) {
+    super(kind === "identity" ? "Server identity may have changed" : "Handshake failed")
+    this.name = "HandshakeError"
+    this.kind = kind
+    this.verificationUrls = verificationUrls
+  }
 }
 
 const base64ToBytes = (value: string): Uint8Array<ArrayBuffer> => {
@@ -48,7 +67,7 @@ const verifyEd25519 = async (
 }
 
 const endpoint = (baseUrl: string, path: string): string =>
-  `${baseUrl.replace(/\/$/, "")}${path}`
+  `${normalizeServerUrl(baseUrl)}${path}`
 
 const readJson = async <T>(response: Response, label: string): Promise<T> => {
   if (!response.ok) {
@@ -56,6 +75,9 @@ const readJson = async <T>(response: Response, label: string): Promise<T> => {
   }
   return response.json() as Promise<T>
 }
+
+const asStringArray = (value: unknown): Array<string> =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
 
 export const getKey = async (baseUrl: string): Promise<string> => {
   const body = await readJson<{ key?: string }>(
@@ -83,14 +105,45 @@ export const getMeta = async (baseUrl: string, publicKey: string): Promise<Serve
     throw new Error("get-meta missing X-Signature")
   }
   if (!(await verifyEd25519(publicKey, bytes, signature))) {
-    throw new Error("get-meta signature does not match the stored key")
+    throw new SignatureError()
   }
 
-  const meta = JSON.parse(new TextDecoder().decode(bytes)) as ServerMeta
-  if (meta.nonce !== nonce) {
+  const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
+    name?: unknown
+    nonce?: unknown
+    languages?: unknown
+    verification_urls?: unknown
+  }
+  if (parsed.nonce !== nonce) {
     throw new Error("get-meta nonce does not match")
   }
-  return meta
+  if (typeof parsed.name !== "string" || parsed.name.length === 0) {
+    throw new Error("get-meta missing name")
+  }
+
+  return {
+    name: parsed.name,
+    nonce: parsed.nonce,
+    languages: asStringArray(parsed.languages),
+    verification_urls: asStringArray(parsed.verification_urls),
+  }
+}
+
+export const handshake = async (
+  baseUrl: string,
+  stored: BoundServer | undefined = undefined,
+): Promise<{ key: string; meta: ServerMeta }> => {
+  const key = stored?.key ?? await getKey(baseUrl)
+  try {
+    const meta = await getMeta(baseUrl, key)
+    return { key, meta }
+  } catch (cause) {
+    if (cause instanceof SignatureError) {
+      const urls = stored?.verificationUrls ?? []
+      throw new HandshakeError(urls.length > 0 ? "identity" : "failed", urls)
+    }
+    throw cause
+  }
 }
 
 export const lookup = async (
@@ -109,13 +162,7 @@ export const lookup = async (
   return body
 }
 
-export const runLookup = async (
-  baseUrl: string,
-  word: string,
-  lang: string,
-): Promise<LookupRun> => {
-  const key = await getKey(baseUrl)
-  const meta = await getMeta(baseUrl, key)
-  const result = await lookup(baseUrl, word, lang)
-  return { meta, result }
+export const connect = async (baseUrl: string) => {
+  const stored = await getStoredServer(baseUrl)
+  return handshake(baseUrl, stored)
 }
