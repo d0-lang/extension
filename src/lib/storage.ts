@@ -1,13 +1,18 @@
+/** Language pair advertised by a dictionary server, e.g. `de_en`. */
+export type LanguagePair = string
+
 export type BoundServer = {
   url: string
+  /** Ed25519 public key from `/v1/get-key` (base64). */
   key: string
   name: string
-  languages: Array<string>
+  languages: Array<LanguagePair>
   verificationUrls: Array<string>
 }
 
-/** Language pair → bound server URL, e.g. `{ de_en: "http://127.0.0.1:3000" }`. */
-export type ServerByLang = Record<string, string>
+/** Which bound server URL to use for each language pair. */
+export type ServerByLang = Record<LanguagePair, string>
+/** Normalized server URL → bound record. Key matches `BoundServer.url`. */
 export type Servers = Record<string, BoundServer>
 
 export const normalizeServerUrl = (value: string): string => value.trim().replace(/\/+$/, "")
@@ -48,7 +53,7 @@ export const getStoredServer = async (url: string): Promise<BoundServer | undefi
 
 export const bindServer = async (
   server: BoundServer,
-  selectedLanguages: Array<string>,
+  selectedLanguages: Array<LanguagePair>,
 ): Promise<void> => {
   const url = normalizeServerUrl(server.url)
   const { servers = empty.servers, serverByLang = empty.serverByLang } = await browser.storage.local.get([
