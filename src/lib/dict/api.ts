@@ -1,20 +1,25 @@
+import { normalizeServerUrl } from "../storage"
 import { verifyEd25519 } from "./crypto"
 import { SignatureError } from "./errors"
-import { endpoint, readJson } from "./http"
-import type { LookupResult, ServerMeta } from "./types"
+import {
+  lookupResultSchema,
+  parseBody,
+  publicKeySchema,
+  serverMetaSchema,
+  type LookupResult,
+  type ServerMeta,
+} from "./schemas"
 
-const asStringArray = (value: unknown): Array<string> =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+const endpoint = (baseUrl: string, path: string): string =>
+  `${normalizeServerUrl(baseUrl)}${path}`
 
 export const getKey = async (baseUrl: string): Promise<string> => {
-  const body = await readJson<{ key?: string }>(
-    await fetch(endpoint(baseUrl, "/v1/get-key")),
-    "get-key",
-  )
-  if (typeof body.key !== "string" || body.key.length === 0) {
-    throw new Error("get-key returned no key")
+  const response = await fetch(endpoint(baseUrl, "/v1/get-key"))
+  if (!response.ok) {
+    throw new Error(`get-key failed: ${response.status}`)
   }
-  return body.key
+  const { key } = parseBody(publicKeySchema, await response.json(), "get-key")
+  return key
 }
 
 export const getMeta = async (baseUrl: string, publicKey: string): Promise<ServerMeta> => {
@@ -35,25 +40,15 @@ export const getMeta = async (baseUrl: string, publicKey: string): Promise<Serve
     throw new SignatureError()
   }
 
-  const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
-    name?: unknown
-    nonce?: unknown
-    languages?: unknown
-    verification_urls?: unknown
-  }
-  if (parsed.nonce !== nonce) {
+  const meta = parseBody(
+    serverMetaSchema,
+    JSON.parse(new TextDecoder().decode(bytes)) as unknown,
+    "get-meta",
+  )
+  if (meta.nonce !== nonce) {
     throw new Error("get-meta nonce does not match")
   }
-  if (typeof parsed.name !== "string" || parsed.name.length === 0) {
-    throw new Error("get-meta missing name")
-  }
-
-  return {
-    name: parsed.name,
-    nonce: parsed.nonce,
-    languages: asStringArray(parsed.languages),
-    verification_urls: asStringArray(parsed.verification_urls),
-  }
+  return meta
 }
 
 export const lookup = async (
@@ -62,12 +57,9 @@ export const lookup = async (
   lang: string,
 ): Promise<LookupResult> => {
   const payload = encodeURIComponent(JSON.stringify({ word, lang }))
-  const body = await readJson<LookupResult>(
-    await fetch(endpoint(baseUrl, `/v1/lookup?payload=${payload}`)),
-    "lookup",
-  )
-  if (typeof body.word !== "string" || typeof body.translation !== "string") {
-    throw new Error("lookup returned an unexpected body")
+  const response = await fetch(endpoint(baseUrl, `/v1/lookup?payload=${payload}`))
+  if (!response.ok) {
+    throw new Error(`lookup failed: ${response.status}`)
   }
-  return body
+  return parseBody(lookupResultSchema, await response.json(), "lookup")
 }
