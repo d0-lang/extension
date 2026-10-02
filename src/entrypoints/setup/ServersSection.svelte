@@ -3,55 +3,26 @@
 	import PlusIcon from '@lucide/svelte/icons/plus'
 	import { Button } from '$lib/components/ui/button'
 	import { Separator } from '$lib/components/ui/separator'
-	import { DEFAULT_BASE_URL, HandshakeError, connect, type ServerMeta } from '$lib/dict'
-	import {
-		bindServer,
-		getDefaults,
-		getServers,
-		normalizeServerUrl,
-		type Defaults,
-	} from '$lib/storage'
+	import type { ServerMeta } from '$lib/dict'
+	import { bindServer, getServerByLang, getServers, type ServerByLang } from '$lib/storage'
 	import AddServerDialog from './AddServerDialog.svelte'
 	import ReviewServerDialog from './ReviewServerDialog.svelte'
 	import type { DialogState, ServerRow } from './types'
 
 	let rows = $state.raw<Array<ServerRow>>([])
-	let defaults = $state.raw<Defaults>({})
+	let serverByLang = $state.raw<ServerByLang>({})
 	let dialogState = $state<DialogState>('closed')
-	let url = $state(DEFAULT_BASE_URL)
-	let key = $state('')
-	let meta = $state.raw<ServerMeta | null>(null)
+	let draft = $state.raw<{ url: string; key: string; meta: ServerMeta } | null>(null)
 	let selected = $state<Record<string, boolean>>({})
 	let genericError = $state('')
-	let identityUrls = $state.raw<Array<string> | null>(null)
-	let pendingKey = $state<string | undefined>(undefined)
-	let identityLocked = $state(false)
-	let identityLockTimer: ReturnType<typeof setTimeout> | undefined
 
-	const addOpen = $derived(dialogState === 'add-open' || dialogState === 'connecting')
+	const addOpen = $derived(dialogState === 'add-open')
 	const reviewOpen = $derived(dialogState === 'review-open' || dialogState === 'saving')
 
-	const clearIdentityLock = () => {
-		if (identityLockTimer !== undefined) {
-			clearTimeout(identityLockTimer)
-			identityLockTimer = undefined
-		}
-		identityLocked = false
-	}
-
-	const startIdentityLock = () => {
-		clearIdentityLock()
-		identityLocked = true
-		identityLockTimer = setTimeout(() => {
-			identityLocked = false
-			identityLockTimer = undefined
-		}, 5000)
-	}
-
 	const loadRows = async () => {
-		const [servers, nextDefaults] = await Promise.all([getServers(), getDefaults()])
-		defaults = nextDefaults
-		rows = Object.entries(nextDefaults).map(([lang, serverUrl]) => ({
+		const [servers, nextServerByLang] = await Promise.all([getServers(), getServerByLang()])
+		serverByLang = nextServerByLang
+		rows = Object.entries(nextServerByLang).map(([lang, serverUrl]) => ({
 			lang,
 			url: serverUrl,
 			name: servers[serverUrl]?.name ?? serverUrl,
@@ -59,14 +30,9 @@
 	}
 
 	const resetDialog = () => {
-		url = DEFAULT_BASE_URL
-		key = ''
-		meta = null
+		draft = null
 		selected = {}
 		genericError = ''
-		identityUrls = null
-		pendingKey = undefined
-		clearIdentityLock()
 		dialogState = 'closed'
 	}
 
@@ -75,72 +41,14 @@
 	})
 
 	const onAdd = () => {
-		resetDialog()
-		dialogState = 'add-open'
-	}
-
-	const finishHandshake = (result: { key: string; meta: ServerMeta }) => {
-		if (dialogState !== 'connecting') {
-			return
-		}
-		key = result.key
-		meta = result.meta
-		selected = Object.fromEntries(result.meta.languages.map((lang) => [lang, false]))
-		dialogState = 'review-open'
-	}
-
-	const failHandshake = (cause: unknown) => {
-		if (dialogState !== 'connecting') {
-			return
-		}
-		dialogState = 'add-open'
-		if (cause instanceof HandshakeError && cause.kind === 'identity') {
-			identityUrls = cause.verificationUrls
-			pendingKey = cause.newKey
-			startIdentityLock()
-			return
-		}
-		identityUrls = null
-		pendingKey = undefined
-		clearIdentityLock()
-		if (cause instanceof HandshakeError) {
-			genericError = 'Handshake failed.'
-		} else {
-			genericError = cause instanceof Error ? cause.message : String(cause)
-		}
-	}
-
-	const onConnect = async () => {
-		dialogState = 'connecting'
-		genericError = ''
-		identityUrls = null
-		pendingKey = undefined
-		clearIdentityLock()
-		meta = null
-		key = ''
+		draft = null
 		selected = {}
-		try {
-			finishHandshake(await connect(url))
-		} catch (cause) {
-			failHandshake(cause)
-		}
-	}
-
-	const onContinue = async () => {
-		dialogState = 'connecting'
 		genericError = ''
-		meta = null
-		key = ''
-		selected = {}
-		try {
-			finishHandshake(await connect(url, pendingKey))
-		} catch (cause) {
-			failHandshake(cause)
-		}
+		dialogState = 'add-open'
 	}
 
 	const onOk = async () => {
-		if (meta === null) {
+		if (draft === null) {
 			return
 		}
 		const selectedLanguages = Object.entries(selected)
@@ -154,11 +62,11 @@
 		try {
 			await bindServer(
 				{
-					url: normalizeServerUrl(url),
-					key,
-					name: meta.name,
-					languages: meta.languages,
-					verificationUrls: meta.verification_urls,
+					url: draft.url,
+					key: draft.key,
+					name: draft.meta.name,
+					languages: draft.meta.languages,
+					verificationUrls: draft.meta.verification_urls,
 				},
 				selectedLanguages,
 			)
@@ -200,29 +108,32 @@
 	{/if}
 </section>
 
-<AddServerDialog
-	open={addOpen}
-	connecting={dialogState === 'connecting'}
-	bind:url
-	{genericError}
-	{identityUrls}
-	{identityLocked}
-	onconnect={() => void onConnect()}
-	oncontinue={() => void onContinue()}
-	onclose={() => {
-		if (dialogState === 'add-open' || dialogState === 'connecting') {
-			resetDialog()
-		}
-	}}
-/>
+{#if addOpen}
+	<AddServerDialog
+		open
+		onsuccess={(result) => {
+			if (dialogState !== 'add-open') {
+				return
+			}
+			draft = result
+			selected = Object.fromEntries(result.meta.languages.map((lang) => [lang, false]))
+			dialogState = 'review-open'
+		}}
+		onclose={() => {
+			if (dialogState === 'add-open') {
+				resetDialog()
+			}
+		}}
+	/>
+{/if}
 
-{#if meta}
+{#if draft}
 	<ReviewServerDialog
 		open={reviewOpen}
 		saving={dialogState === 'saving'}
-		{url}
-		{meta}
-		{defaults}
+		url={draft.url}
+		meta={draft.meta}
+		{serverByLang}
 		bind:selected
 		{genericError}
 		onok={() => void onOk()}

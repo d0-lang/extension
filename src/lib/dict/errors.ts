@@ -7,17 +7,23 @@ export class SignatureError extends Error {
   }
 }
 
+const handshakeMessage = {
+  identity: "Server identity may have changed",
+  broken: "Metadata signature does not match",
+  failed: "Handshake failed",
+} as const
+
 export class HandshakeError extends Error {
-  readonly kind: "identity" | "failed"
+  readonly kind: "identity" | "broken" | "failed"
   readonly verificationUrls: Array<string>
   readonly newKey: string | undefined
 
   constructor(
-    kind: "identity" | "failed",
+    kind: "identity" | "broken" | "failed",
     verificationUrls: Array<string> = [],
     newKey: string | undefined = undefined,
   ) {
-    super(kind === "identity" ? "Server identity may have changed" : "Handshake failed")
+    super(handshakeMessage[kind])
     this.name = "HandshakeError"
     this.kind = kind
     this.verificationUrls = verificationUrls

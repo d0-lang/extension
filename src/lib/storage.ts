@@ -6,7 +6,8 @@ export type BoundServer = {
   verificationUrls: Array<string>
 }
 
-export type Defaults = Record<string, string>
+/** Language pair → bound server URL, e.g. `{ de_en: "http://127.0.0.1:3000" }`. */
+export type ServerByLang = Record<string, string>
 export type Servers = Record<string, BoundServer>
 
 export const normalizeServerUrl = (value: string): string => value.trim().replace(/\/+$/, "")
@@ -14,7 +15,7 @@ export const normalizeServerUrl = (value: string): string => value.trim().replac
 const empty = {
   lookupEnabled: false,
   servers: {} as Servers,
-  defaults: {} as Defaults,
+  serverByLang: {} as ServerByLang,
 }
 
 export const getLookupEnabled = async (): Promise<boolean> => {
@@ -33,11 +34,11 @@ export const getServers = async (): Promise<Servers> => {
     : empty.servers
 }
 
-export const getDefaults = async (): Promise<Defaults> => {
-  const { defaults } = await browser.storage.local.get("defaults")
-  return defaults !== undefined && typeof defaults === "object" && !Array.isArray(defaults)
-    ? defaults as Defaults
-    : empty.defaults
+export const getServerByLang = async (): Promise<ServerByLang> => {
+  const { serverByLang } = await browser.storage.local.get("serverByLang")
+  return serverByLang !== undefined && typeof serverByLang === "object" && !Array.isArray(serverByLang)
+    ? serverByLang as ServerByLang
+    : empty.serverByLang
 }
 
 export const getStoredServer = async (url: string): Promise<BoundServer | undefined> => {
@@ -50,14 +51,14 @@ export const bindServer = async (
   selectedLanguages: Array<string>,
 ): Promise<void> => {
   const url = normalizeServerUrl(server.url)
-  const { servers = empty.servers, defaults = empty.defaults } = await browser.storage.local.get([
+  const { servers = empty.servers, serverByLang = empty.serverByLang } = await browser.storage.local.get([
     "servers",
-    "defaults",
-  ]) as { servers?: Servers; defaults?: Defaults }
+    "serverByLang",
+  ]) as { servers?: Servers; serverByLang?: ServerByLang }
 
-  const nextDefaults = { ...defaults }
+  const nextServerByLang = { ...serverByLang }
   for (const lang of selectedLanguages) {
-    nextDefaults[lang] = url
+    nextServerByLang[lang] = url
   }
 
   await browser.storage.local.set({
@@ -65,6 +66,6 @@ export const bindServer = async (
       ...servers,
       [url]: { ...server, url },
     },
-    defaults: nextDefaults,
+    serverByLang: nextServerByLang,
   })
 }

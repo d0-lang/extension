@@ -12,14 +12,14 @@
 	} from '$lib/components/ui/dialog'
 	import { Label } from '$lib/components/ui/label'
 	import type { ServerMeta } from '$lib/dict'
-	import { normalizeServerUrl, type Defaults } from '$lib/storage'
+	import { normalizeServerUrl, type ServerByLang } from '$lib/storage'
 
 	let {
 		open,
 		saving,
 		url,
 		meta,
-		defaults,
+		serverByLang,
 		selected = $bindable(),
 		genericError,
 		onok,
@@ -29,7 +29,7 @@
 		saving: boolean
 		url: string
 		meta: ServerMeta
-		defaults: Defaults
+		serverByLang: ServerByLang
 		selected: Record<string, boolean>
 		genericError: string
 		onok: () => void
@@ -73,7 +73,7 @@
 							<li class="flex items-center gap-2">
 								<Checkbox id={`lang-${lang}`} bind:checked={selected[lang]} />
 								<Label for={`lang-${lang}`}>
-									{lang} ({lang in defaults ? 'in use' : 'not in use'})
+									{lang} ({lang in serverByLang ? 'in use' : 'not in use'})
 								</Label>
 							</li>
 						{/each}

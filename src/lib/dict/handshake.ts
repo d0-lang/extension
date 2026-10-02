@@ -17,7 +17,7 @@ export const handshake = async (
     return { key, meta }
   } catch (cause) {
     if (cause instanceof SignatureError) {
-      throw new HandshakeError("failed")
+      throw new HandshakeError("broken", stored?.verificationUrls ?? [])
     }
     throw cause
   }
