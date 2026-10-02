@@ -17,7 +17,9 @@
 		url = $bindable(),
 		genericError,
 		identityUrls,
+		identityLocked,
 		onconnect,
+		oncontinue,
 		onclose,
 	}: {
 		open: boolean
@@ -25,7 +27,9 @@
 		url: string
 		genericError: string
 		identityUrls: Array<string> | null
+		identityLocked: boolean
 		onconnect: () => void
+		oncontinue: () => void
 		onclose: () => void
 	} = $props()
 </script>
@@ -66,20 +70,27 @@
 			</Alert>
 		{/if}
 
-		{#if identityUrls}
+		{#if identityUrls !== null}
 			<Alert variant="destructive">
 				<AlertTitle>Server identity may have changed</AlertTitle>
 				<AlertDescription>
 					<p>Do not trust this response. Check a verification page from the last successful bind:</p>
-					<ul class="mt-2 list-disc pl-4">
-						{#each identityUrls as href (href)}
-							<li>
-								<a class="underline" href={href} target="_blank" rel="noreferrer">{href}</a>
-							</li>
-						{/each}
-					</ul>
+					{#if identityUrls.length === 0}
+						<p class="text-muted-foreground mt-2 text-sm">None</p>
+					{:else}
+						<ul class="mt-2 list-disc pl-4">
+							{#each identityUrls as href (href)}
+								<li>
+									<a class="underline" href={href} target="_blank" rel="noreferrer">{href}</a>
+								</li>
+							{/each}
+						</ul>
+					{/if}
 				</AlertDescription>
 			</Alert>
+			<Button type="button" disabled={identityLocked || connecting} onclick={oncontinue}>
+				{identityLocked ? 'Wait…' : 'Continue'}
+			</Button>
 		{/if}
 	</DialogContent>
 </Dialog>
