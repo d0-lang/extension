@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button'
 	import { Separator } from '$lib/components/ui/separator'
 	import type { ServerMeta } from '$lib/dict'
+	import { ResultAsync } from 'neverthrow'
 	import { bindServer, getServerByLang, getServers, type ServerByLang } from '$lib/storage'
 	import AddServerDialog from './AddServerDialog.svelte'
 	import ReviewServerDialog from './ReviewServerDialog.svelte'
@@ -59,26 +60,30 @@
 		}
 		dialogState = 'saving'
 		genericError = ''
-		try {
-			await bindServer(
-				{
-					url: draft.url,
-					key: draft.key,
-					name: draft.meta.name,
-					languages: draft.meta.languages,
-					verificationUrls: draft.meta.verification_urls,
-				},
-				selectedLanguages,
-			)
-			await loadRows()
-			resetDialog()
-		} catch (cause) {
-			if (dialogState !== 'saving') {
-				return
-			}
-			dialogState = 'review-open'
-			genericError = cause instanceof Error ? cause.message : String(cause)
+		const result = await bindServer(
+			{
+				url: draft.url,
+				key: draft.key,
+				name: draft.meta.name,
+				languages: draft.meta.languages,
+				verificationUrls: draft.meta.verification_urls,
+			},
+			selectedLanguages,
+		).andThen(() =>
+			ResultAsync.fromPromise(
+				loadRows(),
+				(cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+			),
+		)
+		if (dialogState !== 'saving') {
+			return
 		}
+		if (result.isErr()) {
+			dialogState = 'review-open'
+			genericError = result.error.message
+			return
+		}
+		resetDialog()
 	}
 </script>
 

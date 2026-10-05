@@ -15,6 +15,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "neverthrow": "^8.2.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

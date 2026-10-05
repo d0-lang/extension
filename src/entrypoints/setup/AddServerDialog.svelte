@@ -16,8 +16,8 @@
   import { Label } from "$lib/components/ui/label";
   import {
     DEFAULT_BASE_URL,
-    HandshakeError,
-    connect,
+    handshake,
+    type DictError,
     type ServerMeta,
   } from "$lib/dict";
   import { normalizeServerUrl } from "$lib/storage";
@@ -58,19 +58,19 @@
     }, 5000);
   };
 
-  const failHandshake = (cause: unknown) => {
+  const failHandshake = (cause: DictError) => {
     if (!connecting) {
       return;
     }
     connecting = false;
-    if (cause instanceof HandshakeError && cause.kind === "identity") {
+    if (cause.kind === "identity") {
       identityUrls = cause.verificationUrls;
       pendingKey = cause.newKey;
       brokenUrls = null;
       startIdentityLock();
       return;
     }
-    if (cause instanceof HandshakeError && cause.kind === "broken") {
+    if (cause.kind === "broken") {
       brokenUrls = cause.verificationUrls;
       identityUrls = null;
       pendingKey = undefined;
@@ -81,28 +81,25 @@
     pendingKey = undefined;
     clearIdentityLock();
     brokenUrls = null;
-    if (cause instanceof HandshakeError) {
-      genericError = "Handshake failed.";
-    } else {
-      genericError = cause instanceof Error ? cause.message : String(cause);
-    }
+    genericError =
+      cause.kind === "failed" ? "Handshake failed." : cause.message;
   };
 
-  const runConnect = async (acceptKey?: string) => {
+  const runConnect = async (newKey?: string) => {
     connecting = true;
     genericError = "";
     identityUrls = null;
     brokenUrls = null;
-    try {
-      const { key, meta } = await connect(url, acceptKey);
-      if (!connecting) {
-        return;
-      }
-      onsuccess({ url: normalizeServerUrl(url), key, meta });
-      connecting = false;
-    } catch (cause) {
-      failHandshake(cause);
-    }
+    await handshake(url, newKey).match(
+      ({ key, meta }) => {
+        if (!connecting) {
+          return;
+        }
+        onsuccess({ url: normalizeServerUrl(url), key, meta });
+        connecting = false;
+      },
+      failHandshake,
+    );
   };
 </script>
 

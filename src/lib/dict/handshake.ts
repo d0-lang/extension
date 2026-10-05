@@ -1,29 +1,28 @@
-import { getStoredServer, type BoundServer } from "../storage"
-import { getKey, getMeta } from "./api"
-import { HandshakeError, SignatureError } from "./errors"
-import type { ServerMeta } from "./types"
+import { ResultAsync, err, ok, safeTry } from "neverthrow";
+import { getStoredServer } from "../storage";
+import { getKey, getMeta } from "./api";
+import { fromUnknown, handshakeError, type DictError } from "./errors";
+import type { ServerMeta } from "./types";
 
-export const handshake = async (
+export type HandshakeOk = { key: string; meta: ServerMeta };
+
+export const handshake = (
   baseUrl: string,
-  stored: BoundServer | undefined = undefined,
-  acceptKey: string | undefined = undefined,
-): Promise<{ key: string; meta: ServerMeta }> => {
-  const key = acceptKey ?? await getKey(baseUrl)
-  if (acceptKey === undefined && stored !== undefined && stored.key !== key) {
-    throw new HandshakeError("identity", stored.verificationUrls, key)
-  }
-  try {
-    const meta = await getMeta(baseUrl, key)
-    return { key, meta }
-  } catch (cause) {
-    if (cause instanceof SignatureError) {
-      throw new HandshakeError("broken", stored?.verificationUrls ?? [])
+  newKey: string | undefined = undefined,
+): ResultAsync<HandshakeOk, DictError> =>
+  safeTry(async function* () {
+    const stored = yield* ResultAsync.fromPromise(
+      getStoredServer(baseUrl),
+      fromUnknown,
+    );
+    const key = newKey ?? (yield* getKey(baseUrl));
+    if (newKey === undefined && stored !== undefined && stored.key !== key) {
+      return err(handshakeError("identity", stored.verificationUrls, key));
     }
-    throw cause
-  }
-}
-
-export const connect = async (baseUrl: string, acceptKey: string | undefined = undefined) => {
-  const stored = await getStoredServer(baseUrl)
-  return handshake(baseUrl, stored, acceptKey)
-}
+    const meta = yield* getMeta(baseUrl, key).mapErr((cause) =>
+      cause.kind === "signature"
+        ? handshakeError("broken", stored?.verificationUrls ?? [])
+        : cause,
+    );
+    return ok({ key, meta });
+  });

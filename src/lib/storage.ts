@@ -1,5 +1,10 @@
+import { ResultAsync } from "neverthrow"
+
 /** Language pair advertised by a dictionary server, e.g. `de_en`. */
 export type LanguagePair = string
+
+const fromUnknown = (cause: unknown): Error =>
+  cause instanceof Error ? cause : new Error(String(cause))
 
 export type BoundServer = {
   url: string
@@ -51,26 +56,30 @@ export const getStoredServer = async (url: string): Promise<BoundServer | undefi
   return servers[normalizeServerUrl(url)]
 }
 
-export const bindServer = async (
+export const bindServer = (
   server: BoundServer,
   selectedLanguages: Array<LanguagePair>,
-): Promise<void> => {
-  const url = normalizeServerUrl(server.url)
-  const { servers = empty.servers, serverByLang = empty.serverByLang } = await browser.storage.local.get([
-    "servers",
-    "serverByLang",
-  ]) as { servers?: Servers; serverByLang?: ServerByLang }
+): ResultAsync<void, Error> =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const url = normalizeServerUrl(server.url)
+      const { servers = empty.servers, serverByLang = empty.serverByLang } = await browser.storage.local.get([
+        "servers",
+        "serverByLang",
+      ]) as { servers?: Servers; serverByLang?: ServerByLang }
 
-  const nextServerByLang = { ...serverByLang }
-  for (const lang of selectedLanguages) {
-    nextServerByLang[lang] = url
-  }
+      const nextServerByLang = { ...serverByLang }
+      for (const lang of selectedLanguages) {
+        nextServerByLang[lang] = url
+      }
 
-  await browser.storage.local.set({
-    servers: {
-      ...servers,
-      [url]: { ...server, url },
-    },
-    serverByLang: nextServerByLang,
-  })
-}
+      await browser.storage.local.set({
+        servers: {
+          ...servers,
+          [url]: { ...server, url },
+        },
+        serverByLang: nextServerByLang,
+      })
+    })(),
+    fromUnknown,
+  )

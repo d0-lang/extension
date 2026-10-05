@@ -22,8 +22,6 @@ export const verifyEd25519 = async (
     ["verify"],
   );
 
-  // temp for testing
-  return false;
   return crypto.subtle.verify(
     "Ed25519",
     publicKey,

@@ -1,4 +1,6 @@
+import { err, ok, type Result } from "neverthrow"
 import * as z from "zod/mini"
+import { bodyError, type DictError } from "./errors"
 
 export const publicKeySchema = z.object({
   key: z.string().check(z.minLength(1)),
@@ -23,10 +25,10 @@ export const parseBody = <S extends z.ZodMiniType>(
   schema: S,
   data: unknown,
   label: string,
-): z.infer<S> => {
+): Result<z.infer<S>, DictError> => {
   const result = schema.safeParse(data)
   if (!result.success) {
-    throw new Error(`${label} returned an unexpected body`)
+    return err(bodyError(label))
   }
-  return result.data
+  return ok(result.data)
 }

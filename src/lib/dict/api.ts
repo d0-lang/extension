@@ -1,6 +1,22 @@
+import {
+  ResultAsync,
+  err,
+  errAsync,
+  fromThrowable,
+  ok,
+  safeTry,
+} from "neverthrow";
 import { normalizeServerUrl } from "../storage";
 import { verifyEd25519 } from "./crypto";
-import { SignatureError } from "./errors";
+import {
+  bodyError,
+  fromUnknown,
+  httpError,
+  missingSignatureError,
+  nonceError,
+  signatureError,
+  type DictError,
+} from "./errors";
 import {
   lookupResultSchema,
   parseBody,
@@ -13,58 +29,77 @@ import {
 const endpoint = (baseUrl: string, path: string): string =>
   `${normalizeServerUrl(baseUrl)}${path}`;
 
-export const getKey = async (baseUrl: string): Promise<string> => {
-  const response = await fetch(endpoint(baseUrl, "/v1/get-key"));
-  if (!response.ok) {
-    throw new Error(`get-key failed: ${response.status}`);
-  }
-  const { key } = parseBody(publicKeySchema, await response.json(), "get-key");
-  return key;
-};
+const request = ResultAsync.fromThrowable(fetch, fromUnknown);
 
-export const getMeta = async (
+const readJson = (response: Response): ResultAsync<unknown, DictError> =>
+  ResultAsync.fromPromise(response.json(), fromUnknown);
+
+const parseJsonBytes = fromThrowable(
+  (bytes: Uint8Array): unknown =>
+    JSON.parse(new TextDecoder().decode(bytes)) as unknown,
+  (): DictError => bodyError("get-meta"),
+);
+
+export const getKey = (baseUrl: string): ResultAsync<string, DictError> =>
+  request(endpoint(baseUrl, "/v1/get-key")).andThen((response) => {
+    if (!response.ok) {
+      return errAsync(httpError("get-key", response.status));
+    }
+    return readJson(response).andThen((body) =>
+      parseBody(publicKeySchema, body, "get-key").map(({ key }) => key),
+    );
+  });
+
+export const getMeta = (
   baseUrl: string,
   publicKey: string,
-): Promise<ServerMeta> => {
-  const nonce = crypto.randomUUID();
-  const response = await fetch(endpoint(baseUrl, "/v1/get-meta"), {
-    headers: { "X-Nonce": nonce },
+): ResultAsync<ServerMeta, DictError> =>
+  safeTry<ServerMeta, DictError>(async function* () {
+    const nonce = crypto.randomUUID();
+    const response = yield* request(endpoint(baseUrl, "/v1/get-meta"), {
+      headers: { "X-Nonce": nonce },
+    });
+    if (!response.ok) {
+      return err(httpError("get-meta", response.status));
+    }
+
+    const bytes = new Uint8Array(
+      yield* ResultAsync.fromPromise(response.arrayBuffer(), fromUnknown),
+    );
+    const signature = response.headers.get("x-signature");
+    if (signature === null || signature.length === 0) {
+      return err(missingSignatureError());
+    }
+    const isValid = yield* ResultAsync.fromPromise(
+      verifyEd25519(publicKey, bytes, signature),
+      fromUnknown,
+    );
+    if (!isValid) {
+      return err(signatureError());
+    }
+
+    const json = yield* parseJsonBytes(bytes);
+    const meta = yield* parseBody(serverMetaSchema, json, "get-meta");
+    if (meta.nonce !== nonce) {
+      return err(nonceError());
+    }
+    return ok(meta);
   });
-  if (!response.ok) {
-    throw new Error(`get-meta failed: ${response.status}`);
-  }
 
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const signature = response.headers.get("x-signature");
-  if (signature === null || signature.length === 0) {
-    throw new Error("get-meta missing X-Signature");
-  }
-  if (!(await verifyEd25519(publicKey, bytes, signature))) {
-    throw new SignatureError();
-  }
-
-  const meta = parseBody(
-    serverMetaSchema,
-    JSON.parse(new TextDecoder().decode(bytes)) as unknown,
-    "get-meta",
-  );
-  if (meta.nonce !== nonce) {
-    throw new Error("get-meta nonce does not match");
-  }
-  return meta;
-};
-
-export const lookup = async (
+export const lookup = (
   baseUrl: string,
   word: string,
   lang: string,
-): Promise<LookupResult> => {
+): ResultAsync<LookupResult, DictError> => {
   const payload = encodeURIComponent(JSON.stringify({ word, lang }));
-  const response = await fetch(
-    endpoint(baseUrl, `/v1/lookup?payload=${payload}`),
+  return request(endpoint(baseUrl, `/v1/lookup?payload=${payload}`)).andThen(
+    (response) => {
+      if (!response.ok) {
+        return errAsync(httpError("lookup", response.status));
+      }
+      return readJson(response).andThen((body) =>
+        parseBody(lookupResultSchema, body, "lookup"),
+      );
+    },
   );
-  if (!response.ok) {
-    throw new Error(`lookup failed: ${response.status}`);
-  }
-  return parseBody(lookupResultSchema, await response.json(), "lookup");
 };
