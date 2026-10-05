@@ -1,3 +1,6 @@
+/** Handshake protocol: load any stored bind, get the live key, then signed meta.
+ *  Omit `newKey` for a normal connect (identity mismatch → `kind: "identity"`).
+ *  Pass `newKey` after the user accepts a rotation; signature failure becomes `kind: "broken"`. */
 import { ResultAsync, err, ok, safeTry } from "neverthrow";
 import { getStoredServer } from "../storage";
 import { getKey, getMeta } from "./api";

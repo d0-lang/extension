@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ServersSection from './ServersSection.svelte'
+	import Servers from './servers'
 </script>
 
 <div class="bg-background min-h-svh">
@@ -10,6 +10,6 @@
 	</header>
 
 	<main class="mx-auto max-w-3xl px-6 py-8">
-		<ServersSection />
+		<Servers />
 	</main>
 </div>

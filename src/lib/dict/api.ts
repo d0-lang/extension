@@ -1,3 +1,5 @@
+/** Dictionary HTTP: `/v1/get-key`, signed `/v1/get-meta`, `/v1/lookup`.
+ *  All return ResultAsync; `kind: "signature"` means the meta body did not verify. */
 import {
   ResultAsync,
   err,

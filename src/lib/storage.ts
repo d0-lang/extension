@@ -1,3 +1,5 @@
+/** Extension storage: lookup toggle, bound servers, and language → server URL.
+ *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
 import { ResultAsync } from "neverthrow"
 
 /** Language pair advertised by a dictionary server, e.g. `de_en`. */

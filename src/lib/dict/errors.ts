@@ -1,3 +1,5 @@
+/** DictError kinds: handshake (`identity` / `broken` / `failed`), crypto (`signature`),
+ *  and transport (`http` / `body` / `network` / `missing-signature` / `nonce`). */
 const handshakeMessage = {
   identity: "Server identity may have changed",
   broken: "Metadata signature does not match",
