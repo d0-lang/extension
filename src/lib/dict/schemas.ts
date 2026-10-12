@@ -13,6 +13,12 @@ export const serverMetaSchema = z.object({
   verification_urls: z._default(z.array(z.string()), []),
 })
 
+/** Domain-move body instead of metadata. Same signature/nonce rules; same signing key. */
+export const newSourceSchema = z.object({
+  nonce: z.string(),
+  new_source: z.string().check(z.minLength(1)),
+})
+
 export const lookupResultSchema = z.object({
   word: z.string(),
   translation: z.string(),

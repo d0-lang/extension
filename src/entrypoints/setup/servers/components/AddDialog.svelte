@@ -29,10 +29,13 @@
     if (result === undefined) {
       return;
     }
+    const requested = normalizeServerUrl(url);
     setup.acceptDraft({
-      url: normalizeServerUrl(url),
+      // Followed host if get-meta returned new_source; otherwise the typed URL.
+      url: result.url,
       key: result.key,
       meta: result.meta,
+      movedFrom: result.url !== requested ? requested : undefined,
     });
   };
 </script>
@@ -123,9 +126,9 @@
             <ul class="mt-2 list-disc pl-4">
               {#each session.identityUrls as href (href)}
                 <li>
-                  <a class="underline" {href} target="_blank" rel="noreferrer"
-                    >{href}</a
-                  >
+                  <a class="underline" {href} target="_blank" rel="noreferrer">
+                    {href}
+                  </a>
                 </li>
               {/each}
             </ul>

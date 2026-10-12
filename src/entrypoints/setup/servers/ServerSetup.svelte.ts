@@ -16,6 +16,7 @@ export type HandshakeDraft = {
   url: string;
   key: string;
   meta: ServerMeta;
+  movedFrom: string | undefined;
 };
 
 export class ServerSetup {
