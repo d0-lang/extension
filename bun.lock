@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "wxt-svelte-starter",
+      "name": "dadict",
       "dependencies": {
         "neverthrow": "^8.2.0",
         "zod": "^4.6.5",
