@@ -1,4 +1,5 @@
 /** What the user right-clicked: read on `contextmenu`, because the page may change before the menu item is pressed. */
+import { tokensAt } from "./tokenize"
 
 export type AnchorRect = { top: number; bottom: number; left: number; right: number }
 
@@ -27,24 +28,6 @@ const caretAt = (x: number, y: number): { node: Node; offset: number } | undefin
     : { node: range.startContainer, offset: range.startOffset }
 }
 
-/**
- * Word segments around a caret offset, nearest first.
- * A caret in the right half of a letter sits after it, so the word before the caret also counts.
- */
-// TODO: Replace with the per-language tokenizers from the protocol.
-export const wordSpansAt = (
-  text: string,
-  offset: number,
-): Array<{ start: number; end: number }> => {
-  const segments = new Intl.Segmenter(undefined, { granularity: "word" }).segment(text)
-  return [offset, offset - 1].flatMap((position) => {
-    const segment = segments.containing(position)
-    return segment?.isWordLike === true
-      ? [{ start: segment.index, end: segment.index + segment.segment.length }]
-      : []
-  })
-}
-
 const isOnRange = (range: Range, x: number, y: number): boolean =>
   [...range.getClientRects()].some(
     (rect) =>
@@ -55,13 +38,13 @@ const isOnRange = (range: Range, x: number, y: number): boolean =>
   )
 
 /** The caret snaps to the nearest text, so a span only counts if the click is really on it. */
-const rangeUnderCursor = (x: number, y: number): Range | undefined => {
+const rangeUnderCursor = (x: number, y: number, locale: string | undefined): Range | undefined => {
   const caret = caretAt(x, y)
   if (caret === undefined || caret.node.nodeType !== Node.TEXT_NODE) {
     return undefined
   }
   const node = caret.node
-  return wordSpansAt(node.textContent ?? "", caret.offset)
+  return tokensAt(node.textContent ?? "", caret.offset, locale)
     .map(({ start, end }) => {
       const range = document.createRange()
       range.setStart(node, start)
@@ -71,10 +54,29 @@ const rangeUnderCursor = (x: number, y: number): Range | undefined => {
     .find((range) => isOnRange(range, x, y))
 }
 
+export type WordHit = { word: string; anchor: AnchorRect; element: Element | null }
+
+/** The word under the cursor, ignoring any selection. */
+export const wordAt = (x: number, y: number, locale: string | undefined): WordHit | undefined => {
+  const range = rangeUnderCursor(x, y, locale)
+  return range === undefined
+    ? undefined
+    : {
+        word: range.toString(),
+        anchor: range.getBoundingClientRect(),
+        element: range.startContainer.parentElement,
+      }
+}
+
 const hasArea = ({ width, height }: DOMRect): boolean => width > 0 || height > 0
 
 /** Record the selection and the word under the cursor, plus the box to open next to. */
-export const pickAt = (x: number, y: number, target: Element | null): Picked => {
+export const pickAt = (
+  x: number,
+  y: number,
+  target: Element | null,
+  locale: string | undefined,
+): Picked => {
   const point: AnchorRect = { top: y, bottom: y, left: x, right: x }
   const selection = window.getSelection()
   const selected = selection?.toString().trim() ?? ""
@@ -88,11 +90,11 @@ export const pickAt = (x: number, y: number, target: Element | null): Picked => 
       element: ancestor instanceof Element ? ancestor : ancestor.parentElement,
     }
   }
-  const range = rangeUnderCursor(x, y)
+  const hit = wordAt(x, y, locale)
   return {
     selected: "",
-    underCursor: range?.toString() ?? "",
-    anchor: range?.getBoundingClientRect() ?? point,
+    underCursor: hit?.word ?? "",
+    anchor: hit?.anchor ?? point,
     element: target,
   }
 }

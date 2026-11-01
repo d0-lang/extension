@@ -1,11 +1,14 @@
 import { mount, unmount } from 'svelte';
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from '$lib/messages';
+import { getLookupEnabled } from '$lib/storage';
 import { contextText, detectLanguages } from './context';
-import { MAX_WORD_CHARS, pickAt, pickedWord, type Picked } from './pick';
+import { watchAltHold } from './hold';
+import { MAX_WORD_CHARS, pickAt, pickedWord, wordAt, type AnchorRect, type Picked } from './pick';
 import Popover from './Popover.svelte';
 import './popover.css';
 
 const NO_ANCHOR = { top: 8, bottom: 8, left: 8, right: 8 };
+const MAX_CACHED_REPLIES = 200;
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -19,6 +22,11 @@ export default defineContentScript({
     // Both last as long as this page does, so no list of visited sites gets stored.
     let pinned: string | undefined;
     let lastWorked: string | undefined;
+    let enabled = false;
+    const replies = new Map<string, LookupReply>();
+
+    // `de_en` is read as German. Unset until a language has answered on this page.
+    const pageLocale = (): string | undefined => (pinned ?? lastWorked)?.split('_')[0];
 
     const close = () => {
       latestOpen++;
@@ -27,6 +35,11 @@ export default defineContentScript({
     };
 
     const search = async (word: string, element: Element | null): Promise<LookupReply> => {
+      const key = `${pinned ?? ''}\n${word}`;
+      const cached = replies.get(key);
+      if (cached !== undefined) {
+        return cached;
+      }
       const reply = await requestLookup(word, {
         pinned,
         detected: pinned === undefined ? await detectLanguages(contextText(element)) : [],
@@ -35,17 +48,25 @@ export default defineContentScript({
       if (reply.ok && reply.lang !== undefined) {
         lastWorked = reply.lang;
       }
+      // A failure may be temporary, so only answers are kept.
+      if (reply.ok) {
+        replies.set(key, reply);
+        for (const oldest of replies.keys()) {
+          if (replies.size <= MAX_CACHED_REPLIES) {
+            break;
+          }
+          replies.delete(oldest);
+        }
+      }
       return reply;
     };
 
-    const open = async ({ selectionText }: OpenLookupMessage) => {
+    const open = async (word: string, anchor: AnchorRect, element: Element | null) => {
       close();
       const thisOpen = latestOpen;
-      const word = pickedWord(picked, selectionText);
-      const element = picked?.element ?? null;
       const props = {
         word,
-        anchor: picked?.anchor ?? NO_ANCHOR,
+        anchor,
         dark: window.matchMedia('(prefers-color-scheme: dark)').matches,
         search:
           word === '' || word.length > MAX_WORD_CHARS
@@ -82,6 +103,7 @@ export default defineContentScript({
           event.clientX,
           event.clientY,
           event.target instanceof Element ? event.target : null,
+          pageLocale(),
         );
       },
       { capture: true },
@@ -107,10 +129,34 @@ export default defineContentScript({
       { capture: true },
     );
 
+    const openPicked = ({ selectionText }: OpenLookupMessage) =>
+      open(pickedWord(picked, selectionText), picked?.anchor ?? NO_ANCHOR, picked?.element ?? null);
+
     browser.runtime.onMessage.addListener((message) => {
       if (isOpenLookupMessage(message)) {
-        void open(message);
+        void openPicked(message);
       }
+    });
+
+    void getLookupEnabled().then((value) => {
+      enabled = value;
+    });
+    browser.storage.onChanged.addListener((changes) => {
+      if ('lookupEnabled' in changes) {
+        enabled = changes.lookupEnabled?.newValue === true;
+      }
+      if ('servers' in changes || 'serverByLang' in changes) {
+        replies.clear();
+      }
+    });
+
+    watchAltHold(ctx, {
+      isEnabled: () => enabled,
+      wordAt: (x, y) => wordAt(x, y, pageLocale()),
+      isOverPopover: (x, y) =>
+        current !== undefined && document.elementFromPoint(x, y) === current.host,
+      show: ({ word, anchor, element }) => void open(word, anchor, element),
+      close,
     });
   },
 });
