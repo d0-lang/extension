@@ -60,10 +60,9 @@ export const watchAltHold = (
       return;
     }
     const hit = wordAt(pointer.x, pointer.y);
+    // Reaching the popover crosses empty space, so only a new word replaces it.
     if (hit === undefined) {
       cancelPending();
-      shownKey = undefined;
-      close();
       return;
     }
     const key = hitKey(hit);
