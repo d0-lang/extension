@@ -22,8 +22,6 @@ export type ServerByLang = Record<LanguagePair, string>
 /** Normalized server URL → bound record. Key matches `BoundServer.url`. */
 export type Servers = Record<string, BoundServer>
 
-export const normalizeServerUrl = (value: string): string => value.trim().replace(/\/+$/, "")
-
 const empty = {
   lookupEnabled: false,
   servers: {} as Servers,
@@ -55,31 +53,41 @@ export const getServerByLang = async (): Promise<ServerByLang> => {
 
 export const getStoredServer = async (url: string): Promise<BoundServer | undefined> => {
   const servers = await getServers()
-  return servers[normalizeServerUrl(url)]
+  return servers[url]
 }
 
+/**
+ * Make `selectedLanguages` the only languages mapped to `server`.
+ * `movedFrom` is purged: its record and every language mapped to it.
+ */
 export const bindServer = (
   server: BoundServer,
   selectedLanguages: Array<LanguagePair>,
+  movedFrom: string | undefined = undefined,
 ): ResultAsync<void, Error> =>
   ResultAsync.fromPromise(
     (async () => {
-      const url = normalizeServerUrl(server.url)
       const { servers = empty.servers, serverByLang = empty.serverByLang } = await browser.storage.local.get([
         "servers",
         "serverByLang",
       ]) as { servers?: Servers; serverByLang?: ServerByLang }
 
-      const nextServerByLang = { ...serverByLang }
+      const nextServerByLang = Object.fromEntries(
+        Object.entries(serverByLang).filter(
+          ([, url]) => url !== server.url && url !== movedFrom,
+        ),
+      )
       for (const lang of selectedLanguages) {
-        nextServerByLang[lang] = url
+        nextServerByLang[lang] = server.url
+      }
+
+      const nextServers = { ...servers, [server.url]: server }
+      if (movedFrom !== undefined) {
+        delete nextServers[movedFrom]
       }
 
       await browser.storage.local.set({
-        servers: {
-          ...servers,
-          [url]: { ...server, url },
-        },
+        servers: nextServers,
         serverByLang: nextServerByLang,
       })
     })(),

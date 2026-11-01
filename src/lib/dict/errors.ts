@@ -1,5 +1,3 @@
-/** DictError kinds: handshake (`identity` / `broken` / `failed`), crypto (`signature`),
- *  and transport (`http` / `body` / `network` / `missing-signature` / `nonce`). */
 const handshakeMessage = {
   identity: "Server identity may have changed",
   broken: "Metadata signature does not match",
@@ -22,7 +20,13 @@ export type DictError =
   | SignatureError
   | HandshakeError
   | {
-      readonly kind: "http" | "body" | "network" | "missing-signature" | "nonce"
+      readonly kind:
+        | "http"
+        | "body"
+        | "network"
+        | "missing-signature"
+        | "nonce"
+        | "invalid-url"
       readonly message: string
     }
 
@@ -62,7 +66,12 @@ export const nonceError = (): DictError => ({
   message: "get-meta nonce does not match",
 })
 
-export const fromUnknown = (cause: unknown): DictError => ({
+export const invalidUrlError = (): DictError => ({
+  kind: "invalid-url",
+  message: "Enter an http(s) URL without credentials, query or fragment",
+})
+
+export const fromUnknown =(cause: unknown): DictError => ({
   kind: "network",
   message: cause instanceof Error ? cause.message : String(cause),
 })

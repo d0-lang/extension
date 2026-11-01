@@ -1,5 +1,5 @@
 /** Add-dialog session: runs handshake() and maps identity/broken into UI state.
- *  `run(url)` is Connect; `continue(url)` retries with `pendingKey` after the identity warning.
+ *  `run(url)` is Connect; `continue()` retries the warned URL with its new key.
  *  `cancel()` drops an in-flight attempt when the dialog closes. */
 import {
   handshake,
@@ -12,13 +12,22 @@ export class HandshakeSession {
   genericError = $state("");
   identityUrls = $state.raw<Array<string> | null>(null);
   brokenUrls = $state.raw<Array<string> | null>(null);
-  pendingKey = $state<string | undefined>(undefined);
   identityLocked = $state(false);
 
+  #attemptUrl = "";
+  #pending: { url: string; key: string | undefined } | undefined;
   #lockTimer: ReturnType<typeof setTimeout> | undefined;
 
   cancel = () => {
     this.connecting = false;
+    this.#clearLock();
+  };
+
+  /** The warnings describe the URL that was tried, so they end when the input changes. */
+  clearWarnings = () => {
+    this.identityUrls = null;
+    this.brokenUrls = null;
+    this.#pending = undefined;
     this.#clearLock();
   };
 
@@ -27,6 +36,7 @@ export class HandshakeSession {
     newKey?: string,
   ): Promise<HandshakeOk | undefined> => {
     this.connecting = true;
+    this.#attemptUrl = url;
     this.genericError = "";
     this.identityUrls = null;
     this.brokenUrls = null;
@@ -41,7 +51,10 @@ export class HandshakeSession {
     this.#fail(result.error);
   };
 
-  continue = (url: string) => this.run(url, this.pendingKey);
+  continue = async (): Promise<HandshakeOk | undefined> =>
+    this.#pending === undefined
+      ? undefined
+      : this.run(this.#pending.url, this.#pending.key);
 
   #clearLock = () => {
     if (this.#lockTimer !== undefined) {
@@ -67,7 +80,7 @@ export class HandshakeSession {
     this.connecting = false;
     if (cause.kind === "identity") {
       this.identityUrls = cause.verificationUrls;
-      this.pendingKey = cause.newKey;
+      this.#pending = { url: this.#attemptUrl, key: cause.newKey };
       this.brokenUrls = null;
       this.#startLock();
       return;
@@ -75,14 +88,11 @@ export class HandshakeSession {
     if (cause.kind === "broken") {
       this.brokenUrls = cause.verificationUrls;
       this.identityUrls = null;
-      this.pendingKey = undefined;
+      this.#pending = undefined;
       this.#clearLock();
       return;
     }
-    this.identityUrls = null;
-    this.pendingKey = undefined;
-    this.#clearLock();
-    this.brokenUrls = null;
+    this.clearWarnings();
     this.genericError =
       cause.kind === "failed" ? "Handshake failed." : cause.message;
   };

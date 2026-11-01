@@ -15,7 +15,6 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import { DEFAULT_BASE_URL, type HandshakeOk } from "$lib/dict";
-  import { normalizeServerUrl } from "$lib/storage";
   import { HandshakeSession } from "../HandshakeSession.svelte";
   import { ServerSetup } from "../ServerSetup.svelte";
 
@@ -26,17 +25,9 @@
 
   const finish = async (run: () => Promise<HandshakeOk | undefined>) => {
     const result = await run();
-    if (result === undefined) {
-      return;
+    if (result !== undefined) {
+      setup.acceptDraft(result);
     }
-    const requested = normalizeServerUrl(url);
-    setup.acceptDraft({
-      // Followed host if get-meta returned new_source; otherwise the typed URL.
-      url: result.url,
-      key: result.key,
-      meta: result.meta,
-      movedFrom: result.url !== requested ? requested : undefined,
-    });
   };
 </script>
 
@@ -71,6 +62,7 @@
           autocomplete="off"
           spellcheck="false"
           bind:value={url}
+          oninput={session.clearWarnings}
         />
       </div>
       <Button type="submit" disabled={session.connecting}>
@@ -90,7 +82,7 @@
         <AlertTitle>Do not trust this response</AlertTitle>
         <AlertDescription>
           <p>
-            The public key matches, but the metadata signature did not verify.
+            The metadata signature did not verify against the server's key.
             This response is broken or has been tampered with, indicating a
             security risk.
           </p>
@@ -138,7 +130,7 @@
       <Button
         type="button"
         disabled={session.identityLocked || session.connecting}
-        onclick={() => void finish(() => session.continue(url))}
+        onclick={() => void finish(session.continue)}
       >
         {session.identityLocked ? "Wait…" : "Continue"}
       </Button>

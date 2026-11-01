@@ -3,27 +3,22 @@
  * `openAdd` / `acceptDraft` / `save` are the three steps; `closeAdd` / `closeReview` abort.
  */
 import { ResultAsync } from "neverthrow";
-import type { ServerMeta } from "$lib/dict";
+import type { HandshakeOk } from "$lib/dict";
 import {
   bindServer,
   getServerByLang,
   getServers,
   type ServerByLang,
+  type Servers,
 } from "$lib/storage";
 import type { DialogState, ServerRow } from "./types";
 
-export type HandshakeDraft = {
-  url: string;
-  key: string;
-  meta: ServerMeta;
-  movedFrom: string | undefined;
-};
-
 export class ServerSetup {
   rows = $state.raw<Array<ServerRow>>([]);
+  servers = $state.raw<Servers>({});
   serverByLang = $state.raw<ServerByLang>({});
   dialogState = $state<DialogState>("closed");
-  draft = $state.raw<HandshakeDraft | null>(null);
+  draft = $state.raw<HandshakeOk | null>(null);
   selected = $state<Record<string, boolean>>({});
   genericError = $state("");
 
@@ -33,11 +28,42 @@ export class ServerSetup {
   );
   saving = $derived(this.dialogState === "saving");
 
+  selectedLanguages = $derived(
+    Object.entries(this.selected)
+      .filter(([, on]) => on)
+      .map(([lang]) => lang),
+  );
+  /** A bound server may keep no languages, so accepting its new key never forces a choice. */
+  canSave = $derived(
+    this.selectedLanguages.length > 0 ||
+      (this.draft !== null &&
+        (this.draft.url in this.servers ||
+          (this.draft.movedFrom !== undefined &&
+            this.draft.movedFrom in this.servers))),
+  );
+  /** Languages mapped to this server that it no longer lists. Saving unmaps them. */
+  droppedLanguages = $derived.by(() => {
+    const draft = this.draft;
+    if (draft === null) {
+      return [];
+    }
+    return Object.entries(this.serverByLang)
+      .filter(
+        ([lang, url]) =>
+          this.#belongsToDraft(url, draft) && !draft.meta.languages.includes(lang),
+      )
+      .map(([lang]) => lang);
+  });
+
+  #belongsToDraft = (url: string, draft: HandshakeOk): boolean =>
+    url === draft.url || url === draft.movedFrom;
+
   load = async () => {
     const [servers, nextServerByLang] = await Promise.all([
       getServers(),
       getServerByLang(),
     ]);
+    this.servers = servers;
     this.serverByLang = nextServerByLang;
     this.rows = Object.entries(nextServerByLang).map(([lang, serverUrl]) => ({
       lang,
@@ -60,13 +86,16 @@ export class ServerSetup {
     this.dialogState = "add-open";
   };
 
-  acceptDraft = (result: HandshakeDraft) => {
+  acceptDraft = (result: HandshakeOk) => {
     if (this.dialogState !== "add-open") {
       return;
     }
     this.draft = result;
     this.selected = Object.fromEntries(
-      result.meta.languages.map((lang) => [lang, false]),
+      result.meta.languages.map((lang) => {
+        const mapped = this.serverByLang[lang];
+        return [lang, mapped !== undefined && this.#belongsToDraft(mapped, result)];
+      }),
     );
     this.dialogState = "review-open";
   };
@@ -84,13 +113,7 @@ export class ServerSetup {
   };
 
   save = async () => {
-    if (this.draft === null) {
-      return;
-    }
-    const selectedLanguages = Object.entries(this.selected)
-      .filter(([, on]) => on)
-      .map(([lang]) => lang);
-    if (selectedLanguages.length === 0) {
+    if (this.draft === null || !this.canSave) {
       return;
     }
     this.dialogState = "saving";
@@ -103,7 +126,8 @@ export class ServerSetup {
         languages: this.draft.meta.languages,
         verificationUrls: this.draft.meta.verification_urls,
       },
-      selectedLanguages,
+      this.selectedLanguages,
+      this.draft.movedFrom,
     ).andThen(() =>
       ResultAsync.fromPromise(this.load(), (cause) =>
         cause instanceof Error ? cause : new Error(String(cause)),

@@ -15,17 +15,11 @@
     DialogTitle,
   } from "$lib/components/ui/dialog";
   import { Label } from "$lib/components/ui/label";
-  import { normalizeServerUrl } from "$lib/storage";
   import { ServerSetup } from "../ServerSetup.svelte";
 
   let { setup }: { setup: ServerSetup } = $props();
 
   const draft = $derived(setup.draft);
-  const selectedLanguages = $derived(
-    Object.entries(setup.selected)
-      .filter(([, on]) => on)
-      .map(([lang]) => lang),
-  );
 </script>
 
 {#if draft}
@@ -41,7 +35,7 @@
       <DialogHeader>
         <DialogTitle>Server</DialogTitle>
         <DialogDescription>
-          At {normalizeServerUrl(draft.url)}
+          At {draft.url}
         </DialogDescription>
       </DialogHeader>
       <div class="flex flex-col gap-3">
@@ -50,6 +44,14 @@
             <AlertTitle>Server seemingly moved</AlertTitle>
             <AlertDescription>
               From {draft.movedFrom} to {draft.url}.
+            </AlertDescription>
+          </Alert>
+        {/if}
+        {#if setup.droppedLanguages.length > 0}
+          <Alert>
+            <AlertTitle>Languages no longer offered</AlertTitle>
+            <AlertDescription>
+              Saving removes {setup.droppedLanguages.join(", ")}.
             </AlertDescription>
           </Alert>
         {/if}
@@ -105,7 +107,7 @@
       <DialogFooter>
         <Button
           onclick={() => void setup.save()}
-          disabled={setup.saving || selectedLanguages.length === 0}
+          disabled={setup.saving || !setup.canSave}
         >
           {setup.saving ? "Saving…" : "OK"}
         </Button>
