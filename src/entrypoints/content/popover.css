@@ -1,0 +1,28 @@
+@import 'tailwindcss' source(none);
+@import '../../tokens.css';
+
+@source './Popover.svelte';
+
+@custom-variant dark (&:is(.dark *));
+
+/* A page can set any root font size, so nothing here may scale with rem. */
+@theme {
+	--font-sans: ui-sans-serif, system-ui, sans-serif;
+	--spacing: 4px;
+	--text-xs: 12px;
+	--text-sm: 14px;
+	--text-base: 16px;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+}
+
+.dict-popover {
+	--radius: 7px;
+	width: min(340px, calc(100vw - 16px));
+	max-height: min(360px, calc(100vh - 16px));
+	z-index: 2147483647;
+}

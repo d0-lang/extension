@@ -26,13 +26,35 @@ export const newSourceSchema = z.object({
   new_source: z.string().check(z.minLength(1)),
 })
 
+const lookupEntrySchema = z.object({
+  lemma: z.string(),
+  pos: z.string(),
+  pron: z.optional(
+    z.object({
+      ipa: z.optional(z.array(z.string())),
+      audio: z.optional(z.array(z.string())),
+      reading: z.optional(z.string()),
+    }),
+  ),
+  senses: z.array(
+    z.object({
+      translations: z.array(z.string()).check(z.minLength(1)),
+    }),
+  ),
+})
+
 export const lookupResultSchema = z.object({
-  word: z.string(),
-  translation: z.string(),
+  entries: z.array(lookupEntrySchema),
+})
+
+/** Body of a `400` from `/v1/lookup`. */
+export const lookupErrorSchema = z.object({
+  error: z.enum(["bad_request", "unsupported_lang"]),
 })
 
 export type ServerMeta = z.infer<typeof serverMetaSchema>
 export type LookupResult = z.infer<typeof lookupResultSchema>
+export type LookupEntry = z.infer<typeof lookupEntrySchema>
 
 export const parseBody = <S extends z.ZodMiniType>(
   schema: S,

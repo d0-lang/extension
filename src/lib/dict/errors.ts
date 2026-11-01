@@ -27,6 +27,9 @@ export type DictError =
         | "missing-signature"
         | "nonce"
         | "invalid-url"
+        | "no-server"
+        | "bad-request"
+        | "unsupported-lang"
       readonly message: string
     }
 
@@ -74,4 +77,19 @@ export const invalidUrlError = (): DictError => ({
 export const fromUnknown =(cause: unknown): DictError => ({
   kind: "network",
   message: cause instanceof Error ? cause.message : String(cause),
+})
+
+export const noServerError = (): DictError => ({
+  kind: "no-server",
+  message: "No dictionary server is bound",
+})
+
+export const badRequestError = (): DictError => ({
+  kind: "bad-request",
+  message: "lookup rejected as a bad request",
+})
+
+export const unsupportedLangError = (): DictError => ({
+  kind: "unsupported-lang",
+  message: "lookup language is not supported",
 })

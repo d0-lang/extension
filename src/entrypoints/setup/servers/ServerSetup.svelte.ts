@@ -8,6 +8,7 @@ import {
   bindServer,
   getServerByLang,
   getServers,
+  removeServer,
   type ServerByLang,
   type Servers,
 } from "$lib/storage";
@@ -21,8 +22,11 @@ export class ServerSetup {
   draft = $state.raw<HandshakeOk | null>(null);
   selected = $state<Record<string, boolean>>({});
   genericError = $state("");
+  removeTarget = $state.raw<ServerRow | null>(null);
+  removing = $state(false);
+  removeError = $state("");
 
-  addOpen = $derived(this.dialogState === "add-open");
+  addOpen =$derived(this.dialogState === "add-open");
   reviewOpen = $derived(
     this.dialogState === "review-open" || this.dialogState === "saving",
   );
@@ -65,11 +69,44 @@ export class ServerSetup {
     ]);
     this.servers = servers;
     this.serverByLang = nextServerByLang;
-    this.rows = Object.entries(nextServerByLang).map(([lang, serverUrl]) => ({
-      lang,
-      url: serverUrl,
-      name: servers[serverUrl]?.name ?? serverUrl,
+    const languages = Object.entries(nextServerByLang);
+    this.rows = Object.values(servers).map(({ url, name }) => ({
+      url,
+      name,
+      languages: languages
+        .filter(([, mapped]) => mapped === url)
+        .map(([lang]) => lang),
     }));
+  };
+
+  askRemove = (row: ServerRow) => {
+    this.removeError = "";
+    this.removeTarget = row;
+  };
+
+  cancelRemove = () => {
+    if (!this.removing) {
+      this.removeTarget = null;
+    }
+  };
+
+  confirmRemove = async () => {
+    if (this.removeTarget === null) {
+      return;
+    }
+    this.removing = true;
+    this.removeError = "";
+    const result = await removeServer(this.removeTarget.url).andThen(() =>
+      ResultAsync.fromPromise(this.load(), (cause) =>
+        cause instanceof Error ? cause : new Error(String(cause)),
+      ),
+    );
+    this.removing = false;
+    if (result.isErr()) {
+      this.removeError = result.error.message;
+      return;
+    }
+    this.removeTarget = null;
   };
 
   resetDialog = () => {

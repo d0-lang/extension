@@ -23,7 +23,7 @@ export type ServerByLang = Record<LanguagePair, string>
 export type Servers = Record<string, BoundServer>
 
 const empty = {
-  lookupEnabled: false,
+  lookupEnabled: true,
   servers: {} as Servers,
   serverByLang: {} as ServerByLang,
 }
@@ -55,6 +55,23 @@ export const getStoredServer = async (url: string): Promise<BoundServer | undefi
   const servers = await getServers()
   return servers[url]
 }
+
+/** Delete the record, with its pinned key, and every language mapped to it. */
+export const removeServer = (url: string): ResultAsync<void, Error> =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [servers, serverByLang] = await Promise.all([getServers(), getServerByLang()])
+      const { [url]: _removed, ...nextServers } = servers
+
+      await browser.storage.local.set({
+        servers: nextServers,
+        serverByLang: Object.fromEntries(
+          Object.entries(serverByLang).filter(([, mapped]) => mapped !== url),
+        ),
+      })
+    })(),
+    fromUnknown,
+  )
 
 /**
  * Make `selectedLanguages` the only languages mapped to `server`.

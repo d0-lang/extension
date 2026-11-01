@@ -12,7 +12,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
   }),
   manifest: {
-    permissions: ['storage'],
+    permissions: ['storage', 'contextMenus'],
     host_permissions: ['<all_urls>'],
   },
 });

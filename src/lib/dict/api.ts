@@ -5,18 +5,22 @@ import {
   fromThrowable,
   ok,
   safeTry,
+  type Result,
 } from "neverthrow";
 import { verifyEd25519 } from "./crypto";
 import {
+  badRequestError,
   bodyError,
   fromUnknown,
   httpError,
   missingSignatureError,
   nonceError,
   signatureError,
+  unsupportedLangError,
   type DictError,
 } from "./errors";
 import {
+  lookupErrorSchema,
   lookupResultSchema,
   newSourceSchema,
   parseBody,
@@ -31,19 +35,19 @@ import { isDowngrade, normalizeServerUrl } from "./url";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 const request = ResultAsync.fromThrowable(
-  (url: string, init?: RequestInit) =>
-    fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+  (url: string, init?: RequestInit, timeoutMs: number = REQUEST_TIMEOUT_MS) =>
+    fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) }),
   fromUnknown,
 );
 
 const readJson = (response: Response): ResultAsync<unknown, DictError> =>
   ResultAsync.fromPromise(response.json(), fromUnknown);
 
-const parseJsonBytes = fromThrowable(
-  (bytes: Uint8Array): unknown =>
-    JSON.parse(new TextDecoder().decode(bytes)) as unknown,
-  (): DictError => bodyError("get-meta"),
-);
+const parseJson = (text: string, label: string): Result<unknown, DictError> =>
+  fromThrowable(
+    (): unknown => JSON.parse(text) as unknown,
+    () => bodyError(label),
+  )();
 
 /** Unsigned `/v1/get-key`. The client pins this key and verifies later meta with it. */
 export const getKey = (baseUrl: string): ResultAsync<string, DictError> =>
@@ -104,7 +108,7 @@ export const getMeta = (
       return err(signatureError());
     }
 
-    const json = yield* parseJsonBytes(bytes);
+    const json = yield* parseJson(new TextDecoder().decode(bytes), "get-meta");
     const moved = newSourceSchema.safeParse(json);
     if (moved.success) {
       if (moved.data.nonce !== nonce) {
@@ -126,21 +130,42 @@ export const getMeta = (
     return ok({ url, meta });
   });
 
-// TODO: `/v1/lookup`.
+/** Get `/v1/lookup`. A word the server does not know is `ok` with no entries. */
 export const lookup = (
   baseUrl: string,
   word: string,
   lang: string,
-): ResultAsync<LookupResult, DictError> => {
-  const payload = encodeURIComponent(JSON.stringify({ word, lang }));
-  return request(`${baseUrl}/v1/lookup?payload=${payload}`).andThen(
-    (response) => {
-      if (!response.ok) {
-        return errAsync(httpError("lookup", response.status));
-      }
-      return readJson(response).andThen((body) =>
-        parseBody(lookupResultSchema, body, "lookup"),
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): ResultAsync<LookupResult, DictError> =>
+  safeTry(async function* () {
+    // A `+` in the word is already `%2B` here, so every remaining `+` is a space.
+    const query = new URLSearchParams({ word, lang })
+      .toString()
+      .replaceAll("+", "%20");
+    const response = yield* request(
+      `${baseUrl}/v1/lookup?${query}`,
+      undefined,
+      timeoutMs,
+    );
+    const text = yield* ResultAsync.fromPromise(response.text(), fromUnknown);
+
+    if (!response.ok) {
+      const rejection = lookupErrorSchema.safeParse(
+        parseJson(text, "lookup").unwrapOr(undefined),
       );
-    },
-  );
-};
+      if (response.status !== 400 || !rejection.success) {
+        return err(httpError("lookup", response.status));
+      }
+      return err(
+        rejection.data.error === "bad_request"
+          ? badRequestError()
+          : unsupportedLangError(),
+      );
+    }
+
+    return parseBody(
+      lookupResultSchema,
+      yield* parseJson(text, "lookup"),
+      "lookup",
+    );
+  });
