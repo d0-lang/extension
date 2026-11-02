@@ -4,10 +4,13 @@ import type { WordHit } from './pick';
 /** Sweeping across a sentence must not send every word to a server. */
 const SETTLE_MS = 120;
 
+const WHEEL_LINE_PX = 20;
+
 type HoldOptions = {
   isEnabled: () => boolean;
   wordAt: (x: number, y: number) => WordHit | undefined;
   isOverPopover: (x: number, y: number) => boolean;
+  popoverScroller: () => Element | undefined;
   show: (hit: WordHit) => void;
   close: () => void;
 };
@@ -21,16 +24,28 @@ const isTyping = (): boolean => {
   );
 };
 
+const wheelUnitPx = (deltaMode: number, scroller: Element): number => {
+  switch (deltaMode) {
+    case WheelEvent.DOM_DELTA_LINE:
+      return WHEEL_LINE_PX;
+    case WheelEvent.DOM_DELTA_PAGE:
+      return scroller.clientHeight;
+    default:
+      return 1;
+  }
+};
+
 const hitKey = ({ word, anchor }: WordHit): string => `${word}@${anchor.left},${anchor.top}`;
 
 /**
  * While left Alt is held, show the word under the cursor.
  * Only left Alt counts, because AltGr types letters like `ą` and `ß` on many layouts.
  * Releasing closes the popover, unless the cursor is on it.
+ * During a hold the wheel scrolls the popover wherever the cursor is, because Alt + wheel goes through history in Firefox.
  */
 export const watchAltHold = (
   ctx: ContentScriptContext,
-  { isEnabled, wordAt, isOverPopover, show, close }: HoldOptions,
+  { isEnabled, wordAt, isOverPopover, popoverScroller, show, close }: HoldOptions,
 ) => {
   let pointer: { x: number; y: number } | undefined;
   let holding = false;
@@ -83,9 +98,24 @@ export const watchAltHold = (
       return;
     }
     holding = false;
+    window.removeEventListener('wheel', onWheel, { capture: true });
     cancelPending();
     if (!keepIfOverPopover || pointer === undefined || !isOverPopover(pointer.x, pointer.y)) {
       close();
+    }
+  };
+
+  const onWheel = (event: WheelEvent) => {
+    // The keyup can go unseen, like when Alt + Left leaves a page that later returns from the back/forward cache.
+    if (!event.altKey) {
+      release(true);
+      return;
+    }
+    event.preventDefault();
+    const scroller = popoverScroller();
+    if (scroller !== undefined) {
+      const unit = wheelUnitPx(event.deltaMode, scroller);
+      scroller.scrollBy(event.deltaX * unit, event.deltaY * unit);
     }
   };
 
@@ -110,6 +140,8 @@ export const watchAltHold = (
     (event) => {
       if (event.code === 'AltLeft' && !event.repeat && isEnabled() && !isTyping()) {
         holding = true;
+        // Only during a hold, because a non-passive wheel listener makes every other scroll wait on this page's main thread.
+        window.addEventListener('wheel', onWheel, { capture: true, passive: false, signal: ctx.signal });
         shownKey = undefined;
         update(true);
       }

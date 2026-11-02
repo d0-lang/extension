@@ -132,7 +132,7 @@
 			{:else if result.entries.length === 0}
 				<p class="text-muted-foreground p-3 wrap-anywhere">No entries for {word}.</p>
 			{:else}
-				<div class="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3">
+				<div data-popover-scroll class="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3">
 					{#each groupEntries(result.entries) as group, index (index)}
 						{@const audio = group.audio.find(isAllowedAudioUrl)}
 						<section class="flex flex-col gap-1">

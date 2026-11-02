@@ -16,7 +16,7 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
   main(ctx) {
     let picked: Picked | undefined;
-    let current: { host: HTMLElement; remove: () => void } | undefined;
+    let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined;
     // Building the UI is async, so a newer open or a close must cancel an older one.
     let latestOpen = 0;
     // Both last as long as this page does, so no list of visited sites gets stored.
@@ -92,7 +92,7 @@ export default defineContentScript({
         return;
       }
       ui.mount();
-      current = { host: ui.shadowHost, remove: ui.remove };
+      current = { host: ui.shadowHost, shadow: ui.shadow, remove: ui.remove };
     };
 
     ctx.addEventListener(
@@ -155,6 +155,7 @@ export default defineContentScript({
       wordAt: (x, y) => wordAt(x, y, pageLocale()),
       isOverPopover: (x, y) =>
         current !== undefined && document.elementFromPoint(x, y) === current.host,
+      popoverScroller: () => current?.shadow.querySelector('[data-popover-scroll]') ?? undefined,
       show: ({ word, anchor, element }) => void open(word, anchor, element),
       close,
     });
