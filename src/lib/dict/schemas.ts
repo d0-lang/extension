@@ -39,6 +39,7 @@ const lookupEntrySchema = z.object({
   senses: z.array(
     z.object({
       translations: z.array(z.string()).check(z.minLength(1)),
+      see: z.optional(z.array(z.string())),
     }),
   ),
 })

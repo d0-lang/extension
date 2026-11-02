@@ -34,15 +34,19 @@ export default defineContentScript({
       current = undefined;
     };
 
-    const search = async (word: string, element: Element | null): Promise<LookupReply> => {
-      const key = `${pinned ?? ''}\n${word}`;
+    const search = async (
+      word: string,
+      element: Element | null,
+      language: string | undefined = pinned,
+    ): Promise<LookupReply> => {
+      const key = `${language ?? ''}\n${word}`;
       const cached = replies.get(key);
       if (cached !== undefined) {
         return cached;
       }
       const reply = await requestLookup(word, {
-        pinned,
-        detected: pinned === undefined ? await detectLanguages(contextText(element)) : [],
+        pinned: language,
+        detected: language === undefined ? await detectLanguages(contextText(element)) : [],
         lastWorked,
       });
       if (reply.ok && reply.lang !== undefined) {
@@ -71,10 +75,11 @@ export default defineContentScript({
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined
-            : (language?: string) => {
+            : (language?: string, target: string = word) => {
                 pinned = language ?? pinned;
-                return search(word, element);
+                return search(target, element);
               },
+        follow: (target: string, language: string | undefined) => search(target, element, language),
       };
       const ui = await createShadowRootUi(ctx, {
         name: 'dict-lookup-popover',
