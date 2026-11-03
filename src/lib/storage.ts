@@ -1,4 +1,4 @@
-/** Extension storage: lookup toggle, theme, bound servers, and language → server URL.
+/** Extension storage: lookup toggle, theme, bound servers, language → server URL, and server issues.
  *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
 import { ResultAsync } from "neverthrow"
 
@@ -22,6 +22,11 @@ export type ServerByLang = Record<LanguagePair, string>
 /** Normalized server URL → bound record. Key matches `BoundServer.url`. */
 export type Servers = Record<string, BoundServer>
 
+/** A check that needs the user: the key changed, or the signature failed. The old key and data stay until then. */
+export type ServerIssue = { kind: "identity" | "broken" }
+/** Server URL → its unresolved issue. */
+export type ServerIssues = Record<string, ServerIssue>
+
 /** `system` follows the OS colour scheme. */
 export type Theme = "system" | "light" | "dark"
 
@@ -32,6 +37,7 @@ const empty = {
   theme: "system" as Theme,
   servers: {} as Servers,
   serverByLang: {} as ServerByLang,
+  serverIssues: {} as ServerIssues,
 }
 
 export const getLookupEnabled = async (): Promise<boolean> => {
@@ -66,16 +72,39 @@ export const getServerByLang = async (): Promise<ServerByLang> => {
     : empty.serverByLang
 }
 
+export const getServerIssues = async (): Promise<ServerIssues> => {
+  const { serverIssues } = await browser.storage.local.get("serverIssues")
+  return serverIssues !== undefined && typeof serverIssues === "object" && !Array.isArray(serverIssues)
+    ? serverIssues as ServerIssues
+    : empty.serverIssues
+}
+
+export const setServerIssue = (url: string, issue: ServerIssue): ResultAsync<void, Error> =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const serverIssues = await getServerIssues()
+      await browser.storage.local.set({ serverIssues: { ...serverIssues, [url]: issue } })
+    })(),
+    fromUnknown,
+  )
+
+const withoutIssues = (serverIssues: ServerIssues, urls: ReadonlyArray<string | undefined>): ServerIssues =>
+  Object.fromEntries(Object.entries(serverIssues).filter(([url]) => !urls.includes(url)))
+
 export const getStoredServer = async (url: string): Promise<BoundServer | undefined> => {
   const servers = await getServers()
   return servers[url]
 }
 
-/** Delete the record, with its pinned key, and every language mapped to it. */
+/** Delete the record, with its pinned key, its issue, and every language mapped to it. */
 export const removeServer = (url: string): ResultAsync<void, Error> =>
   ResultAsync.fromPromise(
     (async () => {
-      const [servers, serverByLang] = await Promise.all([getServers(), getServerByLang()])
+      const [servers, serverByLang, serverIssues] = await Promise.all([
+        getServers(),
+        getServerByLang(),
+        getServerIssues(),
+      ])
       const { [url]: _removed, ...nextServers } = servers
 
       await browser.storage.local.set({
@@ -83,14 +112,15 @@ export const removeServer = (url: string): ResultAsync<void, Error> =>
         serverByLang: Object.fromEntries(
           Object.entries(serverByLang).filter(([, mapped]) => mapped !== url),
         ),
+        serverIssues: withoutIssues(serverIssues, [url]),
       })
     })(),
     fromUnknown,
   )
 
 /**
- * Make `selectedLanguages` the only languages mapped to `server`.
- * `movedFrom` is purged: its record and every language mapped to it.
+ * Make `selectedLanguages` the only languages mapped to `server`, and clear its issue.
+ * `movedFrom` is purged: its record, its issue, and every language mapped to it.
  */
 export const bindServer = (
   server: BoundServer,
@@ -99,10 +129,11 @@ export const bindServer = (
 ): ResultAsync<void, Error> =>
   ResultAsync.fromPromise(
     (async () => {
-      const { servers = empty.servers, serverByLang = empty.serverByLang } = await browser.storage.local.get([
-        "servers",
-        "serverByLang",
-      ]) as { servers?: Servers; serverByLang?: ServerByLang }
+      const [servers, serverByLang, serverIssues] = await Promise.all([
+        getServers(),
+        getServerByLang(),
+        getServerIssues(),
+      ])
 
       const nextServerByLang = Object.fromEntries(
         Object.entries(serverByLang).filter(
@@ -121,6 +152,7 @@ export const bindServer = (
       await browser.storage.local.set({
         servers: nextServers,
         serverByLang: nextServerByLang,
+        serverIssues: withoutIssues(serverIssues, [server.url, movedFrom]),
       })
     })(),
     fromUnknown,

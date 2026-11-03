@@ -74,8 +74,13 @@ const scenarios: Record<string, Scenario> = {
     verificationUrls: [`${ORIGIN}/rotate/news`],
     section: "steps",
     summary: "The server replaces its signing key.",
-    steps: ["Add it and tick German.", "Press Rotate key below.", "In settings, open ⋯ → Edit languages on Rotating Key."],
-    expect: "\"This server's identity has changed\" with the news page. Cancel has focus, and Trust new key counts down 5 seconds. Trusting leads on to the review.",
+    steps: [
+      "Add it and tick German.",
+      "Press Rotate key below.",
+      "Reload the extension or restart the browser, which runs the startup check.",
+      "Press Review on the card, or open ⋯ → Edit languages.",
+    ],
+    expect: "After the reload: a notification, a ! badge on the icon, a line in the popup, and a red card. Review shows \"This server's identity has changed\". Cancel has focus, and Trust new key counts down 5 seconds. Trusting and saving clears the warning.",
   },
   moved: {
     name: "Old Host",
@@ -84,8 +89,12 @@ const scenarios: Record<string, Scenario> = {
     keyGroup: "moved",
     section: "steps",
     summary: "The server moves to a new address, keeping its key.",
-    steps: ["Add it and tick French.", "Press Move to moved-target below.", "In settings, open ⋯ → Edit languages on Old Host."],
-    expect: "Review of New Host at /moved-target with \"This server has moved\". Saving replaces Old Host. No identity warning.",
+    steps: [
+      "Add it and tick French.",
+      "Press Move to moved-target below.",
+      "Reload the extension or restart the browser. Or, without reloading, open ⋯ → Edit languages on Old Host.",
+    ],
+    expect: "After the reload: a notification that Old Host moved, and the card is now New Host at /moved-target with French kept. No identity warning. Through Edit languages: a review with \"This server has moved\".",
   },
   "moved-target": {
     name: "New Host",
@@ -254,7 +263,7 @@ const card = (id: string, scenario: Scenario) => {
       : "",
     scenario.section === "fails"
       ? ""
-      : `<details><summary>Change languages</summary><form action="/_languages/${id}"><input name="v" value="${escapeHtml(scenario.languages.join(","))}" placeholder="de_en,pl_en"><button>Set</button></form><p class="muted small">Then use Edit languages in settings to see added and removed ones.</p></details>`,
+      : `<details><summary>Change languages</summary><form action="/_languages/${id}"><input name="v" value="${escapeHtml(scenario.languages.join(","))}" placeholder="de_en,pl_en"><button>Set</button></form><p class="muted small">After a reload, dropped languages are struck through on the card. Edit languages shows added and removed ones.</p></details>`,
   ].join("")
   const steps = scenario.steps === undefined
     ? ""

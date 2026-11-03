@@ -8,6 +8,7 @@ import type { HandshakeOk } from "$lib/dict";
 import {
   bindServer,
   getServerByLang,
+  getServerIssues,
   getServers,
   removeServer,
   type ServerByLang,
@@ -89,20 +90,40 @@ export class ServerSetup {
   };
 
   load = async () => {
-    const [servers, nextServerByLang] = await Promise.all([
+    const [servers, nextServerByLang, issues] = await Promise.all([
       getServers(),
       getServerByLang(),
+      getServerIssues(),
     ]);
     this.servers = servers;
     this.serverByLang = nextServerByLang;
-    const languages = Object.entries(nextServerByLang);
-    this.rows = Object.values(servers).map(({ url, name }) => ({
-      url,
-      name,
-      languages: languages
-        .filter(([, mapped]) => mapped === url)
-        .map(([lang]) => lang),
-    }));
+    const mapped = Object.entries(nextServerByLang);
+    this.rows = Object.values(servers).map((server) => {
+      const languages = mapped
+        .filter(([, url]) => url === server.url)
+        .map(([lang]) => lang);
+      return {
+        url: server.url,
+        name: server.name,
+        languages,
+        unoffered: languages.filter((lang) => !server.languages.includes(lang)),
+        issue: issues[server.url]?.kind,
+      };
+    });
+  };
+
+  /** Reload when the startup check or another tab changes servers. Returns the unsubscribe. */
+  watch = (): (() => void) => {
+    const onChanged = (changes: Record<string, unknown>, area: string) => {
+      if (
+        area === "local" &&
+        ("servers" in changes || "serverByLang" in changes || "serverIssues" in changes)
+      ) {
+        void this.load();
+      }
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => browser.storage.onChanged.removeListener(onChanged);
   };
 
   askRemove = (row: ServerRow) => {
