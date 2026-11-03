@@ -11,7 +11,7 @@
   import type { DictError } from "$lib/dict/errors";
   import type { LookupReply } from "$lib/messages";
   import type { AnchorRect } from "./pick";
-  import { placePopover } from "./position";
+  import { placePopover, type Side } from "./position";
 
   let {
     word,
@@ -49,7 +49,9 @@
   let scroller: HTMLElement | undefined;
 
   let element = $state<HTMLElement>();
-  let place = $state({ top: 0, left: 0 });
+  let place = $state({ top: 0, left: 0, side: "below" as Side, room: 0 });
+  /** Set by the first followed link, so the popover no longer moves away from the cursor. It only grows from then on. */
+  let lock = $state<{ side: Side; minHeight: number }>();
   let failedAudio = $state<string>();
   let player: HTMLAudioElement | undefined;
 
@@ -65,7 +67,12 @@
         width: root?.clientWidth ?? window.innerWidth,
         height: root?.clientHeight ?? window.innerHeight,
       },
+      lock?.side,
     );
+    // Back can shrink the content, and Back sits where the cursor is.
+    if (lock !== undefined && element.offsetHeight > lock.minHeight) {
+      lock = { ...lock, minHeight: element.offsetHeight };
+    }
   };
 
   $effect(() => {
@@ -94,6 +101,7 @@
   };
 
   const followLink = (target: string, language: string | undefined) => {
+    lock ??= { side: place.side, minHeight: element?.offsetHeight ?? 0 };
     history = [...history, { ...view, scrollTop: scroller?.scrollTop }];
     view = { word: target, followed: true, reply: follow(target, language) };
   };
@@ -175,6 +183,8 @@
   ]}
   style:top="{place.top}px"
   style:left="{place.left}px"
+  style:--dict-room={lock && `${place.room}px`}
+  style:min-height={lock && `${Math.min(lock.minHeight, place.room)}px`}
   role="dialog"
   aria-label="Dictionary lookup"
 >

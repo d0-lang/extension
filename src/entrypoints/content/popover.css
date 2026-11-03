@@ -23,6 +23,7 @@
 .dict-popover {
 	--radius: 7px;
 	width: min(340px, calc(100vw - 16px));
-	max-height: min(360px, calc(100vh - 16px));
+	/* `--dict-room` is set once a followed link locks the popover to one side of the word. */
+	max-height: min(360px, calc(100vh - 16px), var(--dict-room, 100vh));
 	z-index: 2147483647;
 }
