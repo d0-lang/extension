@@ -13,6 +13,7 @@ export const publicKeySchema = z.object({
   key: z.string().check(z.refine(isEd25519Key)),
 })
 
+// TODO: Read the protocol's `legal` section, and warn when a server sends none. Its shape may change.
 export const serverMetaSchema = z.object({
   name: z.string().check(z.minLength(1)),
   nonce: z.string(),

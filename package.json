@@ -13,7 +13,8 @@
     "zip:firefox": "wxt zip -b firefox",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "mock-server": "bun scripts/mock-server.ts"
   },
   "dependencies": {
     "neverthrow": "^8.2.0",
