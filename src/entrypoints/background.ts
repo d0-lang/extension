@@ -12,12 +12,21 @@ const MENU_ITEM_ID = 'dict-look-up';
 // Firefox MV2 only has `browserAction`.
 const action = browser.action ?? browser.browserAction;
 
+const isUnbound = async () => Object.keys(await getServerByLang()).length === 0;
+
+const openSetup = async () => {
+  await browser.tabs.create({ url: browser.runtime.getURL('/setup.html') });
+};
+
+const openSetupIfUnbound = async () => {
+  if (await isUnbound()) {
+    await openSetup();
+  }
+};
+
 // `onClicked` only fires while the action has no popup.
 const syncAction = async () => {
-  const serverByLang = await getServerByLang();
-  await action.setPopup({
-    popup: Object.keys(serverByLang).length === 0 ? '' : '/popup.html',
-  });
+  await action.setPopup({ popup: (await isUnbound()) ? '' : '/popup.html' });
 };
 
 const createMenuItem = async () => {
@@ -44,9 +53,17 @@ const answer = async ({ word, hints }: LookupRequestMessage): Promise<LookupRepl
 };
 
 export default defineBackground(() => {
-  browser.runtime.onInstalled.addListener(setUp);
+  browser.runtime.onInstalled.addListener(({ reason }) => {
+    setUp();
+    if (reason === 'install') {
+      void openSetup();
+    }
+  });
   // A persistent Firefox background page does not keep its menu items across restarts.
-  browser.runtime.onStartup.addListener(setUp);
+  browser.runtime.onStartup.addListener(() => {
+    setUp();
+    void openSetupIfUnbound();
+  });
 
   browser.storage.onChanged.addListener((changes) => {
     if ('serverByLang' in changes) {
@@ -60,7 +77,7 @@ export default defineBackground(() => {
   });
 
   action.onClicked.addListener(() => {
-    void browser.tabs.create({ url: browser.runtime.getURL('/setup.html') });
+    void openSetup();
   });
 
   browser.contextMenus.onClicked.addListener((info, tab) => {

@@ -15,6 +15,7 @@
     DialogTitle,
   } from "$lib/components/ui/dialog";
   import { Label } from "$lib/components/ui/label";
+  import { pairName } from "$lib/languages";
   import { ServerSetup } from "../ServerSetup.svelte";
 
   let { setup }: { setup: ServerSetup } = $props();
@@ -51,7 +52,7 @@
           <Alert>
             <AlertTitle>Languages no longer offered</AlertTitle>
             <AlertDescription>
-              Saving removes {setup.droppedLanguages.join(", ")}.
+              Saving removes {setup.droppedLanguages.map(pairName).join(", ")}.
             </AlertDescription>
           </Alert>
         {/if}
@@ -72,7 +73,7 @@
                     bind:checked={setup.selected[lang]}
                   />
                   <Label for={`lang-${lang}`}>
-                    {lang} ({lang in setup.serverByLang
+                    {pairName(lang)} ({lang in setup.serverByLang
                       ? "in use"
                       : "not in use"})
                   </Label>

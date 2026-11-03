@@ -1,6 +1,7 @@
 import { mount, unmount } from 'svelte';
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from '$lib/messages';
-import { getLookupEnabled } from '$lib/storage';
+import { getLookupEnabled, getTheme } from '$lib/storage';
+import { isDark } from '$lib/theme';
 import { contextText, detectLanguages } from './context';
 import { watchAltHold } from './hold';
 import { MAX_WORD_CHARS, pickAt, pickedWord, wordAt, type AnchorRect, type Picked } from './pick';
@@ -71,7 +72,7 @@ export default defineContentScript({
       const props = {
         word,
         anchor,
-        dark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+        dark: isDark(await getTheme()),
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Appearance from './Appearance.svelte'
 	import Servers from './servers'
 </script>
 
@@ -9,7 +10,8 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-3xl px-6 py-8">
+	<main class="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-8">
 		<Servers />
+		<Appearance />
 	</main>
 </div>

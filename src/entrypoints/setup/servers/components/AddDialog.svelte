@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import {
     Alert,
     AlertDescription,
@@ -29,6 +30,13 @@
       setup.acceptDraft(result);
     }
   };
+
+  onMount(() => {
+    if (setup.editUrl !== undefined) {
+      url = setup.editUrl;
+      void finish(() => session.run(url));
+    }
+  });
 </script>
 
 <Dialog
@@ -42,10 +50,17 @@
 >
   <DialogContent class="sm:max-w-md">
     <DialogHeader>
-      <DialogTitle>Add server</DialogTitle>
-      <DialogDescription>
-        Paste a dictionary server URL and connect.
-      </DialogDescription>
+      {#if setup.editUrl === undefined}
+        <DialogTitle>Add server</DialogTitle>
+        <DialogDescription>
+          Paste a dictionary server URL and connect.
+        </DialogDescription>
+      {:else}
+        <DialogTitle>Edit languages</DialogTitle>
+        <DialogDescription>
+          Reconnects to get the languages this server offers now.
+        </DialogDescription>
+      {/if}
     </DialogHeader>
     <form
       class="flex flex-col gap-3"

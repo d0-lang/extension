@@ -13,6 +13,7 @@
     DialogHeader,
     DialogTitle,
   } from "$lib/components/ui/dialog";
+  import { pairName } from "$lib/languages";
   import { ServerSetup } from "../ServerSetup.svelte";
 
   let { setup }: { setup: ServerSetup } = $props();
@@ -36,7 +37,7 @@
       </DialogHeader>
       <p class="text-sm">
         {#if target.languages.length > 0}
-          Lookups for {target.languages.join(", ")} will stop working.
+          Lookups for {target.languages.map(pairName).join(", ")} will stop working.
         {/if}
         The stored key is deleted too, so adding this server again trusts whatever
         key it sends then.

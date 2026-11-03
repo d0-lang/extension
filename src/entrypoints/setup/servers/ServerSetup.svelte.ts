@@ -1,6 +1,7 @@
 /*
  * Bound language rows plus the add → review → save dialog.
  * `openAdd` / `acceptDraft` / `save` are the three steps; `closeAdd` / `closeReview` abort.
+ * `openEdit` runs the same steps against a bound server.
  */
 import { ResultAsync } from "neverthrow";
 import type { HandshakeOk } from "$lib/dict";
@@ -25,6 +26,8 @@ export class ServerSetup {
   removeTarget = $state.raw<ServerRow | null>(null);
   removing = $state(false);
   removeError = $state("");
+  /** Set while the add dialog reconnects to a bound server to change its languages. */
+  editUrl = $state<string | undefined>(undefined);
 
   addOpen =$derived(this.dialogState === "add-open");
   reviewOpen = $derived(
@@ -110,6 +113,7 @@ export class ServerSetup {
   };
 
   resetDialog = () => {
+    this.editUrl = undefined;
     this.draft = null;
     this.selected = {};
     this.genericError = "";
@@ -117,10 +121,17 @@ export class ServerSetup {
   };
 
   openAdd = () => {
+    this.editUrl = undefined;
     this.draft = null;
     this.selected = {};
     this.genericError = "";
     this.dialogState = "add-open";
+  };
+
+  /** Reconnect first, so the review lists what the server offers now. */
+  openEdit = (row: ServerRow) => {
+    this.openAdd();
+    this.editUrl = row.url;
   };
 
   acceptDraft = (result: HandshakeOk) => {
