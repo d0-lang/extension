@@ -156,10 +156,14 @@
 </script>
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}
-  <button
-    type="button"
-    class="cursor-pointer underline underline-offset-2"
-    onclick={() => followLink(target, language)}>{text}</button
+  <!-- A button would stay one box, which pushes a long link onto its own line. -->
+  <a
+    href="#see"
+    class="underline underline-offset-2"
+    onclick={(event) => {
+      event.preventDefault();
+      followLink(target, language);
+    }}>{text}</a
   >
 {/snippet}
 

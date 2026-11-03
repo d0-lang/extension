@@ -40,43 +40,63 @@ export const entriesForLemma = (
 /** A run of sense text. `target` is the `see` word it links to, if any. */
 export type SensePart = { text: string; target: string | undefined }
 
-const escapeRegExp = (text: string): string => text.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&")
+// Words sit at even indexes and separators at odd ones, so joining the parts gives the text back.
+const splitWords = (text: string): Array<string> => text.split(/([^\p{L}\p{M}\p{N}]+)/u)
+
+const wordsOf = (text: string): Array<string> =>
+  splitWords(lemmaKey(text)).filter((word, index) => index % 2 === 0 && word !== "")
+
+/** True if `run` matches the words of `parts` from `start` on. Separators in between are not compared. */
+const isRunAt = (parts: ReadonlyArray<string>, run: ReadonlyArray<string>, start: number): boolean =>
+  run.every((word, offset) => lemmaKey(parts[start + offset * 2] ?? "") === word)
 
 /**
  * Split `text` around whole-word, case-insensitive matches of the `see` words.
- * `unfound` keeps the words that matched nowhere, so they can be shown some other way.
+ * A single target that is not in the text links the whole text.
+ * `unfound` keeps the other targets that matched nowhere, so they can be shown some other way.
  */
 export const linkSense = (
   text: string,
   see: ReadonlyArray<string>,
 ): { parts: Array<SensePart>; unfound: Array<string> } => {
-  const distinct = [...new Map(see.filter((word) => word.trim() !== "").map((word) => [lemmaKey(word), word])).values()]
+  const named = see.filter((word) => wordsOf(word).length > 0)
+  const distinct = named.filter(
+    (word, index) => named.findIndex((other) => lemmaKey(other) === lemmaKey(word)) === index,
+  )
   // A target can start another one, like `mimo` and `mimo to`.
-  const targets = distinct.toSorted((a, b) => b.length - a.length)
-  if (targets.length === 0) {
-    return { parts: [{ text, target: undefined }], unfound: [] }
-  }
+  const targets = distinct
+    .map((target) => ({ target, run: wordsOf(target) }))
+    .toSorted((a, b) => b.run.length - a.run.length)
 
-  const groups = targets.map((target) => `(${escapeRegExp(target)})`).join("|")
-  const matcher = new RegExp(`(?<![\\p{L}\\p{M}\\p{N}])(?:${groups})(?![\\p{L}\\p{M}\\p{N}])`, "giu")
+  const words = splitWords(text)
   const parts: Array<SensePart> = []
   const found = new Set<string>()
-  let end = 0
-  for (const match of text.matchAll(matcher)) {
-    const target = targets[match.slice(1).findIndex((group) => group !== undefined)]
-    if (match.index > end) {
-      parts.push({ text: text.slice(end, match.index), target: undefined })
+  let plainFrom = 0
+  let index = 0
+  while (index < words.length) {
+    const match = targets.find(({ run }) => isRunAt(words, run, index))
+    if (match === undefined) {
+      index += 2
+      continue
     }
-    parts.push({ text: match[0], target })
-    if (target !== undefined) {
-      found.add(target)
+    const end = index + match.run.length * 2 - 1
+    if (index > plainFrom) {
+      parts.push({ text: words.slice(plainFrom, index).join(""), target: undefined })
     }
-    end = match.index + match[0].length
+    parts.push({ text: words.slice(index, end).join(""), target: match.target })
+    found.add(match.target)
+    plainFrom = end
+    index = end + 1
   }
-  if (end < text.length) {
-    parts.push({ text: text.slice(end), target: undefined })
+  if (plainFrom < words.length) {
+    parts.push({ text: words.slice(plainFrom).join(""), target: undefined })
   }
-  return { parts, unfound: distinct.filter((word) => !found.has(word)) }
+
+  const unfound = distinct.filter((target) => !found.has(target))
+  if (distinct.length === 1 && unfound.length === 1) {
+    return { parts: [{ text, target: unfound[0] }], unfound: [] }
+  }
+  return { parts, unfound }
 }
 
 /** True only for `https` URLs whose host is on the allowlist. */

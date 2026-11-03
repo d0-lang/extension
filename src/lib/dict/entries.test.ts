@@ -61,16 +61,25 @@ describe("linkSense", () => {
   })
 
   it("does not match inside a longer word, including next to a non-ASCII letter", () => {
-    expect(linkSense("synonym of matka", ["mat"]).unfound).toEqual(["mat"])
-    expect(links("synonym of matka", ["mat"])).toEqual([])
-    expect(links("państwo", ["pa"])).toEqual([])
-    expect(links("państwo", ["stwo"])).toEqual([])
+    expect(links("synonym of matka", ["mat", "x"])).toEqual([])
+    expect(links("państwo", ["pa", "x"])).toEqual([])
+    expect(links("państwo", ["stwo", "x"])).toEqual([])
   })
 
-  it("appends a target that is not in the text", () => {
+  it("links the whole text when its only target is not in it", () => {
     expect(linkSense("synonym of rodzice", ["rodzic"])).toEqual({
-      parts: [{ text: "synonym of rodzice", target: undefined }],
-      unfound: ["rodzic"],
+      parts: [{ text: "synonym of rodzice", target: "rodzic" }],
+      unfound: [],
+    })
+  })
+
+  it("returns missing targets when there are several", () => {
+    expect(linkSense("synonym of zwyczajny", ["zwyczajny", "ordynarny"])).toEqual({
+      parts: [
+        { text: "synonym of ", target: undefined },
+        { text: "zwyczajny", target: "zwyczajny" },
+      ],
+      unfound: ["ordynarny"],
     })
   })
 
@@ -82,16 +91,24 @@ describe("linkSense", () => {
     expect(linkSense("Państwo", ["państwo"]).parts).toEqual([{ text: "Państwo", target: "państwo" }])
   })
 
+  it("matches multi-word targets across any separator", () => {
+    expect(links("synonym of wychodzić za mąż (“to marry”)", ["wychodzić za mąż"])).toEqual(["wychodzić za mąż"])
+    expect(linkSense("synonym of śmigus-dyngus", ["śmigus-dyngus"]).parts).toEqual([
+      { text: "synonym of ", target: undefined },
+      { text: "śmigus-dyngus", target: "śmigus-dyngus" },
+    ])
+  })
+
   it("matches multi-word targets, longest first", () => {
     expect(links("synonym of mimo to", ["mimo", "mimo to"])).toEqual(["mimo to"])
     expect(linkSense("synonym of mimo to", ["mimo", "mimo to"]).unfound).toEqual(["mimo"])
   })
 
-  it("treats regex characters literally", () => {
+  it("treats punctuation in a target as a separator", () => {
     expect(links("see a.b and axb", ["a.b"])).toEqual(["a.b"])
   })
 
   it("ignores blank and repeated targets", () => {
-    expect(linkSense("text", ["", " ", "x", "x"]).unfound).toEqual(["x"])
+    expect(linkSense("text", ["", " ", "-", "x", "X"]).parts).toEqual([{ text: "text", target: "x" }])
   })
 })
