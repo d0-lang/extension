@@ -2,6 +2,7 @@
   import { onDestroy, untrack } from "svelte";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import Play from "@lucide/svelte/icons/play";
+  import { Kbd } from "$lib/components/ui/kbd";
   import {
     entriesForLemma,
     groupEntries,
@@ -10,6 +11,7 @@
   } from "$lib/dict/entries";
   import type { DictError } from "$lib/dict/errors";
   import type { LookupReply } from "$lib/messages";
+  import { isTyping } from "./hold";
   import type { AnchorRect } from "./pick";
   import { placePopover, type Side } from "./position";
 
@@ -52,6 +54,9 @@
   let place = $state({ top: 0, left: 0, side: "below" as Side, room: 0 });
   /** Set by the first followed link, so the popover no longer moves away from the cursor. It only grows from then on. */
   let lock = $state<{ side: Side; minHeight: number }>();
+  /** Bound languages from the last reply, and the one shown or being looked up. */
+  let languages = $state.raw<Array<string>>([]);
+  let language = $state<string>();
   let failedAudio = $state<string>();
   let player: HTMLAudioElement | undefined;
 
@@ -111,13 +116,67 @@
     history = history.slice(0, -1);
   };
 
-  const switchLanguage = (language: string) => {
+  const switchLanguage = (target: string) => {
+    language = target;
     view = {
       ...view,
-      reply: search?.(language, view.word),
+      reply: search?.(target, view.word),
       scrollTop: undefined,
     };
   };
+
+  /** The language that answered, or the only one asked when it did not. Unset when several were asked and none answered. */
+  const shownLanguage = (result: LookupReply): string | undefined =>
+    (result.ok ? result.lang : undefined) ??
+    (result.tried.length === 1 ? result.tried[0] : undefined);
+
+  $effect(() => {
+    const reply = view.reply;
+    void reply?.then((result) => {
+      if (view.reply !== reply) {
+        return;
+      }
+      languages = result.languages;
+      language = shownLanguage(result) ?? language;
+    });
+  });
+
+  /** Wraps around. Without a current language, D starts at the first and A at the last. */
+  const stepLanguage = (step: 1 | -1): boolean => {
+    if (search === undefined || languages.length < 2) {
+      return false;
+    }
+    const index = language === undefined ? -1 : languages.indexOf(language);
+    const next =
+      index === -1
+        ? step === 1
+          ? 0
+          : languages.length - 1
+        : (index + step + languages.length) % languages.length;
+    switchLanguage(languages[next]!);
+    return true;
+  };
+
+  // Physical keys, so they stay under the same fingers on any layout.
+  const languageSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 };
+
+  $effect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const step = languageSteps[event.code];
+      // Alt stays allowed, because the popover is open while Alt is held.
+      if (step === undefined || event.ctrlKey || event.metaKey || event.repeat || isTyping()) {
+        return;
+      }
+      if (stepLanguage(step)) {
+        // Pages bind single letters too, like YouTube and Gmail.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
+  });
 
   const shownEntries = (result: LookupReply) => {
     if (!result.ok) {
@@ -215,31 +274,14 @@
         </p>
       {:then result}
         {@const entries = shownEntries(result)}
-        {#if result.languages.length > 1}
-          <div class="flex flex-wrap gap-1 border-b p-2">
-            {#each result.languages as language (language)}
-              {@const active = result.ok && result.lang === language}
-              <button
-                type="button"
-                class={[
-                  "hover:bg-muted h-6 cursor-pointer rounded-md px-2 text-xs font-medium",
-                  active && "bg-secondary text-secondary-foreground",
-                ]}
-                aria-pressed={active}
-                onclick={() => switchLanguage(language)}
-              >
-                {language}
-              </button>
-            {/each}
-          </div>
-        {/if}
+        {@const shown = shownLanguage(result)}
         {#if !result.ok}
           <p class="text-destructive p-3 wrap-anywhere" role="alert">
             {errorText(result.error)}
           </p>
         {:else if entries.length === 0}
           <p class="text-muted-foreground p-3 wrap-anywhere">
-            No entries for {view.word}.
+            No entries for {view.word}{shown === undefined ? "" : ` in ${shown}`}.
           </p>
         {:else}
           <div
@@ -304,6 +346,28 @@
                 </ol>
               </section>
             {/each}
+          </div>
+        {/if}
+        {#if result.languages.length > 1}
+          <div class="flex shrink-0 items-center gap-2 border-t p-2">
+            <Kbd class="shrink-0" title="Previous language">A</Kbd>
+            <div class="flex flex-1 flex-wrap justify-center gap-1" role="group" aria-label="Languages">
+              {#each result.languages as code (code)}
+                {@const active = shown === code}
+                <button
+                  type="button"
+                  class={[
+                    "hover:bg-muted h-6 cursor-pointer rounded-md px-2 text-xs font-medium",
+                    active && "bg-secondary text-secondary-foreground",
+                  ]}
+                  aria-pressed={active}
+                  onclick={() => switchLanguage(code)}
+                >
+                  {code}
+                </button>
+              {/each}
+            </div>
+            <Kbd class="shrink-0" title="Next language">D</Kbd>
           </div>
         {/if}
       {/await}

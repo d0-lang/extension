@@ -1,5 +1,5 @@
 import { checkServers, type CheckResult } from '$lib/check';
-import { boundLanguages, lookupWord } from '$lib/dict';
+import { boundLanguages, lookupWord, rankLanguages } from '$lib/dict';
 import {
   isLookupRequestMessage,
   type LookupReply,
@@ -97,9 +97,11 @@ const check = () =>
 
 const answer = async ({ word, hints }: LookupRequestMessage): Promise<LookupReply> => {
   const languages = await boundLanguages().unwrapOr([]);
+  // The order `lookupWord` tries them in, since it ranks the same languages with the same hints.
+  const tried = rankLanguages(languages, hints);
   return lookupWord(word, hints).match(
-    (outcome): LookupReply => ({ ok: true, languages, ...outcome }),
-    (error): LookupReply => ({ ok: false, languages, error }),
+    (outcome): LookupReply => ({ ok: true, languages, tried, ...outcome }),
+    (error): LookupReply => ({ ok: false, languages, tried, error }),
   );
 };
 

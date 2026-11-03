@@ -10,8 +10,11 @@ export type OpenLookupMessage = { type: "lookup:open"; selectionText: string | u
 /** Content to background: fetch this word. */
 export type LookupRequestMessage = { type: "lookup:request"; word: string; hints: LookupHints }
 
-/** Plain data, because a `Result` does not survive messaging. `languages` are the bound ones. */
-export type LookupReply = { languages: Array<string> } & (
+/**
+ * Plain data, because a `Result` does not survive messaging. `languages` are the bound ones.
+ * `tried` are the languages asked, in order, whether or not one answered.
+ */
+export type LookupReply = { languages: Array<string>; tried: Array<string> } & (
   | ({ ok: true } & LookupOutcome)
   | { ok: false; error: DictError }
 )
@@ -33,6 +36,11 @@ const sendLookupRequest = ResultAsync.fromThrowable(
 export const requestLookup = (word: string, hints: LookupHints): Promise<LookupReply> =>
   sendLookupRequest(word, hints).match(
     (reply): LookupReply =>
-      reply ?? { ok: false, languages: [], error: fromUnknown("The background script did not reply") },
-    (error): LookupReply => ({ ok: false, languages: [], error }),
+      reply ?? {
+        ok: false,
+        languages: [],
+        tried: [],
+        error: fromUnknown("The background script did not reply"),
+      },
+    (error): LookupReply => ({ ok: false, languages: [], tried: [], error }),
   )

@@ -151,6 +151,12 @@ const scenarios: Record<string, Scenario> = {
   },
 }
 
+/** These languages know only these words, so a word from another language finds nothing. Others answer any word. */
+const VOCABULARY: Record<string, Array<string>> = {
+  pl_en: ["monarchia", "władza", "państwo", "państwach", "cesarstwo", "cesarstwa", "rzymskiego", "tytuły"],
+  de_en: ["weltschmerz", "kaiser", "reich", "haus", "zeitgeist"],
+}
+
 /** The state each scenario starts in, for the reset control. */
 const initial = structuredClone(scenarios)
 
@@ -223,6 +229,9 @@ const lookup = (scenario: Scenario, url: URL) => {
   }
   if (!scenario.languages.includes(lang)) {
     return json({ error: "unsupported_lang" }, { status: 400 })
+  }
+  if (VOCABULARY[lang]?.includes(word.toLowerCase()) === false) {
+    return json({ entries: [] })
   }
   return json({
     entries: [
@@ -322,7 +331,7 @@ input{font:12.5px ui-monospace,monospace;flex:1;min-width:0;padding:3px 6px;bord
 <div class="how"><b>How to test</b><ol>
 <li>Open the extension's settings and press <b>Add server</b>.</li>
 <li>Copy an address from a card below. A bare host like <code>localhost:8787/basic</code> works too.</li>
-<li>Compare what you see with <b>Expect</b>. Lookups on any added server answer with "&lt;word&gt; in &lt;lang&gt;, answered by &lt;server name&gt;".</li>
+<li>Compare what you see with <b>Expect</b>. Lookups answer with "&lt;word&gt; in &lt;lang&gt;, answered by &lt;server name&gt;". Only <code>pl_en</code> and <code>de_en</code> are picky: they know just ${Object.entries(VOCABULARY).map(([lang, words]) => `<code>${lang}</code>: ${words.join(", ")}`).join("; ")}. So a German word on a Polish page finds nothing in <code>pl_en</code>. Every other language answers any word.</li>
 </ol><p class="muted small" style="margin:8px 0 0">Keys come from fixed seeds, so servers you added still verify after a restart or a reset. A reset does undo rotated keys, so a rotated server you trusted shows an identity change again.</p></div>
 ${body}
 </main>

@@ -2,6 +2,7 @@
 @import '../../tokens.css';
 
 @source './Popover.svelte';
+@source '../../lib/components/ui/kbd';
 
 @custom-variant dark (&:is(.dark *));
 

@@ -15,7 +15,8 @@ type HoldOptions = {
   close: () => void;
 };
 
-const isTyping = (): boolean => {
+/** A key press belongs to the page while focus is in a text field. */
+export const isTyping = (): boolean => {
   const active = document.activeElement;
   return (
     active instanceof HTMLInputElement ||
