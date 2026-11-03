@@ -136,10 +136,6 @@
 				</li>
 			{/each}
 		</ul>
-		<p class="text-muted-foreground text-sm">
-			Lookups use the language detected on the page. If that gives no match among your languages,
-			the word may be sent to any server listed here.
-		</p>
 	{/if}
 </section>
 
