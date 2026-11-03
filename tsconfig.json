@@ -5,5 +5,7 @@
       "$lib": ["./src/lib"],
       "$lib/*": ["./src/lib/*"]
     }
-  }
+  },
+  // `scripts` run on Bun, not in the extension. Replacing `exclude` drops the generated entries, so they are repeated.
+  "exclude": ["**/node_modules", ".output", "scripts"]
 }

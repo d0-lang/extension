@@ -19,9 +19,8 @@
 	} from '$lib/components/ui/dropdown-menu'
 	import { pairName } from '$lib/languages'
 	import { ServerSetup } from '../ServerSetup.svelte'
-	import AddDialog from './AddDialog.svelte'
 	import RemoveDialog from './RemoveDialog.svelte'
-	import ReviewDialog from './ReviewDialog.svelte'
+	import ServerDialog from './ServerDialog.svelte'
 
 	const servers = new ServerSetup()
 
@@ -139,12 +138,8 @@
 	{/if}
 </section>
 
-{#if servers.addOpen}
-	<AddDialog setup={servers} />
-{/if}
-
-{#if servers.draft}
-	<ReviewDialog setup={servers} />
+{#if servers.dialogState !== 'closed'}
+	<ServerDialog setup={servers} />
 {/if}
 
 <RemoveDialog setup={servers} />

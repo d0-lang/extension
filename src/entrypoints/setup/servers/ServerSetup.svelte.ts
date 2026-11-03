@@ -1,6 +1,6 @@
 /*
- * Bound language rows plus the add → review → save dialog.
- * `openAdd` / `acceptDraft` / `save` are the three steps; `closeAdd` / `closeReview` abort.
+ * Bound language rows plus the connect → review → save dialog.
+ * `openAdd` / `acceptDraft` / `save` are the three steps; `closeDialog` aborts.
  * `openEdit` runs the same steps against a bound server.
  */
 import { ResultAsync } from "neverthrow";
@@ -29,11 +29,14 @@ export class ServerSetup {
   /** Set while the add dialog reconnects to a bound server to change its languages. */
   editUrl = $state<string | undefined>(undefined);
 
-  addOpen =$derived(this.dialogState === "add-open");
-  reviewOpen = $derived(
-    this.dialogState === "review-open" || this.dialogState === "saving",
-  );
   saving = $derived(this.dialogState === "saving");
+  isEditing = $derived(this.editUrl !== undefined);
+  /** Saving binds a server that is not stored yet, rather than updating one. */
+  isNew = $derived(
+    this.draft !== null &&
+      !(this.draft.url in this.servers) &&
+      !(this.draft.movedFrom !== undefined && this.draft.movedFrom in this.servers),
+  );
 
   selectedLanguages = $derived(
     Object.entries(this.selected)
@@ -47,6 +50,11 @@ export class ServerSetup {
         (this.draft.url in this.servers ||
           (this.draft.movedFrom !== undefined &&
             this.draft.movedFrom in this.servers))),
+  );
+  allSelected = $derived(
+    this.draft !== null &&
+      this.draft.meta.languages.length > 0 &&
+      this.draft.meta.languages.every((lang) => this.selected[lang]),
   );
   /** Languages mapped to this server that it no longer lists. Saving unmaps them. */
   droppedLanguages = $derived.by(() => {
@@ -64,6 +72,21 @@ export class ServerSetup {
 
   #belongsToDraft = (url: string, draft: HandshakeOk): boolean =>
     url === draft.url || url === draft.movedFrom;
+
+  /** Name of the other server `lang` is mapped to. Saving it ticked moves it to the draft. */
+  ownerElsewhere = (lang: string): string | undefined => {
+    const url = this.serverByLang[lang];
+    if (url === undefined || this.draft === null || this.#belongsToDraft(url, this.draft)) {
+      return undefined;
+    }
+    return this.servers[url]?.name ?? url;
+  };
+
+  selectAll = (on: boolean) => {
+    this.selected = Object.fromEntries(
+      (this.draft?.meta.languages ?? []).map((lang) => [lang, on]),
+    );
+  };
 
   load = async () => {
     const [servers, nextServerByLang] = await Promise.all([
@@ -148,14 +171,18 @@ export class ServerSetup {
     this.dialogState = "review-open";
   };
 
-  closeAdd = () => {
-    if (this.dialogState === "add-open") {
-      this.resetDialog();
+  /** Back from review to the connect step, keeping the typed address. */
+  backToConnect = () => {
+    if (this.dialogState === "review-open") {
+      this.draft = null;
+      this.selected = {};
+      this.genericError = "";
+      this.dialogState = "add-open";
     }
   };
 
-  closeReview = () => {
-    if (this.dialogState === "review-open" || this.dialogState === "saving") {
+  closeDialog = () => {
+    if (this.dialogState !== "closed") {
       this.resetDialog();
     }
   };
