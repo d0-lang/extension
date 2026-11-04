@@ -31,3 +31,10 @@
 	max-height: min(360px, calc(100vh - 16px), var(--dict-room, 100vh));
 	z-index: 2147483647;
 }
+
+.dict-underline {
+	height: 2px;
+	border-radius: 1px;
+	pointer-events: none;
+	z-index: 2147483647;
+}

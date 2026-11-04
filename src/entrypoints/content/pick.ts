@@ -102,3 +102,10 @@ export const pickAt = (
 /** The DOM selection misses text selected inside inputs, which the menu's own selection text covers. */
 export const pickedWord = (picked: Picked | undefined, selectionText: string | undefined): string =>
   picked?.selected || selectionText?.trim() || picked?.underCursor || ""
+
+/** Whether the looked-up word is the one under the cursor, rather than a selection. */
+export const pickedUnderCursor = (picked: Picked | undefined, selectionText: string | undefined): boolean =>
+  picked !== undefined &&
+  picked.underCursor !== "" &&
+  pickedWord(picked, selectionText) === picked.underCursor &&
+  !selectionText?.trim()

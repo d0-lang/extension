@@ -4,7 +4,8 @@ import { getLookupEnabled, getShowIpa, getTheme } from '$lib/storage';
 import { isDark } from '$lib/theme';
 import { contextText, detectLanguages } from './context';
 import { watchAltHold } from './hold';
-import { MAX_WORD_CHARS, pickAt, pickedWord, wordAt, type AnchorRect, type Picked } from './pick';
+import { MAX_WORD_CHARS, pickAt, pickedUnderCursor, pickedWord, wordAt, type AnchorRect, type Picked } from './pick';
+import { isDarkBehind } from './scheme';
 import Popover from './Popover.svelte';
 import './popover.css';
 
@@ -66,7 +67,7 @@ export default defineContentScript({
       return reply;
     };
 
-    const open = async (word: string, anchor: AnchorRect, element: Element | null) => {
+    const open = async (word: string, anchor: AnchorRect, element: Element | null, underlined: boolean) => {
       close();
       const thisOpen = latestOpen;
       const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()]);
@@ -75,6 +76,7 @@ export default defineContentScript({
         anchor,
         dark: isDark(theme),
         showIpa,
+        underline: underlined ? { rect: anchor, dark: isDarkBehind(element) } : undefined,
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined
@@ -138,7 +140,12 @@ export default defineContentScript({
     );
 
     const openPicked = ({ selectionText }: OpenLookupMessage) =>
-      open(pickedWord(picked, selectionText), picked?.anchor ?? NO_ANCHOR, picked?.element ?? null);
+      open(
+        pickedWord(picked, selectionText),
+        picked?.anchor ?? NO_ANCHOR,
+        picked?.element ?? null,
+        pickedUnderCursor(picked, selectionText),
+      );
 
     browser.runtime.onMessage.addListener((message) => {
       if (isOpenLookupMessage(message)) {
@@ -164,7 +171,7 @@ export default defineContentScript({
       isOverPopover: (x, y) =>
         current !== undefined && document.elementFromPoint(x, y) === current.host,
       popoverScroller: () => current?.shadow.querySelector('[data-popover-scroll]') ?? undefined,
-      show: ({ word, anchor, element }) => void open(word, anchor, element),
+      show: ({ word, anchor, element }) => void open(word, anchor, element, true),
       close,
     });
   },

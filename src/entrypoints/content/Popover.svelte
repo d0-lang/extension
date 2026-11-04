@@ -21,6 +21,7 @@
     anchor,
     dark,
     showIpa,
+    underline,
     search,
     follow,
   }: {
@@ -28,6 +29,8 @@
     anchor: AnchorRect;
     dark: boolean;
     showIpa: boolean;
+    /** The looked-up word's box. `dark` is the page behind it, which picks the accent that shows up there. */
+    underline: { rect: AnchorRect; dark: boolean } | undefined;
     /** Unset when `word` cannot be looked up. A language pins that language for this page. */
     search:
       | ((language?: string, target?: string) => Promise<LookupReply>)
@@ -345,6 +348,16 @@
     }}>{text}</a
   >
 {/snippet}
+
+{#if underline !== undefined}
+  <div
+    class={["dict-underline bg-link fixed", underline.dark && "dark"]}
+    style:top="{underline.rect.bottom - 2}px"
+    style:left="{underline.rect.left}px"
+    style:width="{underline.rect.right - underline.rect.left}px"
+    aria-hidden="true"
+  ></div>
+{/if}
 
 <div
   bind:this={element}
