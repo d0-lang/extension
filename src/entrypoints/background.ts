@@ -95,11 +95,11 @@ const notify = (results: Array<CheckResult>) => {
 const check = () =>
   checkServers().match(notify, (error) => console.warn('Could not check servers', error));
 
-const answer = async ({ word, hints }: LookupRequestMessage): Promise<LookupReply> => {
+const answer = async ({ word, hints, context }: LookupRequestMessage): Promise<LookupReply> => {
   const languages = await boundLanguages().unwrapOr([]);
   // The order `lookupWord` tries them in, since it ranks the same languages with the same hints.
   const tried = rankLanguages(languages, hints);
-  return lookupWord(word, hints).match(
+  return lookupWord(word, hints, context).match(
     (outcome): LookupReply => ({ ok: true, languages, tried, ...outcome }),
     (error): LookupReply => ({ ok: false, languages, tried, error }),
   );

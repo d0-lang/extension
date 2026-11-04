@@ -1,11 +1,21 @@
 import { mount, unmount } from 'svelte';
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from '$lib/messages';
-import { getLookupEnabled, getShowIpa, getTheme } from '$lib/storage';
+import { getContextEnabled, getLookupEnabled, getShowIpa, getTheme } from '$lib/storage';
 import { isDark } from '$lib/theme';
 import { contextText, detectLanguages } from './context';
 import { watchAltHold } from './hold';
-import { MAX_WORD_CHARS, pickAt, pickedUnderCursor, pickedWord, wordAt, type AnchorRect, type Picked } from './pick';
+import {
+  MAX_WORD_CHARS,
+  pickAt,
+  pickedContext,
+  pickedUnderCursor,
+  pickedWord,
+  wordAt,
+  type AnchorRect,
+  type Picked,
+} from './pick';
 import { isDarkBehind } from './scheme';
+import { sentenceAround } from './sentence';
 import Popover from './Popover.svelte';
 import './popover.css';
 
@@ -25,6 +35,7 @@ export default defineContentScript({
     let pinned: string | undefined;
     let lastWorked: string | undefined;
     let enabled = false;
+    let contextEnabled = false;
     const replies = new Map<string, LookupReply>();
 
     // `de_en` is read as German. Unset until a language has answered on this page.
@@ -40,8 +51,9 @@ export default defineContentScript({
       word: string,
       element: Element | null,
       language: string | undefined = pinned,
+      context: string | undefined = undefined,
     ): Promise<LookupReply> => {
-      const key = `${language ?? ''}\n${word}`;
+      const key = JSON.stringify([language, word, context]);
       const cached = replies.get(key);
       if (cached !== undefined) {
         return cached;
@@ -50,7 +62,7 @@ export default defineContentScript({
         pinned: language,
         detected: language === undefined ? await detectLanguages(contextText(element)) : [],
         lastWorked,
-      });
+      }, context);
       if (reply.ok && reply.lang !== undefined) {
         lastWorked = reply.lang;
       }
@@ -67,9 +79,16 @@ export default defineContentScript({
       return reply;
     };
 
-    const open = async (word: string, anchor: AnchorRect, element: Element | null, underlined: boolean) => {
+    const open = async (
+      word: string,
+      anchor: AnchorRect,
+      element: Element | null,
+      underlined: boolean,
+      sentence: string | undefined,
+    ) => {
       close();
       const thisOpen = latestOpen;
+      const context = contextEnabled ? sentence : undefined;
       const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()]);
       const props = {
         word,
@@ -82,7 +101,8 @@ export default defineContentScript({
             ? undefined
             : (language?: string, target: string = word) => {
                 pinned = language ?? pinned;
-                return search(target, element);
+                // The sentence is around `word`, not around a followed link.
+                return search(target, element, pinned, target === word ? context : undefined);
               },
         follow: (target: string, language: string | undefined) => search(target, element, language),
       };
@@ -145,6 +165,7 @@ export default defineContentScript({
         picked?.anchor ?? NO_ANCHOR,
         picked?.element ?? null,
         pickedUnderCursor(picked, selectionText),
+        pickedContext(picked, pickedWord(picked, selectionText)),
       );
 
     browser.runtime.onMessage.addListener((message) => {
@@ -156,12 +177,20 @@ export default defineContentScript({
     void getLookupEnabled().then((value) => {
       enabled = value;
     });
+    const syncContextEnabled = () =>
+      getContextEnabled(location.hostname).then((value) => {
+        contextEnabled = value;
+      });
+    void syncContextEnabled();
     browser.storage.onChanged.addListener((changes) => {
       if ('lookupEnabled' in changes) {
         enabled = changes.lookupEnabled?.newValue === true;
       }
       if ('servers' in changes || 'serverByLang' in changes) {
         replies.clear();
+      }
+      if ('contextSites' in changes) {
+        void syncContextEnabled();
       }
     });
 
@@ -171,7 +200,8 @@ export default defineContentScript({
       isOverPopover: (x, y) =>
         current !== undefined && document.elementFromPoint(x, y) === current.host,
       popoverScroller: () => current?.shadow.querySelector('[data-popover-scroll]') ?? undefined,
-      show: ({ word, anchor, element }) => void open(word, anchor, element, true),
+      show: ({ word, anchor, element, range }) =>
+        void open(word, anchor, element, true, contextEnabled ? sentenceAround(range, word, pageLocale()) : undefined),
       close,
     });
   },

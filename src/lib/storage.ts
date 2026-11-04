@@ -1,4 +1,4 @@
-/** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, and server issues.
+/** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, server issues, and sites that send context.
  *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
 import { ResultAsync } from "neverthrow"
 
@@ -15,6 +15,8 @@ export type BoundServer = {
   name: string
   languages: Array<LanguagePair>
   verificationUrls: Array<string>
+  /** Protocol features from the last verified meta. Missing on records stored before features were kept. */
+  features?: Array<string>
 }
 
 /** Which bound server URL to use for each language pair. */
@@ -26,6 +28,9 @@ export type Servers = Record<string, BoundServer>
 export type ServerIssue = { kind: "identity" | "broken" }
 /** Server URL → its unresolved issue. */
 export type ServerIssues = Record<string, ServerIssue>
+
+/** Host → whether lookups there send the sentence around the word. Hosts not listed send it. */
+export type ContextSites = Record<string, boolean>
 
 /** `system` follows the OS colour scheme. */
 export type Theme = "system" | "light" | "dark"
@@ -39,6 +44,7 @@ const empty = {
   servers: {} as Servers,
   serverByLang: {} as ServerByLang,
   serverIssues: {} as ServerIssues,
+  contextSites: {} as ContextSites,
 }
 
 export const getLookupEnabled = async (): Promise<boolean> => {
@@ -66,6 +72,29 @@ export const getTheme = async (): Promise<Theme> => {
 
 export const setTheme = async (theme: Theme): Promise<void> => {
   await browser.storage.local.set({ theme })
+}
+
+const getContextSites = async (): Promise<ContextSites> => {
+  const { contextSites } = await browser.storage.local.get("contextSites")
+  return contextSites !== undefined && typeof contextSites === "object" && !Array.isArray(contextSites)
+    ? contextSites as ContextSites
+    : empty.contextSites
+}
+
+// TODO: Default to video sites only, as the protocol asks, before builds go public.
+/** On for every site until the user turns it off for `host`. */
+export const getContextEnabled = async (host: string): Promise<boolean> => {
+  const sites = await getContextSites()
+  // `Object.hasOwn`, because a host like `constructor` would otherwise read the prototype.
+  return !Object.hasOwn(sites, host) || sites[host] === true
+}
+
+/** Turning it back on drops the entry, so only sites turned off are stored. */
+export const setContextEnabled = async (host: string, enabled: boolean): Promise<void> => {
+  const { [host]: _old, ...rest } = await getContextSites()
+  await browser.storage.local.set({
+    contextSites: enabled ? rest : { ...rest, [host]: false },
+  })
 }
 
 export const getServers = async (): Promise<Servers> => {

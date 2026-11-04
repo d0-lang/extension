@@ -1,4 +1,4 @@
-import type { LookupEntry } from "./schemas"
+import type { LookupEntry, LookupSegment } from "./schemas"
 
 const AUDIO_HOSTS: ReadonlyArray<string> = ["upload.wikimedia.org"]
 
@@ -97,6 +97,41 @@ export const linkSense = (
     return { parts: [{ text, target: unfound[0] }], unfound: [] }
   }
   return { parts, unfound }
+}
+
+/**
+ * True if `segments` follow the protocol for `word`: their texts join to it exactly,
+ * and every index points at an entry that no other segment claims.
+ */
+export const isValidSplit = (
+  segments: ReadonlyArray<LookupSegment>,
+  word: string,
+  entryCount: number,
+): boolean => {
+  const indexes = segments.flatMap(({ entries }) => entries ?? [])
+  return (
+    segments.map(({ text }) => text).join("") === word &&
+    new Set(indexes).size === indexes.length &&
+    indexes.every((index) => index < entryCount)
+  )
+}
+
+/** A segment with the entries its indexes point at. Without entries it has no meaning of its own. */
+export type SegmentPart = { text: string; entries: Array<LookupEntry> }
+
+/** `whole` are the entries in no segment, which belong to the whole word and come first. */
+export const splitBySegments = (
+  entries: ReadonlyArray<LookupEntry>,
+  segments: ReadonlyArray<LookupSegment>,
+): { whole: Array<LookupEntry>; parts: Array<SegmentPart> } => {
+  const claimed = new Set(segments.flatMap((segment) => segment.entries ?? []))
+  return {
+    whole: entries.filter((_, index) => !claimed.has(index)),
+    parts: segments.map(({ text, entries: indexes }) => ({
+      text,
+      entries: (indexes ?? []).flatMap((index) => entries[index] ?? []),
+    })),
+  }
 }
 
 /** True only for `https` URLs whose host is on the allowlist. */

@@ -3,15 +3,16 @@ import { getServerByLang, getServers } from "../storage"
 import { lookup } from "./api"
 import { fromUnknown, noServerError, type DictError } from "./errors"
 import { rankLanguages, type LookupHints } from "./rank"
-import type { LookupEntry } from "./schemas"
+import type { LookupResult } from "./schemas"
 
 /** A dead server must not hold up the languages after it. */
 const FALLBACK_TIMEOUT_MS = 2_000
 
-type Target = { lang: string; url: string }
+/** `takesContext` is set when the server lists the `context` feature. */
+type Target = { lang: string; url: string; takesContext: boolean }
 
 /** `lang` is the language that returned `entries`, unset when none did. */
-export type LookupOutcome = { lang: string | undefined; entries: Array<LookupEntry> }
+export type LookupOutcome = { lang: string | undefined } & LookupResult
 
 // A language whose server stopped listing it cannot answer.
 const loadTargets = (): ResultAsync<Array<Target>, DictError> =>
@@ -19,7 +20,11 @@ const loadTargets = (): ResultAsync<Array<Target>, DictError> =>
     ([servers, serverByLang]) =>
       Object.entries(serverByLang)
         .filter(([lang, url]) => servers[url]?.languages.includes(lang))
-        .map(([lang, url]) => ({ lang, url })),
+        .map(([lang, url]) => ({
+          lang,
+          url,
+          takesContext: servers[url]?.features?.includes("context") === true,
+        })),
   )
 
 /**
@@ -28,6 +33,7 @@ const loadTargets = (): ResultAsync<Array<Target>, DictError> =>
  */
 const tryTargets = (
   word: string,
+  context: string | undefined,
   targets: ReadonlyArray<Target>,
   firstFailure: DictError | undefined = undefined,
   sawMiss: boolean = false,
@@ -43,25 +49,30 @@ const tryTargets = (
       target.url,
       word,
       target.lang,
+      target.takesContext ? context : undefined,
       ...(rest.length > 0 ? [FALLBACK_TIMEOUT_MS] : []),
     )
     if (result.isOk() && result.value.entries.length > 0) {
-      return ok({ lang: target.lang, entries: result.value.entries })
+      return ok({ lang: target.lang, ...result.value })
     }
     return ok(
       yield* result.isOk()
-        ? tryTargets(word, rest, firstFailure, true)
-        : tryTargets(word, rest, firstFailure ?? result.error, sawMiss),
+        ? tryTargets(word, context, rest, firstFailure, true)
+        : tryTargets(word, context, rest, firstFailure ?? result.error, sawMiss),
     )
   })
 
 export const boundLanguages = (): ResultAsync<Array<string>, DictError> =>
   loadTargets().map((targets) => targets.map(({ lang }) => lang))
 
-/** Look `word` up in the bound languages `hints` rank first, stopping at the first hit. */
+/**
+ * Look `word` up in the bound languages `hints` rank first, stopping at the first hit.
+ * `context` only goes to servers that list the `context` feature.
+ */
 export const lookupWord = (
   word: string,
   hints: LookupHints,
+  context: string | undefined,
 ): ResultAsync<LookupOutcome, DictError> =>
   safeTry(async function* () {
     const targets = yield* loadTargets()
@@ -72,6 +83,7 @@ export const lookupWord = (
     return ok(
       yield* tryTargets(
         word,
+        context,
         ranked.flatMap((lang) => targets.filter((target) => target.lang === lang)),
       ),
     )

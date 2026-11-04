@@ -9,6 +9,17 @@ describe("lookupResultSchema", () => {
     expect(parsed.entries[0]?.senses[0]?.see).toEqual(["matka"])
   })
 
+  it("keeps segments", () => {
+    const parsed = lookupResultSchema.parse({ ...body({ translations: ["in"] }), segments: [{ text: "ssa", entries: [0] }] })
+    expect(parsed.segments).toEqual([{ text: "ssa", entries: [0] }])
+  })
+
+  it("drops malformed segments but keeps the entries", () => {
+    const parsed = lookupResultSchema.parse({ ...body({ translations: ["in"] }), segments: [{ text: "ssa", entries: [-1] }] })
+    expect(parsed.segments).toBeUndefined()
+    expect(parsed.entries).toHaveLength(1)
+  })
+
   it("accepts a sense without see", () => {
     const parsed = lookupResultSchema.parse(body({ translations: ["mat (floor pad)"] }))
     expect(parsed.entries[0]?.senses[0]).toEqual({ translations: ["mat (floor pad)"] })

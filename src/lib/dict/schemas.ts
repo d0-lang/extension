@@ -19,6 +19,7 @@ export const serverMetaSchema = z.object({
   nonce: z.string(),
   languages: z._default(z.array(languagePairSchema), []),
   verification_urls: z._default(z.array(httpUrlSchema), []),
+  features: z._default(z.array(z.string()), []),
 })
 
 /** Domain-move body instead of metadata. Same signature/nonce rules; same signing key. */
@@ -45,8 +46,15 @@ const lookupEntrySchema = z.object({
   ),
 })
 
+const lookupSegmentSchema = z.object({
+  text: z.string(),
+  entries: z.optional(z.array(z.int().check(z.minimum(0)))),
+})
+
 export const lookupResultSchema = z.object({
   entries: z.array(lookupEntrySchema),
+  // Optional in the protocol, so a malformed split must not cost the entries.
+  segments: z.catch(z.optional(z.array(lookupSegmentSchema)), undefined),
 })
 
 /** Body of a `400` from `/v1/lookup`. */
@@ -57,6 +65,7 @@ export const lookupErrorSchema = z.object({
 export type ServerMeta = z.infer<typeof serverMetaSchema>
 export type LookupResult = z.infer<typeof lookupResultSchema>
 export type LookupEntry = z.infer<typeof lookupEntrySchema>
+export type LookupSegment = z.infer<typeof lookupSegmentSchema>
 
 export const parseBody = <S extends z.ZodMiniType>(
   schema: S,

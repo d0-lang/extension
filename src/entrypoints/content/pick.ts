@@ -1,4 +1,5 @@
 /** What the user right-clicked: read on `contextmenu`, because the page may change before the menu item is pressed. */
+import { sentenceAround } from "./sentence"
 import { tokensAt } from "./tokenize"
 
 export type AnchorRect = { top: number; bottom: number; left: number; right: number }
@@ -9,6 +10,8 @@ export type Picked = {
   anchor: AnchorRect
   /** Where the surrounding text for language detection comes from. */
   element: Element | null
+  /** The sentence around whichever of `selected` and `underCursor` is set. */
+  context: string | undefined
 }
 
 /** How far a click may land outside the word's box and still count as on it. */
@@ -54,7 +57,8 @@ const rangeUnderCursor = (x: number, y: number, locale: string | undefined): Ran
     .find((range) => isOnRange(range, x, y))
 }
 
-export type WordHit = { word: string; anchor: AnchorRect; element: Element | null }
+/** `range` covers `word`, for reading the sentence around it once the word is shown. */
+export type WordHit = { word: string; anchor: AnchorRect; element: Element | null; range: Range }
 
 /** The word under the cursor, ignoring any selection. */
 export const wordAt = (x: number, y: number, locale: string | undefined): WordHit | undefined => {
@@ -65,6 +69,7 @@ export const wordAt = (x: number, y: number, locale: string | undefined): WordHi
         word: range.toString(),
         anchor: range.getBoundingClientRect(),
         element: range.startContainer.parentElement,
+        range,
       }
 }
 
@@ -81,13 +86,15 @@ export const pickAt = (
   const selection = window.getSelection()
   const selected = selection?.toString().trim() ?? ""
   if (selection !== null && selected !== "" && selection.rangeCount > 0) {
-    const rect = selection.getRangeAt(0).getBoundingClientRect()
-    const ancestor = selection.getRangeAt(0).commonAncestorContainer
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    const ancestor = range.commonAncestorContainer
     return {
       selected,
       underCursor: "",
       anchor: hasArea(rect) ? rect : point,
       element: ancestor instanceof Element ? ancestor : ancestor.parentElement,
+      context: sentenceAround(range, selected, locale),
     }
   }
   const hit = wordAt(x, y, locale)
@@ -96,6 +103,7 @@ export const pickAt = (
     underCursor: hit?.word ?? "",
     anchor: hit?.anchor ?? point,
     element: target,
+    context: hit === undefined ? undefined : sentenceAround(hit.range, hit.word, locale),
   }
 }
 
@@ -109,3 +117,9 @@ export const pickedUnderCursor = (picked: Picked | undefined, selectionText: str
   picked.underCursor !== "" &&
   pickedWord(picked, selectionText) === picked.underCursor &&
   !selectionText?.trim()
+
+/** The picked sentence, unless the menu's own selection text replaced the picked word. */
+export const pickedContext = (picked: Picked | undefined, word: string): string | undefined =>
+  picked !== undefined && word !== "" && (word === picked.selected || word === picked.underCursor)
+    ? picked.context
+    : undefined

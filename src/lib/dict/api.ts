@@ -8,6 +8,7 @@ import {
   type Result,
 } from "neverthrow";
 import { verifyEd25519 } from "./crypto";
+import { isValidSplit } from "./entries";
 import {
   badRequestError,
   bodyError,
@@ -130,16 +131,25 @@ export const getMeta = (
     return ok({ url, meta });
   });
 
-/** Get `/v1/lookup`. A word the server does not know is `ok` with no entries. */
+/**
+ * Get `/v1/lookup`. A word the server does not know is `ok` with no entries.
+ * `context` is the sentence around `word`; pass it only to servers that list the `context` feature.
+ * Segments that do not split `word` per the protocol are dropped.
+ */
 export const lookup = (
   baseUrl: string,
   word: string,
   lang: string,
+  context: string | undefined,
   timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): ResultAsync<LookupResult, DictError> =>
   safeTry(async function* () {
     // A `+` in the word is already `%2B` here, so every remaining `+` is a space.
-    const query = new URLSearchParams({ word, lang })
+    const query = new URLSearchParams({
+      word,
+      lang,
+      ...(context === undefined ? {} : { context }),
+    })
       .toString()
       .replaceAll("+", "%20");
     const response = yield* request(
@@ -163,9 +173,14 @@ export const lookup = (
       );
     }
 
-    return parseBody(
+    const { entries, segments } = yield* parseBody(
       lookupResultSchema,
       yield* parseJson(text, "lookup"),
       "lookup",
+    );
+    return ok(
+      segments !== undefined && isValidSplit(segments, word, entries.length)
+        ? { entries, segments }
+        : { entries },
     );
   });

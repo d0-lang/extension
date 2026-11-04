@@ -43,6 +43,7 @@ const checkServer = (
         name: meta.name,
         languages: meta.languages,
         verificationUrls: meta.verification_urls,
+        features: meta.features,
       },
       mapped,
       movedFrom,

@@ -8,8 +8,10 @@
     groupEntries,
     isAllowedAudioUrl,
     linkSense,
+    splitBySegments,
   } from "$lib/dict/entries";
   import type { DictError } from "$lib/dict/errors";
+  import type { LookupEntry } from "$lib/dict/types";
   import type { LookupReply } from "$lib/messages";
   import { suspendAccessKeys } from "./accesskeys";
   import { isTyping } from "./hold";
@@ -115,6 +117,17 @@
     lock ??= { side: place.side, minHeight: element?.offsetHeight ?? 0 };
     history = [...history, { ...view, scrollTop: scroller?.scrollTop }];
     view = { word: target, followed: true, reply: follow(target, language) };
+  };
+
+  const scrollToSegment = (index: number) => {
+    const target = shownScroller();
+    const section = target?.querySelector(`[data-segment="${index}"]`);
+    if (target === undefined || section === null || section === undefined) {
+      return;
+    }
+    // Not `scrollIntoView`, which can scroll the page behind the popover too.
+    target.scrollTop +=
+      section.getBoundingClientRect().top - target.getBoundingClientRect().top;
   };
 
   const goBack = () => {
@@ -302,6 +315,15 @@
       : result.entries;
   };
 
+  /** Unset for a followed link, whose entries no longer line up with the indexes, and for a split into one part. */
+  const shownSplit = (result: LookupReply) => {
+    if (!result.ok || view.followed || result.segments === undefined) {
+      return undefined;
+    }
+    const split = splitBySegments(result.entries, result.segments);
+    return split.parts.length < 2 ? undefined : split;
+  };
+
   const play = (url: string) => {
     player?.pause();
     failedAudio = undefined;
@@ -336,6 +358,68 @@
     }
   };
 </script>
+
+{#snippet entryGroups(list: Array<LookupEntry>, language: string | undefined)}
+  {#each groupEntries(list) as group, index (index)}
+    {@const audio = group.audio.find(isAllowedAudioUrl)}
+    <section class="flex flex-col gap-1.5" data-audio={audio}>
+      <div class="flex flex-col">
+        <div class="flex items-center gap-2">
+          <h2 class="min-w-0 text-base font-semibold wrap-anywhere">
+            {group.lemma}
+          </h2>
+          <span class="text-muted-foreground shrink-0 text-xs"
+            >{group.pos}</span
+          >
+          {#if audio !== undefined}
+            <button
+              type="button"
+              class="hover:bg-accent ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
+              aria-label="Play pronunciation of {group.lemma}"
+              title={failedAudio === audio
+                ? "Could not play this audio"
+                : "Play pronunciation (E)"}
+              disabled={failedAudio === audio}
+              onclick={() => play(audio)}
+            >
+              <Play class="size-3" />
+            </button>
+          {/if}
+        </div>
+        {#if group.readings.length > 0}
+          <p class="wrap-anywhere">{group.readings.join(", ")}</p>
+        {/if}
+        {#if showIpa && group.ipa.length > 0}
+          <p class="text-muted-foreground text-xs wrap-anywhere">
+            {group.ipa.join(" ")}
+          </p>
+        {/if}
+      </div>
+      <ol class="flex list-decimal flex-col gap-1 pl-5">
+        {#each group.senses as sense, senseIndex (senseIndex)}
+          {@const linked = linkSense(
+            sense.translations.join("; "),
+            sense.see ?? [],
+          )}
+          <li class="wrap-anywhere">
+            {#each linked.parts as part, partIndex (partIndex)}{#if part.target === undefined}{part.text}{:else}{@render seeLink(
+                  part.text,
+                  part.target,
+                  language,
+                )}{/if}{/each}{#if linked.unfound.length > 0}; see {#each linked.unfound as target, targetIndex (target)}{targetIndex >
+                0
+                  ? ", "
+                  : ""}{@render seeLink(
+                  target,
+                  target,
+                  language,
+                )}{/each}{/if}
+          </li>
+        {/each}
+      </ol>
+    </section>
+  {/each}
+{/snippet}
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}
   <!-- A button would stay one box, which pushes a long link onto its own line. -->
@@ -400,6 +484,7 @@
       {:then result}
         {@const entries = shownEntries(result)}
         {@const shown = shownLanguage(result)}
+        {@const split = shownSplit(result)}
         {#if !result.ok}
           <p class="text-destructive px-3 py-2 wrap-anywhere" role="alert">
             {errorText(result.error)}
@@ -414,63 +499,35 @@
             data-popover-scroll
             class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
-            {#each groupEntries(entries) as group, index (index)}
-              {@const audio = group.audio.find(isAllowedAudioUrl)}
-              <section class="flex flex-col gap-1" data-audio={audio}>
-                <div class="flex items-center gap-2">
-                  <h2 class="min-w-0 text-base font-semibold wrap-anywhere">
-                    {group.lemma}
-                  </h2>
-                  <span class="text-muted-foreground shrink-0 text-xs"
-                    >{group.pos}</span
-                  >
-                  {#if audio !== undefined}
-                    <button
-                      type="button"
-                      class="hover:bg-accent ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
-                      aria-label="Play pronunciation of {group.lemma}"
-                      title={failedAudio === audio
-                        ? "Could not play this audio"
-                        : "Play pronunciation (E)"}
-                      disabled={failedAudio === audio}
-                      onclick={() => play(audio)}
+            {#if split === undefined}
+              {@render entryGroups(entries, result.lang)}
+            {:else}
+              <p class="flex flex-wrap items-baseline gap-x-1 text-base">
+                {#each split.parts as part, partIndex (partIndex)}
+                  {#if partIndex > 0}<span class="text-muted-foreground" aria-hidden="true">+</span>{/if}
+                  {#if part.entries.length === 0}
+                    <span class="text-muted-foreground">{part.text}</span>
+                  {:else}
+                    <a
+                      href="#segment"
+                      class="font-medium underline underline-offset-2"
+                      onclick={(event) => {
+                        event.preventDefault();
+                        scrollToSegment(partIndex);
+                      }}>{part.text}</a
                     >
-                      <Play class="size-3" />
-                    </button>
                   {/if}
-                </div>
-                {#if group.readings.length > 0}
-                  <p class="wrap-anywhere">{group.readings.join(", ")}</p>
+                {/each}
+              </p>
+              {@render entryGroups(split.whole, result.lang)}
+              {#each split.parts as part, partIndex (partIndex)}
+                {#if part.entries.length > 0}
+                  <div class="flex flex-col gap-2 border-t pt-2" data-segment={partIndex}>
+                    {@render entryGroups(part.entries, result.lang)}
+                  </div>
                 {/if}
-                {#if showIpa && group.ipa.length > 0}
-                  <p class="text-muted-foreground text-xs wrap-anywhere">
-                    {group.ipa.join(" ")}
-                  </p>
-                {/if}
-                <ol class="flex list-decimal flex-col gap-1 pl-5">
-                  {#each group.senses as sense, senseIndex (senseIndex)}
-                    {@const linked = linkSense(
-                      sense.translations.join("; "),
-                      sense.see ?? [],
-                    )}
-                    <li class="wrap-anywhere">
-                      {#each linked.parts as part, partIndex (partIndex)}{#if part.target === undefined}{part.text}{:else}{@render seeLink(
-                            part.text,
-                            part.target,
-                            result.lang,
-                          )}{/if}{/each}{#if linked.unfound.length > 0}; see {#each linked.unfound as target, targetIndex (target)}{targetIndex >
-                          0
-                            ? ", "
-                            : ""}{@render seeLink(
-                            target,
-                            target,
-                            result.lang,
-                          )}{/each}{/if}
-                    </li>
-                  {/each}
-                </ol>
-              </section>
-            {/each}
+              {/each}
+            {/if}
           </div>
         {/if}
         {#if result.languages.length > 1}

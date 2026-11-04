@@ -221,6 +221,7 @@ export class ServerSetup {
         name: this.draft.meta.name,
         languages: this.draft.meta.languages,
         verificationUrls: this.draft.meta.verification_urls,
+        features: this.draft.meta.features,
       },
       this.selectedLanguages,
       this.draft.movedFrom,
