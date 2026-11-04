@@ -18,6 +18,9 @@
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
+		/* Chrome 121+ and Firefox both read these, and Chrome then ignores `::-webkit-scrollbar`. */
+		scrollbar-width: thin;
+		scrollbar-color: var(--scrollbar) transparent;
 	}
 }
 
