@@ -12,7 +12,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
   }),
   manifest: ({ browser }) => ({
-    name: 'dadict',
+    name: 'DaDict',
     description: 'Look up words on any page using dictionary servers you choose.',
     permissions: ['storage', 'contextMenus', 'notifications'],
     host_permissions: ['<all_urls>'],

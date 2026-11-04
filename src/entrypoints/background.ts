@@ -62,17 +62,17 @@ const notificationText = (result: CheckResult): { title: string; message: string
     case 'moved':
       return {
         title: `${result.name} moved`,
-        message: `It now answers at ${result.url}. dadict updated its address.`,
+        message: `It now answers at ${result.url}. DaDict updated its address.`,
       };
     case 'identity':
       return {
         title: `${result.name} changed its identity`,
-        message: 'Its signing key is different. Review it in dadict settings before you trust it.',
+        message: 'Its signing key is different. Review it in DaDict settings before you trust it.',
       };
     case 'broken':
       return {
         title: `Can't verify ${result.name}`,
-        message: 'Its answer failed the signature check, so dadict kept the last verified data.',
+        message: 'Its answer failed the signature check, so DaDict kept the last verified data.',
       };
     default:
       return undefined;

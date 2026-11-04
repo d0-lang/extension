@@ -1,12 +1,14 @@
 <script lang="ts">
+	import Logo from '$lib/components/Logo.svelte'
 	import Appearance from './Appearance.svelte'
 	import Servers from './servers'
 </script>
 
 <div class="bg-background min-h-svh">
 	<header class="border-b">
-		<div class="mx-auto flex h-14 max-w-3xl items-center px-6">
-			<p class="text-lg font-semibold tracking-tight">dadict</p>
+		<div class="mx-auto flex h-14 max-w-3xl items-center gap-2 px-6">
+			<Logo class="text-foreground h-6" />
+			<p class="text-lg tracking-tight"><span class="font-normal">Da</span><span class="font-bold">Dict</span></p>
 		</div>
 	</header>
 
