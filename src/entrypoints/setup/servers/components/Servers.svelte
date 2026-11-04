@@ -6,6 +6,7 @@
 	import ShieldAlertIcon from '@lucide/svelte/icons/shield-alert'
 	import Trash2Icon from '@lucide/svelte/icons/trash-2'
 	import { Button } from '$lib/components/ui/button'
+	import { Kbd } from '$lib/components/ui/kbd'
 	import {
 		ContextMenu,
 		ContextMenuContent,
@@ -33,7 +34,7 @@
 
 <section class="flex flex-col gap-4">
 	{#if servers.rows.length === 0}
-		<div class="flex flex-col items-center gap-4 rounded-xl border border-dashed p-8 text-center">
+		<div class="flex flex-col items-center gap-4 rounded-xl border border-dashed p-6 text-center">
 			<div class="flex flex-col gap-1">
 				<h2 class="text-lg font-semibold">Add a dictionary server to start</h2>
 				<p class="text-muted-foreground text-sm">
@@ -46,20 +47,23 @@
 			</Button>
 			<ol class="mt-2 grid w-full gap-3 text-left sm:grid-cols-3">
 				<li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
-					<span class="text-muted-foreground text-xs">1</span>
-					<p class="text-sm font-medium">Connect</p>
+					<p class="flex items-baseline gap-2 text-sm font-medium">
+						<span class="text-muted-foreground tabular-nums">1</span>Connect
+					</p>
 					<p class="text-muted-foreground text-sm">Paste the server URL.</p>
 				</li>
 				<li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
-					<span class="text-muted-foreground text-xs">2</span>
-					<p class="text-sm font-medium">Pick languages</p>
+					<p class="flex items-baseline gap-2 text-sm font-medium">
+						<span class="text-muted-foreground tabular-nums">2</span>Pick languages
+					</p>
 					<p class="text-muted-foreground text-sm">Choose which pairs this server answers.</p>
 				</li>
 				<li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
-					<span class="text-muted-foreground text-xs">3</span>
-					<p class="text-sm font-medium">Look up</p>
+					<p class="flex items-baseline gap-2 text-sm font-medium">
+						<span class="text-muted-foreground tabular-nums">3</span>Look up
+					</p>
 					<p class="text-muted-foreground text-sm">
-						Hold <kbd class="rounded border px-1 text-xs">Alt</kbd> over a word, or right-click and
+						Hold <Kbd>Alt</Kbd> over a word, or right-click and
 						choose Look up.
 					</p>
 				</li>
@@ -68,7 +72,7 @@
 	{:else}
 		<div class="flex items-center justify-between gap-4">
 			<div class="flex flex-col gap-0.5">
-				<h2 class="text-base font-medium">Servers</h2>
+				<h2 class="text-lg font-semibold">Servers</h2>
 				<p class="text-muted-foreground text-sm">Each language is answered by one server.</p>
 			</div>
 			<Button size="sm" onclick={servers.openAdd}>
@@ -82,13 +86,13 @@
 					<ContextMenu>
 						<ContextMenuTrigger
 							class={[
-								'bg-card flex items-start gap-3 rounded-lg border p-4 select-text',
+								'flex items-start gap-3 rounded-lg border p-4 select-text',
 								row.issue !== undefined && 'border-destructive/50',
 							]}
 						>
 							<div class="flex min-w-0 flex-1 flex-col gap-3">
 								<div class="flex min-w-0 flex-col gap-0.5">
-									<p class="font-medium">{row.name}</p>
+									<p class="text-lg leading-snug font-semibold wrap-anywhere">{row.name}</p>
 									<p class="text-muted-foreground truncate font-mono text-xs">{row.url}</p>
 								</div>
 								{#if row.issue !== undefined}

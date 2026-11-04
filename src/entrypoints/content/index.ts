@@ -1,6 +1,6 @@
 import { mount, unmount } from 'svelte';
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from '$lib/messages';
-import { getLookupEnabled, getTheme } from '$lib/storage';
+import { getLookupEnabled, getShowIpa, getTheme } from '$lib/storage';
 import { isDark } from '$lib/theme';
 import { contextText, detectLanguages } from './context';
 import { watchAltHold } from './hold';
@@ -69,10 +69,12 @@ export default defineContentScript({
     const open = async (word: string, anchor: AnchorRect, element: Element | null) => {
       close();
       const thisOpen = latestOpen;
+      const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()]);
       const props = {
         word,
         anchor,
-        dark: isDark(await getTheme()),
+        dark: isDark(theme),
+        showIpa,
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined

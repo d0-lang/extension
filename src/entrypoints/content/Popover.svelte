@@ -19,12 +19,14 @@
     word,
     anchor,
     dark,
+    showIpa,
     search,
     follow,
   }: {
     word: string;
     anchor: AnchorRect;
     dark: boolean;
+    showIpa: boolean;
     /** Unset when `word` cannot be looked up. A language pins that language for this page. */
     search:
       | ((language?: string, target?: string) => Promise<LookupReply>)
@@ -251,7 +253,7 @@
     <div class="flex border-b p-2">
       <button
         type="button"
-        class="hover:bg-muted inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium"
+        class="hover:bg-accent inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium"
         onclick={goBack}
       >
         <ArrowLeft class="size-3" />
@@ -260,7 +262,7 @@
     </div>
   {/if}
   {#if view.reply === undefined}
-    <p class="text-muted-foreground p-3">
+    <p class="text-muted-foreground px-3 py-2">
       {view.word === ""
         ? "No word found here. Select one and try again."
         : "That selection is too long. Select a word or a short phrase."}
@@ -269,25 +271,25 @@
     <!-- Every view gets its own scroller, starting from its own position. -->
     {#key view}
       {#await view.reply}
-        <p class="text-muted-foreground p-3" role="status">
+        <p class="text-muted-foreground px-3 py-2" role="status">
           Looking up {view.word}…
         </p>
       {:then result}
         {@const entries = shownEntries(result)}
         {@const shown = shownLanguage(result)}
         {#if !result.ok}
-          <p class="text-destructive p-3 wrap-anywhere" role="alert">
+          <p class="text-destructive px-3 py-2 wrap-anywhere" role="alert">
             {errorText(result.error)}
           </p>
         {:else if entries.length === 0}
-          <p class="text-muted-foreground p-3 wrap-anywhere">
+          <p class="text-muted-foreground px-3 py-2 wrap-anywhere">
             No entries for {view.word}{shown === undefined ? "" : ` in ${shown}`}.
           </p>
         {:else}
           <div
             {@attach restoreScroll}
             data-popover-scroll
-            class="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3"
+            class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
             {#each groupEntries(entries) as group, index (index)}
               {@const audio = group.audio.find(isAllowedAudioUrl)}
@@ -302,7 +304,7 @@
                   {#if audio !== undefined}
                     <button
                       type="button"
-                      class="hover:bg-muted ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
+                      class="hover:bg-accent ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
                       aria-label="Play pronunciation of {group.lemma}"
                       title={failedAudio === audio
                         ? "Could not play this audio"
@@ -317,7 +319,7 @@
                 {#if group.readings.length > 0}
                   <p class="wrap-anywhere">{group.readings.join(", ")}</p>
                 {/if}
-                {#if group.ipa.length > 0}
+                {#if showIpa && group.ipa.length > 0}
                   <p class="text-muted-foreground text-xs wrap-anywhere">
                     {group.ipa.join(" ")}
                   </p>
@@ -349,7 +351,7 @@
           </div>
         {/if}
         {#if result.languages.length > 1}
-          <div class="flex shrink-0 items-center gap-2 border-t p-2">
+          <div class="mt-auto flex shrink-0 items-center gap-2 border-t p-2">
             <Kbd class="shrink-0" title="Previous language">A</Kbd>
             <div class="flex flex-1 flex-wrap justify-center gap-1" role="group" aria-label="Languages">
               {#each result.languages as code (code)}
@@ -357,8 +359,8 @@
                 <button
                   type="button"
                   class={[
-                    "hover:bg-muted h-6 cursor-pointer rounded-md px-2 text-xs font-medium",
-                    active && "bg-secondary text-secondary-foreground",
+                    "h-6 cursor-pointer rounded-md px-2 text-xs font-medium",
+                    active ? "bg-primary text-primary-foreground" : "hover:bg-accent",
                   ]}
                   aria-pressed={active}
                   onclick={() => switchLanguage(code)}

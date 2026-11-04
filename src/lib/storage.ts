@@ -1,4 +1,4 @@
-/** Extension storage: lookup toggle, theme, bound servers, language → server URL, and server issues.
+/** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, and server issues.
  *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
 import { ResultAsync } from "neverthrow"
 
@@ -34,6 +34,7 @@ const themes: ReadonlyArray<string> = ["system", "light", "dark"] satisfies Arra
 
 const empty = {
   lookupEnabled: true,
+  showIpa: true,
   theme: "system" as Theme,
   servers: {} as Servers,
   serverByLang: {} as ServerByLang,
@@ -47,6 +48,15 @@ export const getLookupEnabled = async (): Promise<boolean> => {
 
 export const setLookupEnabled = async (lookupEnabled: boolean): Promise<void> => {
   await browser.storage.local.set({ lookupEnabled })
+}
+
+export const getShowIpa = async (): Promise<boolean> => {
+  const { showIpa } = await browser.storage.local.get("showIpa")
+  return typeof showIpa === "boolean" ? showIpa : empty.showIpa
+}
+
+export const setShowIpa = async (showIpa: boolean): Promise<void> => {
+  await browser.storage.local.set({ showIpa })
 }
 
 export const getTheme = async (): Promise<Theme> => {

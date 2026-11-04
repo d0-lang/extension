@@ -23,6 +23,25 @@
 
   const draft = $derived(setup.draft);
   const languages = $derived(draft?.meta.languages ?? []);
+
+  const arrowSteps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 };
+
+  /** Arrow keys move focus between the checkboxes, wrapping at either end. */
+  const cycleFocus = (event: KeyboardEvent) => {
+    const step = arrowSteps[event.key];
+    if (step === undefined || !(event.currentTarget instanceof HTMLElement)) {
+      return;
+    }
+    const boxes = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>('[data-slot="checkbox"]'),
+    ];
+    const index = boxes.findIndex((box) => box === document.activeElement);
+    if (index === -1) {
+      return;
+    }
+    event.preventDefault();
+    boxes[(index + step + boxes.length) % boxes.length]?.focus();
+  };
 </script>
 
 {#if draft}
@@ -54,47 +73,51 @@
     {#if languages.length === 0}
       <p class="text-muted-foreground">This server doesn't offer any languages yet.</p>
     {:else}
-      <div class="flex items-center justify-between gap-2">
-        <p class="font-medium">Languages</p>
-        {#if languages.length >= SELECT_ALL_FROM}
-          <Button
-            variant="link"
-            size="xs"
-            class="px-0"
-            onclick={() => setup.selectAll(!setup.allSelected)}
-          >
-            {setup.allSelected ? "Clear all" : "Select all"}
-          </Button>
-        {/if}
-      </div>
-      <ul class="-mx-2 flex flex-col">
-        {#each languages as lang (lang)}
-          {@const owner = setup.ownerElsewhere(lang)}
-          <li>
-            <Label
-              for={`lang-${lang}`}
-              class="hover:bg-muted/50 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
+      <div class="flex flex-col gap-1">
+        <div class="flex items-center justify-between gap-2">
+          <p class="font-medium">Languages</p>
+          {#if languages.length >= SELECT_ALL_FROM}
+            <Button
+              variant="link"
+              size="xs"
+              class="px-0"
+              onclick={() => setup.selectAll(!setup.allSelected)}
             >
-              <Checkbox id={`lang-${lang}`} bind:checked={setup.selected[lang]} />
-              <span class="flex min-w-0 flex-1 flex-col gap-1">
-                <span title={lang}>{pairName(lang)}</span>
-                {#if owner !== undefined}
-                  <span
-                    class={[
-                      "text-xs wrap-anywhere",
-                      setup.selected[lang]
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground",
-                    ]}
-                  >
-                    {setup.selected[lang] ? `Moves from ${owner}` : `Used by ${owner}`}
-                  </span>
-                {/if}
-              </span>
-            </Label>
-          </li>
-        {/each}
-      </ul>
+              {setup.allSelected ? "Clear all" : "Select all"}
+            </Button>
+          {/if}
+        </div>
+        <!-- Only delegates arrow keys between the checkboxes inside. -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <ul class="-mx-2 flex flex-col" onkeydown={cycleFocus}>
+          {#each languages as lang (lang)}
+            {@const owner = setup.ownerElsewhere(lang)}
+            <li>
+              <Label
+                for={`lang-${lang}`}
+                class="hover:bg-muted/50 has-focus-visible:bg-muted/50 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
+              >
+                <Checkbox id={`lang-${lang}`} bind:checked={setup.selected[lang]} />
+                <span class="flex min-w-0 flex-1 flex-col gap-1">
+                  <span title={lang}>{pairName(lang)}</span>
+                  {#if owner !== undefined}
+                    <span
+                      class={[
+                        "text-xs wrap-anywhere",
+                        setup.selected[lang]
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground",
+                      ]}
+                    >
+                      {setup.selected[lang] ? `Moves from ${owner}` : `Used by ${owner}`}
+                    </span>
+                  {/if}
+                </span>
+              </Label>
+            </li>
+          {/each}
+        </ul>
+      </div>
     {/if}
 
     {#if setup.genericError}

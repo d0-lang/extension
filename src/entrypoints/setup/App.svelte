@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/components/Logo.svelte'
 	import Appearance from './Appearance.svelte'
+	import Lookup from './Lookup.svelte'
 	import Servers from './servers'
 </script>
 
@@ -14,6 +15,7 @@
 
 	<main class="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-8">
 		<Servers />
+		<Lookup />
 		<Appearance />
 	</main>
 </div>
