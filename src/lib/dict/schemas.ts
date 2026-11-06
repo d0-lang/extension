@@ -31,6 +31,8 @@ export const newSourceSchema = z.object({
 const lookupEntrySchema = z.object({
   lemma: z.string(),
   pos: z.string(),
+  // Display extras: a malformed one must not cost the entry.
+  labels: z.catch(z.optional(z.array(z.string())), undefined),
   pron: z.optional(
     z.object({
       ipa: z.optional(z.array(z.string())),
@@ -44,6 +46,8 @@ const lookupEntrySchema = z.object({
       see: z.optional(z.array(z.string())),
     }),
   ),
+  /** The parts of the sent `context` this entry covers (`context-match`). */
+  match: z.catch(z.optional(z.array(z.string()).check(z.minLength(1))), undefined),
 })
 
 const lookupSegmentSchema = z.object({

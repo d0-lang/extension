@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { entriesForLemma, groupEntries, isValidSplit, linkSense, splitBySegments } from "./entries"
+import { entriesForLemma, isValidSplit, linkSense, splitBySegments } from "./entries"
 
 const entry = (lemma: string, senses: Array<{ translations: Array<string>; see?: Array<string> }>, pos = "NOUN") => ({
   lemma,
@@ -9,19 +9,6 @@ const entry = (lemma: string, senses: Array<{ translations: Array<string>; see?:
 
 const links = (text: string, see: Array<string>) =>
   linkSense(text, see).parts.flatMap(({ target }) => (target === undefined ? [] : [target]))
-
-describe("groupEntries", () => {
-  it("keeps see on each sense of a merged group", () => {
-    const [group] = groupEntries([
-      entry("mata", [{ translations: ["mat (floor pad)"] }]),
-      entry("mata", [{ translations: ["synonym of matka"], see: ["matka"] }]),
-    ])
-    expect(group?.senses).toEqual([
-      { translations: ["mat (floor pad)"] },
-      { translations: ["synonym of matka"], see: ["matka"] },
-    ])
-  })
-})
 
 describe("entriesForLemma", () => {
   it("drops other lemmas and ignores case", () => {

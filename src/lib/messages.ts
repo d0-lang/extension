@@ -1,5 +1,6 @@
 /** Messages between the background script and the content script's popover. */
 import { ResultAsync } from "neverthrow"
+import type { LookupContext } from "./dict/api"
 import { fromUnknown, type DictError } from "./dict/errors"
 import type { LookupOutcome } from "./dict/lookup"
 import type { LookupHints } from "./dict/rank"
@@ -12,7 +13,7 @@ export type LookupRequestMessage = {
   type: "lookup:request"
   word: string
   hints: LookupHints
-  context: string | undefined
+  context: LookupContext | undefined
 }
 
 /**
@@ -30,10 +31,15 @@ export const isOpenLookupMessage = (message: unknown): message is OpenLookupMess
 export const isLookupRequestMessage = (message: unknown): message is LookupRequestMessage =>
   (message as LookupRequestMessage | undefined)?.type === "lookup:request" &&
   typeof (message as LookupRequestMessage).word === "string" &&
-  ["string", "undefined"].includes(typeof (message as LookupRequestMessage).context)
+  isLookupContext((message as LookupRequestMessage).context)
+
+const isLookupContext = (value: unknown): value is LookupContext | undefined =>
+  value === undefined ||
+  (typeof (value as LookupContext).text === "string" &&
+    ["number", "undefined"].includes(typeof (value as LookupContext).at))
 
 const sendLookupRequest = ResultAsync.fromThrowable(
-  (word: string, hints: LookupHints, context: string | undefined): Promise<LookupReply | undefined> =>
+  (word: string, hints: LookupHints, context: LookupContext | undefined): Promise<LookupReply | undefined> =>
     browser.runtime.sendMessage({
       type: "lookup:request",
       word,
@@ -47,7 +53,7 @@ const sendLookupRequest = ResultAsync.fromThrowable(
 export const requestLookup = (
   word: string,
   hints: LookupHints,
-  context: string | undefined,
+  context: LookupContext | undefined,
 ): Promise<LookupReply> =>
   sendLookupRequest(word, hints, context).match(
     (reply): LookupReply =>

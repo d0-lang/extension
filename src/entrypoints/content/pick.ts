@@ -1,5 +1,5 @@
 /** What the user right-clicked: read on `contextmenu`, because the page may change before the menu item is pressed. */
-import { sentenceAround } from "./sentence"
+import { sentenceAround, type Sentence } from "./sentence"
 import { tokensAt } from "./tokenize"
 
 export type AnchorRect = { top: number; bottom: number; left: number; right: number }
@@ -11,7 +11,7 @@ export type Picked = {
   /** Where the surrounding text for language detection comes from. */
   element: Element | null
   /** The sentence around whichever of `selected` and `underCursor` is set. */
-  context: string | undefined
+  context: Sentence | undefined
 }
 
 /** How far a click may land outside the word's box and still count as on it. */
@@ -119,7 +119,7 @@ export const pickedUnderCursor = (picked: Picked | undefined, selectionText: str
   !selectionText?.trim()
 
 /** The picked sentence, unless the menu's own selection text replaced the picked word. */
-export const pickedContext = (picked: Picked | undefined, word: string): string | undefined =>
+export const pickedContext = (picked: Picked | undefined, word: string): Sentence | undefined =>
   picked !== undefined && word !== "" && (word === picked.selected || word === picked.underCursor)
     ? picked.context
     : undefined

@@ -5,7 +5,6 @@
   import { Kbd } from "$lib/components/ui/kbd";
   import {
     entriesForLemma,
-    groupEntries,
     isAllowedAudioUrl,
     linkSense,
     splitBySegments,
@@ -24,6 +23,7 @@
     dark,
     showIpa,
     underline,
+    marks,
     search,
     follow,
   }: {
@@ -33,6 +33,10 @@
     showIpa: boolean;
     /** The looked-up word's box. `dark` is the page behind it, which picks the accent that shows up there. */
     underline: { rect: AnchorRect; dark: boolean } | undefined;
+    /** Finds the parts of the sentence a context entry's `match` names, to underline instead. */
+    marks:
+      | { rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>; dark: boolean }
+      | undefined;
     /** Unset when `word` cannot be looked up. A language pins that language for this page. */
     search:
       | ((language?: string, target?: string) => Promise<LookupReply>)
@@ -56,6 +60,26 @@
     untrack(() => ({ word, followed: false, reply: search?.() })),
   );
   let history = $state.raw<Array<View>>([]);
+  /** The parts of the sentence the first context entry covers, while the looked-up word is shown. */
+  let matched = $state.raw<Array<AnchorRect>>([]);
+
+  $effect(() => {
+    const { reply, followed } = view;
+    matched = [];
+    if (reply === undefined || followed || marks === undefined) {
+      return;
+    }
+    let current = true;
+    void reply.then((result) => {
+      const match = result.ok ? result.entries.find((entry) => entry.match !== undefined)?.match : undefined;
+      if (current && match !== undefined) {
+        matched = marks.rectsOf(match);
+      }
+    });
+    return () => {
+      current = false;
+    };
+  });
   let scroller: HTMLElement | undefined;
 
   let element = $state<HTMLElement>();
@@ -359,23 +383,29 @@
   };
 </script>
 
-{#snippet entryGroups(list: Array<LookupEntry>, language: string | undefined)}
-  {#each groupEntries(list) as group, index (index)}
-    {@const audio = group.audio.find(isAllowedAudioUrl)}
+{#snippet entryList(list: Array<LookupEntry>, language: string | undefined)}
+  {#each list as entry, index (index)}
+    {@const audio = entry.pron?.audio?.find(isAllowedAudioUrl)}
+    {@const ipa = entry.pron?.ipa ?? []}
     <section class="flex flex-col gap-1.5" data-audio={audio}>
       <div class="flex flex-col">
         <div class="flex items-center gap-2">
           <h2 class="min-w-0 text-base font-semibold wrap-anywhere">
-            {group.lemma}
+            {entry.lemma}
           </h2>
           <span class="text-muted-foreground shrink-0 text-xs"
-            >{group.pos}</span
+            >{entry.pos}</span
           >
+          {#each entry.labels ?? [] as label (label)}
+            <span class="bg-muted text-muted-foreground shrink-0 rounded px-1 text-xs" data-label
+              >{label}</span
+            >
+          {/each}
           {#if audio !== undefined}
             <button
               type="button"
               class="hover:bg-accent ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
-              aria-label="Play pronunciation of {group.lemma}"
+              aria-label="Play pronunciation of {entry.lemma}"
               title={failedAudio === audio
                 ? "Could not play this audio"
                 : "Play pronunciation (E)"}
@@ -386,17 +416,17 @@
             </button>
           {/if}
         </div>
-        {#if group.readings.length > 0}
-          <p class="wrap-anywhere">{group.readings.join(", ")}</p>
+        {#if entry.pron?.reading !== undefined}
+          <p class="wrap-anywhere">{entry.pron.reading}</p>
         {/if}
-        {#if showIpa && group.ipa.length > 0}
+        {#if showIpa && ipa.length > 0}
           <p class="text-muted-foreground text-xs wrap-anywhere">
-            {group.ipa.join(" ")}
+            {ipa.join(" ")}
           </p>
         {/if}
       </div>
       <ol class="flex list-decimal flex-col gap-1 pl-5">
-        {#each group.senses as sense, senseIndex (senseIndex)}
+        {#each entry.senses as sense, senseIndex (senseIndex)}
           {@const linked = linkSense(
             sense.translations.join("; "),
             sense.see ?? [],
@@ -433,7 +463,17 @@
   >
 {/snippet}
 
-{#if underline !== undefined}
+{#if matched.length > 0 && marks !== undefined}
+  {#each matched as rect, rectIndex (rectIndex)}
+    <div
+      class={["dict-underline bg-link fixed", marks.dark && "dark"]}
+      style:top="{rect.bottom - 2}px"
+      style:left="{rect.left}px"
+      style:width="{rect.right - rect.left}px"
+      aria-hidden="true"
+    ></div>
+  {/each}
+{:else if underline !== undefined}
   <div
     class={["dict-underline bg-link fixed", underline.dark && "dark"]}
     style:top="{underline.rect.bottom - 2}px"
@@ -500,7 +540,7 @@
             class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
             {#if split === undefined}
-              {@render entryGroups(entries, result.lang)}
+              {@render entryList(entries, result.lang)}
             {:else}
               <p class="flex flex-wrap items-baseline gap-x-1 text-base">
                 {#each split.parts as part, partIndex (partIndex)}
@@ -519,11 +559,11 @@
                   {/if}
                 {/each}
               </p>
-              {@render entryGroups(split.whole, result.lang)}
+              {@render entryList(split.whole, result.lang)}
               {#each split.parts as part, partIndex (partIndex)}
                 {#if part.entries.length > 0}
                   <div class="flex flex-col gap-2 border-t pt-2" data-segment={partIndex}>
-                    {@render entryGroups(part.entries, result.lang)}
+                    {@render entryList(part.entries, result.lang)}
                   </div>
                 {/if}
               {/each}

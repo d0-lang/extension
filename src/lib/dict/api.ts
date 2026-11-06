@@ -131,6 +131,9 @@ export const getMeta = (
     return ok({ url, meta });
   });
 
+/** The sentence around a word, and which copy of the word in it was looked up (the protocol's `at`). */
+export type LookupContext = { text: string; at: number | undefined }
+
 /**
  * Get `/v1/lookup`. A word the server does not know is `ok` with no entries.
  * `context` is the sentence around `word`; pass it only to servers that list the `context` feature.
@@ -140,7 +143,7 @@ export const lookup = (
   baseUrl: string,
   word: string,
   lang: string,
-  context: string | undefined,
+  context: LookupContext | undefined,
   timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): ResultAsync<LookupResult, DictError> =>
   safeTry(async function* () {
@@ -148,7 +151,8 @@ export const lookup = (
     const query = new URLSearchParams({
       word,
       lang,
-      ...(context === undefined ? {} : { context }),
+      ...(context === undefined ? {} : { context: context.text }),
+      ...(context?.at === undefined ? {} : { at: String(context.at) }),
     })
       .toString()
       .replaceAll("+", "%20");

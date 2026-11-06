@@ -1,4 +1,5 @@
 import { mount, unmount } from 'svelte';
+import type { LookupContext } from '$lib/dict/api';
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from '$lib/messages';
 import { getContextEnabled, getLookupEnabled, getShowIpa, getTheme } from '$lib/storage';
 import { isDark } from '$lib/theme';
@@ -15,7 +16,7 @@ import {
   type Picked,
 } from './pick';
 import { isDarkBehind } from './scheme';
-import { sentenceAround } from './sentence';
+import { sentenceAround, type Sentence } from './sentence';
 import Popover from './Popover.svelte';
 import './popover.css';
 
@@ -51,7 +52,7 @@ export default defineContentScript({
       word: string,
       element: Element | null,
       language: string | undefined = pinned,
-      context: string | undefined = undefined,
+      context: LookupContext | undefined = undefined,
     ): Promise<LookupReply> => {
       const key = JSON.stringify([language, word, context]);
       const cached = replies.get(key);
@@ -84,7 +85,7 @@ export default defineContentScript({
       anchor: AnchorRect,
       element: Element | null,
       underlined: boolean,
-      sentence: string | undefined,
+      sentence: Sentence | undefined,
     ) => {
       close();
       const thisOpen = latestOpen;
@@ -96,13 +97,19 @@ export default defineContentScript({
         dark: isDark(theme),
         showIpa,
         underline: underlined ? { rect: anchor, dark: isDarkBehind(element) } : undefined,
+        marks: context === undefined ? undefined : { rectsOf: context.rectsOf, dark: isDarkBehind(element) },
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined
             : (language?: string, target: string = word) => {
                 pinned = language ?? pinned;
                 // The sentence is around `word`, not around a followed link.
-                return search(target, element, pinned, target === word ? context : undefined);
+                return search(
+                  target,
+                  element,
+                  pinned,
+                  target === word && context !== undefined ? { text: context.text, at: context.at } : undefined,
+                );
               },
         follow: (target: string, language: string | undefined) => search(target, element, language),
       };

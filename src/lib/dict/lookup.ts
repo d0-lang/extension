@@ -1,6 +1,6 @@
 import { ResultAsync, err, ok, safeTry } from "neverthrow"
 import { getServerByLang, getServers } from "../storage"
-import { lookup } from "./api"
+import { lookup, type LookupContext } from "./api"
 import { fromUnknown, noServerError, type DictError } from "./errors"
 import { rankLanguages, type LookupHints } from "./rank"
 import type { LookupResult } from "./schemas"
@@ -33,7 +33,7 @@ const loadTargets = (): ResultAsync<Array<Target>, DictError> =>
  */
 const tryTargets = (
   word: string,
-  context: string | undefined,
+  context: LookupContext | undefined,
   targets: ReadonlyArray<Target>,
   firstFailure: DictError | undefined = undefined,
   sawMiss: boolean = false,
@@ -72,7 +72,7 @@ export const boundLanguages = (): ResultAsync<Array<string>, DictError> =>
 export const lookupWord = (
   word: string,
   hints: LookupHints,
-  context: string | undefined,
+  context: LookupContext | undefined,
 ): ResultAsync<LookupOutcome, DictError> =>
   safeTry(async function* () {
     const targets = yield* loadTargets()

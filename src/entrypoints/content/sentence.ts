@@ -1,4 +1,5 @@
 import { fromThrowable } from "neverthrow"
+import { collapseWhitespace, copyNumber, placeMatch } from "$lib/dict/match"
 
 /** A longer run is not one sentence, so nothing is sent. */
 const MAX_SENTENCE_CHARS = 500
@@ -31,6 +32,29 @@ const offsetIn = (block: Element, node: Node, offset: number): number => {
   return before.toString().length
 }
 
+/** The sentence sent as `context`, and where the looked-up word is in it. */
+export type Sentence = {
+  text: string
+  /** Which copy of the word in `text` was looked up, from 1: the protocol's `at`. */
+  at: number | undefined
+  /** Boxes of the parts of `text` a context entry's `match` names, placed around the word. Empty when they don't fit. */
+  rectsOf: (match: ReadonlyArray<string>) => Array<DOMRect>
+}
+
+/** A DOM position for the character at `index` of `block`'s text. */
+const positionIn = (block: Element, index: number): { node: Node; offset: number } | undefined => {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  let seen = 0
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    const length = node.textContent?.length ?? 0
+    if (index <= seen + length) {
+      return { node, offset: index - seen }
+    }
+    seen += length
+  }
+  return undefined
+}
+
 /**
  * The sentence or subtitle line around `range`, with whitespace collapsed.
  * Unset when it is too long, or when it does not contain `word` as picked.
@@ -39,7 +63,7 @@ export const sentenceAround = (
   range: Range,
   word: string,
   locale: string | undefined,
-): string | undefined => {
+): Sentence | undefined => {
   const block = blockOf(range.commonAncestorContainer)
   if (block === null) {
     return undefined
@@ -53,11 +77,29 @@ export const sentenceAround = (
   if (first === undefined || last === undefined) {
     return undefined
   }
-  const sentence = text
-    .slice(first.index, last.index + last.segment.length)
-    .replace(/\s+/g, " ")
-    .trim()
-  return sentence.length <= MAX_SENTENCE_CHARS && sentence.includes(word.replace(/\s+/g, " "))
-    ? sentence
-    : undefined
+  const { text: sentence, rawIndex } = collapseWhitespace(
+    text.slice(first.index, last.index + last.segment.length),
+  )
+  const spaced = word.replace(/\s+/g, " ")
+  if (sentence.length > MAX_SENTENCE_CHARS || !sentence.includes(spaced)) {
+    return undefined
+  }
+  const clicked = rawIndex.findIndex((index) => first.index + index >= start)
+  const toRaw = (index: number) => first.index + rawIndex[index]!
+  return {
+    text: sentence,
+    at: clicked < 0 ? undefined : copyNumber(sentence, spaced, clicked),
+    rectsOf: (match) =>
+      (clicked < 0 ? undefined : placeMatch(sentence, match, clicked))?.flatMap(([from, to]) => {
+        const startAt = positionIn(block, toRaw(from))
+        const endAt = positionIn(block, toRaw(to - 1) + 1)
+        if (startAt === undefined || endAt === undefined) {
+          return []
+        }
+        const part = document.createRange()
+        part.setStart(startAt.node, startAt.offset)
+        part.setEnd(endAt.node, endAt.offset)
+        return [...part.getClientRects()]
+      }) ?? [],
+  }
 }

@@ -24,4 +24,19 @@ describe("lookupResultSchema", () => {
     const parsed = lookupResultSchema.parse(body({ translations: ["mat (floor pad)"] }))
     expect(parsed.entries[0]?.senses[0]).toEqual({ translations: ["mat (floor pad)"] })
   })
+
+  it("keeps labels and match, and drops malformed ones without the entry", () => {
+    const entry = {
+      lemma: "держа́ть у́хо востро́",
+      pos: "VERB",
+      labels: ["impf"],
+      senses: [{ translations: ["to keep an eye peeled"] }],
+      match: ["держать", "ухо востро"],
+    }
+    expect(lookupResultSchema.parse({ entries: [entry] }).entries[0]).toEqual(entry)
+    const [broken] = lookupResultSchema.parse({ entries: [{ ...entry, labels: "impf", match: [] }] }).entries
+    expect(broken?.labels).toBeUndefined()
+    expect(broken?.match).toBeUndefined()
+    expect(broken?.lemma).toBe(entry.lemma)
+  })
 })
