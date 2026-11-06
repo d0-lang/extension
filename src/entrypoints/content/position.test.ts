@@ -25,9 +25,28 @@ describe("placePopover", () => {
     expect(short.side).toBe("above")
   })
 
-  it("reports the room on the chosen side", () => {
-    expect(placePopover(at(600), size(150), viewport, "below").room).toBe(roomOn("below", at(600), viewport))
+  it("caps the height at the room on the chosen side", () => {
     expect(roomOn("below", at(600), viewport)).toBe(166)
     expect(roomOn("above", at(600), viewport)).toBe(586)
+    expect(placePopover(at(600), size(150), viewport, "below").maxHeight).toBe(166)
+  })
+
+  it("does not cover the word when neither side fits", () => {
+    const small = { width: 1000, height: 600 }
+    const word = at(300)
+    const place = placePopover(word, size(500), small)
+    expect(place).toMatchObject({ side: "above", maxHeight: 286 })
+    expect(place.top + place.maxHeight).toBeLessThanOrEqual(word.top)
+  })
+
+  it("takes at most half of a short viewport", () => {
+    expect(placePopover(at(50), size(500), { width: 1000, height: 600 }).maxHeight).toBe(300)
+  })
+
+  it("covers the word rather than shrink below the minimum room", () => {
+    const tiny = { width: 1000, height: 250 }
+    const place = placePopover({ top: 110, bottom: 130, left: 100, right: 140 }, size(300), tiny)
+    expect(place).toMatchObject({ side: "below", maxHeight: 120 })
+    expect(place.top).toBeLessThan(130)
   })
 })

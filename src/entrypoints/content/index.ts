@@ -32,15 +32,14 @@ export default defineContentScript({
     let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined;
     // Building the UI is async, so a newer open or a close must cancel an older one.
     let latestOpen = 0;
-    // Both last as long as this page does, so no list of visited sites gets stored.
-    let pinned: string | undefined;
+    // Lasts as long as this page does, so no list of visited sites gets stored.
     let lastWorked: string | undefined;
     let enabled = false;
     let contextEnabled = false;
     const replies = new Map<string, LookupReply>();
 
     // `de_en` is read as German. Unset until a language has answered on this page.
-    const pageLocale = (): string | undefined => (pinned ?? lastWorked)?.split('_')[0];
+    const pageLocale = (): string | undefined => lastWorked?.split('_')[0];
 
     const close = () => {
       latestOpen++;
@@ -51,8 +50,8 @@ export default defineContentScript({
     const search = async (
       word: string,
       element: Element | null,
-      language: string | undefined = pinned,
-      context: LookupContext | undefined = undefined,
+      language?: string,
+      context?: LookupContext,
     ): Promise<LookupReply> => {
       const key = JSON.stringify([language, word, context]);
       const cached = replies.get(key);
@@ -101,16 +100,14 @@ export default defineContentScript({
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined
-            : (language?: string, target: string = word) => {
-                pinned = language ?? pinned;
+            : (language?: string, target: string = word) =>
                 // The sentence is around `word`, not around a followed link.
-                return search(
+                search(
                   target,
                   element,
-                  pinned,
+                  language,
                   target === word && context !== undefined ? { text: context.text, at: context.at } : undefined,
-                );
-              },
+                ),
         follow: (target: string, language: string | undefined) => search(target, element, language),
       };
       const ui = await createShadowRootUi(ctx, {

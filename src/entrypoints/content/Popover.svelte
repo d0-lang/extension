@@ -2,6 +2,7 @@
   import { onDestroy, untrack } from "svelte";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import Play from "@lucide/svelte/icons/play";
+  import VolumeX from "@lucide/svelte/icons/volume-x";
   import { Kbd } from "$lib/components/ui/kbd";
   import {
     entriesForLemma,
@@ -16,6 +17,7 @@
   import { isTyping } from "./hold";
   import type { AnchorRect } from "./pick";
   import { placePopover, type Side } from "./position";
+  import { splitStress } from "./stress";
 
   let {
     word,
@@ -37,11 +39,11 @@
     marks:
       | { rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>; dark: boolean }
       | undefined;
-    /** Unset when `word` cannot be looked up. A language pins that language for this page. */
+    /** Unset when `word` cannot be looked up. A language applies to this lookup only. */
     search:
       | ((language?: string, target?: string) => Promise<LookupReply>)
       | undefined;
-    /** Look up a `see` word in `language`, without pinning it for this page. */
+    /** Look up a `see` word in `language`. */
     follow: (
       target: string,
       language: string | undefined,
@@ -83,13 +85,21 @@
   let scroller: HTMLElement | undefined;
 
   let element = $state<HTMLElement>();
-  let place = $state({ top: 0, left: 0, side: "below" as Side, room: 0 });
+  let place = $state<{ top: number; left: number; side: Side; maxHeight?: number }>({
+    top: 0,
+    left: 0,
+    side: "below",
+  });
+  /** Set once the content would scroll at the normal width. It stays set, so the popover does not jump back. */
+  let wide = $state(false);
   /** Set by the first followed link, so the popover no longer moves away from the cursor. It only grows from then on. */
   let lock = $state<{ side: Side; minHeight: number }>();
   /** Bound languages from the last reply, and the one shown or being looked up. */
   let languages = $state.raw<Array<string>>([]);
   let language = $state<string>();
   let failedAudio = $state<string>();
+  /** URL of the audio being fetched or played. */
+  let playing = $state<string>();
   let player: HTMLAudioElement | undefined;
 
   const reposition = () => {
@@ -97,15 +107,23 @@
       return;
     }
     const root = document.scrollingElement;
+    const content = shownScroller();
+    // Only the scroller shrinks under the cap, so what it hides is what the popover would grow by.
+    const height =
+      element.offsetHeight +
+      (content === undefined ? 0 : content.scrollHeight - content.clientHeight);
     place = placePopover(
       anchor,
-      { width: element.offsetWidth, height: element.offsetHeight },
+      { width: element.offsetWidth, height: Math.max(height, lock?.minHeight ?? 0) },
       {
         width: root?.clientWidth ?? window.innerWidth,
         height: root?.clientHeight ?? window.innerHeight,
       },
       lock?.side,
     );
+    if (place.maxHeight !== undefined && height > place.maxHeight) {
+      wide = true;
+    }
     // Back can shrink the content, and Back sits where the cursor is.
     if (lock !== undefined && element.offsetHeight > lock.minHeight) {
       lock = { ...lock, minHeight: element.offsetHeight };
@@ -348,22 +366,39 @@
     return split.parts.length < 2 ? undefined : split;
   };
 
-  const play = (url: string) => {
+  const stopAudio = () => {
     player?.pause();
+    player = undefined;
+    playing = undefined;
+  };
+
+  /** Stops instead when `url` is the audio already going. */
+  const play = (url: string) => {
+    const again = playing === url;
+    stopAudio();
+    if (again) {
+      return;
+    }
     failedAudio = undefined;
     const next = new Audio(url);
     player = next;
-    void next.play().catch(() => {
+    playing = url;
+    const fail = () => {
       if (player === next) {
+        stopAudio();
         failedAudio = url;
       }
+    };
+    next.addEventListener("ended", () => {
+      if (player === next) {
+        stopAudio();
+      }
     });
+    next.addEventListener("error", fail);
+    void next.play().catch(fail);
   };
 
-  onDestroy(() => {
-    player?.pause();
-    player = undefined;
-  });
+  onDestroy(stopAudio);
 
   const errorText = (error: DictError): string => {
     switch (error.kind) {
@@ -385,39 +420,50 @@
 
 {#snippet entryList(list: Array<LookupEntry>, language: string | undefined)}
   {#each list as entry, index (index)}
-    {@const audio = entry.pron?.audio?.find(isAllowedAudioUrl)}
+    {@const url = entry.pron?.audio?.find(isAllowedAudioUrl)}
     {@const ipa = entry.pron?.ipa ?? []}
-    <section class="flex flex-col gap-1.5" data-audio={audio}>
+    <section class="flex flex-col gap-1.5" data-audio={url}>
       <div class="flex flex-col">
-        <div class="flex items-center gap-2">
-          <h2 class="min-w-0 text-base font-semibold wrap-anywhere">
-            {entry.lemma}
-          </h2>
-          <span class="text-muted-foreground shrink-0 text-xs"
-            >{entry.pos}</span
-          >
-          {#each entry.labels ?? [] as label (label)}
-            <span class="bg-muted text-muted-foreground shrink-0 rounded px-1 text-xs" data-label
-              >{label}</span
-            >
-          {/each}
-          {#if audio !== undefined}
+        <div class="flex items-start gap-2">
+          <!-- Inline, so the tags follow a long headword onto its last line. -->
+          <div class="min-w-0 flex-1 leading-6 wrap-anywhere">
+            <h2 class="inline text-base font-semibold">
+              {@render stressed(entry.lemma)}
+            </h2>{" "}<span class="text-muted-foreground text-xs">{entry.pos}</span
+            >{#each entry.labels ?? [] as label (label)}{" "}<span
+                class="bg-muted text-muted-foreground rounded px-1 text-xs whitespace-nowrap"
+                data-label>{label}</span
+              >{/each}
+          </div>
+          {#if url !== undefined}
+            {@const going = playing === url}
+            {@const failed = failedAudio === url}
             <button
               type="button"
-              class="hover:bg-accent ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
-              aria-label="Play pronunciation of {entry.lemma}"
-              title={failedAudio === audio
+              class="bg-muted text-foreground hover:bg-accent inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
+              aria-label={going
+                ? `Stop pronunciation of ${entry.lemma}`
+                : `Play pronunciation of ${entry.lemma}`}
+              title={failed
                 ? "Could not play this audio"
-                : "Play pronunciation (E)"}
-              disabled={failedAudio === audio}
-              onclick={() => play(audio)}
+                : going
+                  ? "Stop (E)"
+                  : "Play pronunciation (E)"}
+              disabled={failed}
+              onclick={() => play(url)}
             >
-              <Play class="size-3" />
+              {#if failed}
+                <VolumeX class="size-3" />
+              {:else if going}
+                <span class="dict-playing" aria-hidden="true"><span></span><span></span><span></span></span>
+              {:else}
+                <Play class="size-3" />
+              {/if}
             </button>
           {/if}
         </div>
         {#if entry.pron?.reading !== undefined}
-          <p class="wrap-anywhere">{entry.pron.reading}</p>
+          <p class="wrap-anywhere">{@render stressed(entry.pron.reading)}</p>
         {/if}
         {#if showIpa && ipa.length > 0}
           <p class="text-muted-foreground text-xs wrap-anywhere">
@@ -449,6 +495,12 @@
       </ol>
     </section>
   {/each}
+{/snippet}
+
+{#snippet stressed(text: string)}
+  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}<span
+        class={["dict-stress", part.text !== part.text.toLowerCase() && "upper"]}>{part.text}</span
+      >{:else}{part.text}{/if}{/each}
 {/snippet}
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}
@@ -488,11 +540,14 @@
   class={[
     "dict-popover bg-popover text-popover-foreground fixed flex flex-col rounded-lg border font-sans text-sm shadow-lg",
     dark && "dark",
+    wide && "wide",
   ]}
   style:top="{place.top}px"
   style:left="{place.left}px"
-  style:--dict-room={lock && `${place.room}px`}
-  style:min-height={lock && `${Math.min(lock.minHeight, place.room)}px`}
+  style:max-height={place.maxHeight === undefined ? undefined : `${place.maxHeight}px`}
+  style:min-height={lock === undefined || place.maxHeight === undefined
+    ? undefined
+    : `${Math.min(lock.minHeight, place.maxHeight)}px`}
   role="dialog"
   aria-label="Dictionary lookup"
 >
@@ -580,7 +635,9 @@
                   type="button"
                   class={[
                     "h-6 cursor-pointer rounded-md px-2 text-xs font-medium",
-                    active ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+                    active
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   ]}
                   aria-pressed={active}
                   onclick={() => switchLanguage(code)}
