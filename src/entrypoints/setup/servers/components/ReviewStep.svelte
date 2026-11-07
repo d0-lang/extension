@@ -117,7 +117,7 @@
       <fieldset class="flex flex-col gap-1">
         <legend class="font-medium">Sentences</legend>
         <p class="text-muted-foreground">
-          This server can use the sentence the looked up word is in, for better results.
+          Send this server the whole sentence, not just the word, for more accurate results.
         </p>
         <div class="-mx-2 flex flex-col">
           {#each contextOptions as option (option.value)}

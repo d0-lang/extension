@@ -92,8 +92,8 @@
       <div class="flex flex-col gap-0.5">
         <p class="text-sm font-medium">Blocked sites</p>
         <p class="text-muted-foreground text-sm">
-          Servers set to take sentences from all sites except blocked ones only get the word for these
-          websites.
+          Only the looked up word is sent from these sites, unless a server is set to get sentences from all
+          sites.
         </p>
       </div>
       <form class="flex gap-2" onsubmit={(event) => void addBlocked(event)}>
