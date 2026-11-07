@@ -1,5 +1,5 @@
 import { ResultAsync, err, ok, safeTry } from "neverthrow"
-import { getServerByLang, getServers } from "../storage"
+import { contextSending, getServerByLang, getServers, type ContextSending } from "../storage"
 import { lookup, type LookupContext } from "./api"
 import { fromUnknown, noServerError, type DictError } from "./errors"
 import { rankLanguages, type LookupHints } from "./rank"
@@ -8,8 +8,8 @@ import type { LookupResult } from "./schemas"
 /** A dead server must not hold up the languages after it. */
 const FALLBACK_TIMEOUT_MS = 2_000
 
-/** `takesContext` is set when the server lists the `context` feature. */
-type Target = { lang: string; url: string; takesContext: boolean }
+/** `context` is `none` when the server does not list the `context` feature. */
+type Target = { lang: string; url: string; context: ContextSending }
 
 /** `lang` is the language that returned `entries`, unset when none did. */
 export type LookupOutcome = { lang: string | undefined } & LookupResult
@@ -23,9 +23,13 @@ const loadTargets = (): ResultAsync<Array<Target>, DictError> =>
         .map(([lang, url]) => ({
           lang,
           url,
-          takesContext: servers[url]?.features?.includes("context") === true,
+          context:
+            servers[url]?.features?.includes("context") === true ? contextSending(servers[url]) : "none",
         })),
   )
+
+const sendsContext = (sending: ContextSending, siteBlocked: boolean): boolean =>
+  sending === "all" || (sending === "unblocked" && !siteBlocked)
 
 /**
  * First target with entries. A failure only surfaces if no target answered at all.
@@ -34,6 +38,7 @@ const loadTargets = (): ResultAsync<Array<Target>, DictError> =>
 const tryTargets = (
   word: string,
   context: LookupContext | undefined,
+  siteBlocked: boolean,
   targets: ReadonlyArray<Target>,
   firstFailure: DictError | undefined = undefined,
   sawMiss: boolean = false,
@@ -47,7 +52,7 @@ const tryTargets = (
       target.url,
       word,
       target.lang,
-      target.takesContext ? context : undefined,
+      sendsContext(target.context, siteBlocked) ? context : undefined,
       ...(rest.length > 0 ? [FALLBACK_TIMEOUT_MS] : []),
     )
     if (result.isOk() && result.value.entries.length > 0) {
@@ -55,8 +60,8 @@ const tryTargets = (
     }
     return ok(
       yield* result.isOk()
-        ? tryTargets(word, context, rest, firstFailure, true)
-        : tryTargets(word, context, rest, firstFailure ?? result.error, sawMiss),
+        ? tryTargets(word, context, siteBlocked, rest, firstFailure, true)
+        : tryTargets(word, context, siteBlocked, rest, firstFailure ?? result.error, sawMiss),
     )
   })
 
@@ -65,12 +70,13 @@ export const boundLanguages = (): ResultAsync<Array<string>, DictError> =>
 
 /**
  * Look `word` up in the bound languages `hints` rank first, stopping at the first hit.
- * `context` only goes to servers that list the `context` feature.
+ * `context` only goes to servers that list the `context` feature and are set to take it from this site.
  */
 export const lookupWord = (
   word: string,
   hints: LookupHints,
   context: LookupContext | undefined,
+  siteBlocked: boolean,
 ): ResultAsync<LookupOutcome, DictError> =>
   safeTry(async function* () {
     const targets = yield* loadTargets()
@@ -85,6 +91,7 @@ export const lookupWord = (
       yield* tryTargets(
         word,
         context,
+        siteBlocked,
         ranked.flatMap((lang) => targets.filter((target) => target.lang === lang)),
       ),
     )

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte"
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis"
-  import LanguagesIcon from "@lucide/svelte/icons/languages"
+  import PencilIcon from "@lucide/svelte/icons/pencil"
   import PlusIcon from "@lucide/svelte/icons/plus"
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
   import Trash2Icon from "@lucide/svelte/icons/trash-2"
@@ -20,11 +20,18 @@
     DropdownMenuTrigger,
   } from "$lib/components/ui/dropdown-menu"
   import { pairName } from "$lib/languages"
+  import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
   import ServerDialog from "./ServerDialog.svelte"
 
   const servers = new ServerSetup()
+
+  const contextText: Record<ContextSending, string> = {
+    all: "Gets sentences from all sites",
+    unblocked: "Gets sentences, except from blocked sites",
+    none: "Gets no sentences",
+  }
 
   onMount(() => {
     void servers.load()
@@ -127,6 +134,9 @@
                     {/each}
                   </ul>
                 {/if}
+                {#if row.context !== undefined}
+                  <p class="text-muted-foreground text-sm">{contextText[row.context]}</p>
+                {/if}
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger>
@@ -138,8 +148,8 @@
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="min-w-40">
                   <DropdownMenuItem onSelect={() => servers.openEdit(row)}>
-                    <LanguagesIcon />
-                    Edit languages
+                    <PencilIcon />
+                    Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem variant="destructive" onSelect={() => servers.askRemove(row)}>
                     <Trash2Icon />
@@ -150,8 +160,8 @@
             </ContextMenuTrigger>
             <ContextMenuContent class="min-w-40">
               <ContextMenuItem onSelect={() => servers.openEdit(row)}>
-                <LanguagesIcon />
-                Edit languages
+                <PencilIcon />
+                Edit
               </ContextMenuItem>
               <ContextMenuItem variant="destructive" onSelect={() => servers.askRemove(row)}>
                 <Trash2Icon />

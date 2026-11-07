@@ -6,7 +6,7 @@ import {
   type LookupRequestMessage,
   type OpenLookupMessage,
 } from "$lib/messages"
-import { getLookupEnabled, getServerByLang, getServerIssues } from "$lib/storage"
+import { getLookupEnabled, getServerByLang, getServerIssues, isSiteBlocked } from "$lib/storage"
 
 const MENU_ITEM_ID = "dict-look-up"
 const NOTIFICATION_PREFIX = "server:"
@@ -94,11 +94,19 @@ const notify = (results: Array<CheckResult>) => {
 
 const check = () => checkServers().match(notify, (error) => console.warn("Could not check servers", error))
 
-const answer = async ({ word, hints, context }: LookupRequestMessage): Promise<LookupReply> => {
-  const languages = await boundLanguages().unwrapOr([])
+/** `pageUrl` is the frame the word was picked in. Without one, the site counts as blocked. */
+const answer = async (
+  { word, hints, context }: LookupRequestMessage,
+  pageUrl: string | undefined,
+): Promise<LookupReply> => {
+  const host = URL.parse(pageUrl ?? "")?.hostname
+  const [languages, siteBlocked] = await Promise.all([
+    boundLanguages().unwrapOr([]),
+    host === undefined ? true : isSiteBlocked(host),
+  ])
   // The order `lookupWord` tries them in, since it ranks the same languages with the same hints.
   const tried = rankLanguages(languages, hints)
-  return lookupWord(word, hints, context).match(
+  return lookupWord(word, hints, context, siteBlocked).match(
     (outcome): LookupReply => ({ ok: true, languages, tried, ...outcome }),
     (error): LookupReply => ({ ok: false, languages, tried, error }),
   )
@@ -161,11 +169,11 @@ export default defineBackground(() => {
       .catch((error: unknown) => console.warn("Could not open the lookup popover", error))
   })
 
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!isLookupRequestMessage(message)) {
       return
     }
-    void answer(message).then(sendResponse)
+    void answer(message, sender.url).then(sendResponse)
     // Chrome only keeps the channel open for `sendResponse` when the listener returns true.
     return true
   })

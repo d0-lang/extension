@@ -38,6 +38,7 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
         languages: meta.languages,
         verificationUrls: meta.verification_urls,
         features: meta.features,
+        context: server.context,
       },
       mapped,
       movedFrom,

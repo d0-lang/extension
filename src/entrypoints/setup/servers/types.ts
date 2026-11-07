@@ -1,4 +1,4 @@
-import type { ServerIssue } from "$lib/storage"
+import type { ContextSending, ServerIssue } from "$lib/storage"
 
 export type DialogState = "closed" | "add-open" | "review-open" | "saving"
 
@@ -10,4 +10,6 @@ export type ServerRow = {
   /** Mapped languages the server stopped listing. Lookups skip them. */
   unoffered: Array<string>
   issue: ServerIssue["kind"] | undefined
+  /** Unset when the server does not take sentences at all. */
+  context: ContextSending | undefined
 }

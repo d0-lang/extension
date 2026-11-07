@@ -97,7 +97,7 @@
   </form>
 {:else}
   <DialogHeader>
-    <DialogTitle>Edit languages</DialogTitle>
+    <DialogTitle>Edit server</DialogTitle>
     <DialogDescription>{editName ?? setup.editUrl}</DialogDescription>
   </DialogHeader>
   {#if session.connecting}

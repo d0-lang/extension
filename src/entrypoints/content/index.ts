@@ -1,7 +1,7 @@
 import { mount, unmount } from "svelte"
 import type { LookupContext } from "$lib/dict/api"
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from "$lib/messages"
-import { getContextEnabled, getLookupEnabled, getShowIpa, getTheme } from "$lib/storage"
+import { getLookupEnabled, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import { contextText, detectLanguages } from "./context"
 import { watchAltHold } from "./hold"
@@ -36,7 +36,6 @@ export default defineContentScript({
     let pinned: string | undefined
     let lastWorked: string | undefined
     let enabled = false
-    let contextEnabled = false
     const replies = new Map<string, LookupReply>()
 
     // `de_en` is read as German. Unset until a language has answered on this page.
@@ -89,11 +88,10 @@ export default defineContentScript({
       anchor: AnchorRect,
       element: Element | null,
       underlined: boolean,
-      sentence: Sentence | undefined,
+      context: Sentence | undefined,
     ) => {
       close()
       const thisOpen = latestOpen
-      const context = contextEnabled ? sentence : undefined
       const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()])
       const props = {
         word,
@@ -190,20 +188,13 @@ export default defineContentScript({
     void getLookupEnabled().then((value) => {
       enabled = value
     })
-    const syncContextEnabled = () =>
-      getContextEnabled(location.hostname).then((value) => {
-        contextEnabled = value
-      })
-    void syncContextEnabled()
     browser.storage.onChanged.addListener((changes) => {
       if ("lookupEnabled" in changes) {
         enabled = changes.lookupEnabled?.newValue === true
       }
-      if ("servers" in changes || "serverByLang" in changes) {
+      // A server's sentence setting and the blocked sites decide what an answer was based on.
+      if ("servers" in changes || "serverByLang" in changes || "contextSites" in changes) {
         replies.clear()
-      }
-      if ("contextSites" in changes || "contextEnabled" in changes) {
-        void syncContextEnabled()
       }
     })
 
@@ -213,13 +204,7 @@ export default defineContentScript({
       isOverPopover: (x, y) => current !== undefined && document.elementFromPoint(x, y) === current.host,
       popoverScroller: () => current?.shadow.querySelector("[data-popover-scroll]") ?? undefined,
       show: ({ word, anchor, element, range }) =>
-        void open(
-          word,
-          anchor,
-          element,
-          true,
-          contextEnabled ? sentenceAround(range, word, pageLocale()) : undefined,
-        ),
+        void open(word, anchor, element, true, sentenceAround(range, word, pageLocale())),
       close,
     })
   },

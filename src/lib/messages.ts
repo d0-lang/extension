@@ -8,7 +8,7 @@ import type { LookupHints } from "./dict/rank"
 /** Background to content: the context menu item was pressed in this frame. */
 export type OpenLookupMessage = { type: "lookup:open"; selectionText: string | undefined }
 
-/** Content to background: fetch this word. `context` is set only where the user allows sending the sentence. */
+/** Content to background: fetch this word. `context` is the sentence around it, and the background decides which servers get it. */
 export type LookupRequestMessage = {
   type: "lookup:request"
   word: string

@@ -7,10 +7,12 @@ import { ResultAsync } from "neverthrow"
 import type { HandshakeOk } from "$lib/dict"
 import {
   bindServer,
+  contextSending,
   getServerByLang,
   getServerIssues,
   getServers,
   removeServer,
+  type ContextSending,
   type ServerByLang,
   type Servers,
 } from "$lib/storage"
@@ -23,6 +25,8 @@ export class ServerSetup {
   dialogState = $state<DialogState>("closed")
   draft = $state.raw<HandshakeOk | null>(null)
   selected = $state<Record<string, boolean>>({})
+  /** Asked only when the draft lists the `context` feature. */
+  context = $state<ContextSending>("unblocked")
   genericError = $state("")
   removeTarget = $state.raw<ServerRow | null>(null)
   removing = $state(false)
@@ -99,6 +103,7 @@ export class ServerSetup {
         languages,
         unoffered: languages.filter((lang) => !server.languages.includes(lang)),
         issue: issues[server.url]?.kind,
+        context: server.features?.includes("context") === true ? contextSending(server) : undefined,
       }
     })
   }
@@ -174,6 +179,8 @@ export class ServerSetup {
       return
     }
     this.draft = result
+    const bound = this.servers[result.url] ?? this.servers[result.movedFrom ?? ""]
+    this.context = bound === undefined ? "unblocked" : contextSending(bound)
     this.selected = Object.fromEntries(
       result.meta.languages.map((lang) => {
         const mapped = this.serverByLang[lang]
@@ -213,6 +220,7 @@ export class ServerSetup {
         languages: this.draft.meta.languages,
         verificationUrls: this.draft.meta.verification_urls,
         features: this.draft.meta.features,
+        context: this.context,
       },
       this.selectedLanguages,
       this.draft.movedFrom,

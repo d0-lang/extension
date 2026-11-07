@@ -5,6 +5,7 @@
   import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "$lib/components/ui/dialog"
   import { Label } from "$lib/components/ui/label"
   import { pairName } from "$lib/languages"
+  import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
 
   /** Past this many languages, ticking them one by one gets tedious. */
@@ -14,6 +15,16 @@
 
   const draft = $derived(setup.draft)
   const languages = $derived(draft?.meta.languages ?? [])
+
+  const contextOptions = [
+    { value: "all", label: "From all sites" },
+    {
+      value: "unblocked",
+      label: "From all sites except blocked ones",
+      hint: "Blocked sites are listed under Lookup.",
+    },
+    { value: "none", label: "Never" },
+  ] satisfies Array<{ value: ContextSending; label: string; hint?: string }>
 
   const arrowSteps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 }
 
@@ -100,6 +111,36 @@
           {/each}
         </ul>
       </div>
+    {/if}
+
+    {#if draft.meta.features.includes("context")}
+      <fieldset class="flex flex-col gap-1">
+        <legend class="font-medium">Sentences</legend>
+        <p class="text-muted-foreground">
+          This server can use the sentence the looked up word is in, for better results.
+        </p>
+        <div class="-mx-2 flex flex-col">
+          {#each contextOptions as option (option.value)}
+            <Label
+              class="hover:bg-muted/50 has-focus-visible:bg-muted/50 cursor-pointer items-start gap-3 rounded-md px-2 py-2 font-normal"
+            >
+              <input
+                type="radio"
+                name="context"
+                value={option.value}
+                bind:group={setup.context}
+                class="accent-primary mt-0.5 size-4 shrink-0 cursor-pointer"
+              />
+              <span class="flex min-w-0 flex-col gap-1">
+                <span>{option.label}</span>
+                {#if "hint" in option}
+                  <span class="text-muted-foreground text-xs">{option.hint}</span>
+                {/if}
+              </span>
+            </Label>
+          {/each}
+        </div>
+      </fieldset>
     {/if}
 
     {#if setup.genericError}

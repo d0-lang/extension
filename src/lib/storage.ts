@@ -1,4 +1,4 @@
-/** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, server issues, and where context is sent.
+/** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, server issues, and sites blocked from sending context.
  *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
 import { ResultAsync } from "neverthrow"
 
@@ -16,7 +16,15 @@ export type BoundServer = {
   verificationUrls: Array<string>
   /** Protocol features from the last verified meta. Missing on records stored before features were kept. */
   features?: Array<string>
+  /** Whose sentences it gets, if it lists the `context` feature. Missing on records stored before it was asked. */
+  context?: ContextSending
 }
+
+/** Which sites a server gets the sentence around the word from. `unblocked` is every site but the blocked ones. */
+export type ContextSending = "all" | "unblocked" | "none"
+
+/** What a server was set to, with the default for servers bound before it was asked. */
+export const contextSending = (server: BoundServer): ContextSending => server.context ?? "unblocked"
 
 /** Which bound server URL to use for each language pair. */
 export type ServerByLang = Record<LanguagePair, string>
@@ -43,7 +51,6 @@ const empty = {
   servers: {} as Servers,
   serverByLang: {} as ServerByLang,
   serverIssues: {} as ServerIssues,
-  contextEnabled: true,
   contextSites: {} as ContextSites,
 }
 
@@ -81,28 +88,15 @@ export const getContextSites = async (): Promise<ContextSites> => {
     : empty.contextSites
 }
 
-/** Whether lookups send the sentence. Blocked sites never do. */
-export const getContextGlobal = async (): Promise<boolean> => {
-  const { contextEnabled } = await browser.storage.local.get("contextEnabled")
-  return typeof contextEnabled === "boolean" ? contextEnabled : empty.contextEnabled
-}
-
-export const setContextGlobal = async (contextEnabled: boolean): Promise<void> => {
-  await browser.storage.local.set({ contextEnabled })
-}
-
 const covers = (blocked: string, host: string): boolean => host === blocked || host.endsWith(`.${blocked}`)
 
 /** Blocked hosts, without what `keep` rejects. */
 const blockedSites = (sites: ContextSites, keep: (blocked: string) => boolean): ContextSites =>
   Object.fromEntries(Object.entries(sites).filter(([blocked, on]) => on === false && keep(blocked)))
 
-// TODO: Default to video sites only, as the protocol asks, before builds go public.
-/** On for every site until the user turns it off globally or blocks `host`. */
-export const getContextEnabled = async (host: string): Promise<boolean> => {
-  const [global, sites] = await Promise.all([getContextGlobal(), getContextSites()])
-  return global && Object.keys(blockedSites(sites, (blocked) => covers(blocked, host))).length === 0
-}
+/** Whether `host` or a parent domain of it is blocked. */
+export const isSiteBlocked = async (host: string): Promise<boolean> =>
+  Object.keys(blockedSites(await getContextSites(), (blocked) => covers(blocked, host))).length > 0
 
 /** Blocks `host` without `www.`, replacing the entries it covers. */
 export const blockContextSite = async (host: string): Promise<void> => {

@@ -8,28 +8,20 @@
   import { Switch } from "$lib/components/ui/switch"
   import {
     blockContextSite,
-    getContextGlobal,
     getContextSites,
     getLookupEnabled,
     removeContextSite,
-    setContextGlobal,
     setLookupEnabled,
   } from "$lib/storage"
 
   let lookupEnabled = $state(true)
-  let contextGlobal = $state(true)
   let blocked = $state<Array<string>>([])
   let draft = $state("")
   let draftError = $state<string>()
 
   const load = async () => {
-    const [lookup, global, sites] = await Promise.all([
-      getLookupEnabled(),
-      getContextGlobal(),
-      getContextSites(),
-    ])
+    const [lookup, sites] = await Promise.all([getLookupEnabled(), getContextSites()])
     lookupEnabled = lookup
-    contextGlobal = global
     blocked = Object.keys(sites)
       .filter((host) => sites[host] === false)
       .sort()
@@ -37,12 +29,9 @@
 
   onMount(() => {
     void load()
-    // The popup can change lookup while this page is open.
+    // The popup can change lookup, and another settings tab the blocked sites.
     const onChanged = (changes: Record<string, unknown>, area: string) => {
-      if (
-        area === "local" &&
-        ["lookupEnabled", "contextEnabled", "contextSites"].some((key) => key in changes)
-      ) {
+      if (area === "local" && ["lookupEnabled", "contextSites"].some((key) => key in changes)) {
         void load()
       }
     }
@@ -53,11 +42,6 @@
   const onLookup = async (checked: boolean) => {
     lookupEnabled = checked
     await setLookupEnabled(checked)
-  }
-
-  const onContext = async (checked: boolean) => {
-    contextGlobal = checked
-    await setContextGlobal(checked)
   }
 
   /** The host of a typed site or pasted URL. A leading `www.` is dropped, so the block covers the whole site. */
@@ -104,57 +88,46 @@
         onCheckedChange={(checked) => void onLookup(checked)}
       />
     </div>
-    <div class="flex flex-col gap-4 p-4">
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex flex-col gap-0.5">
-          <Label for="context-enabled">Phrase matching</Label>
-          <p class="text-muted-foreground text-sm">
-            Sends the sentence the looked up word is in, for better dictionary results.
-          </p>
-        </div>
-        <Switch
-          id="context-enabled"
-          checked={contextGlobal}
-          onCheckedChange={(checked) => void onContext(checked)}
-        />
+    <div class="flex flex-col gap-2 p-4">
+      <div class="flex flex-col gap-0.5">
+        <p class="text-sm font-medium">Blocked sites</p>
+        <p class="text-muted-foreground text-sm">
+          Servers set to take sentences from all sites except blocked ones only get the word for these
+          websites.
+        </p>
       </div>
-      {#if contextGlobal}
-        <div class="flex flex-col gap-2">
-          <p class="text-sm font-medium">Blocked sites</p>
-          <form class="flex gap-2" onsubmit={(event) => void addBlocked(event)}>
-            <Input
-              bind:value={draft}
-              placeholder="mail.google.com, docs.google.com"
-              aria-label="Sites to block, separated by commas"
-              aria-invalid={draftError !== undefined}
-              oninput={() => (draftError = undefined)}
-            />
-            <Button type="submit" variant="outline" disabled={draft.trim() === ""}>Block</Button>
-          </form>
-          {#if draftError !== undefined}
-            <p class="text-destructive text-sm">{draftError}</p>
-          {/if}
-          {#if blocked.length === 0}
-            <p class="text-muted-foreground text-sm">No blocked sites.</p>
-          {:else}
-            <ul class="flex flex-col divide-y rounded-md border">
-              {#each blocked as host (host)}
-                <li class="flex items-center justify-between gap-4 py-1 pr-1 pl-3">
-                  <span class="min-w-0 truncate text-sm" title={host}>{host}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Unblock {host}"
-                    title="Unblock"
-                    onclick={() => void removeContextSite(host)}
-                  >
-                    <XIcon />
-                  </Button>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
+      <form class="flex gap-2" onsubmit={(event) => void addBlocked(event)}>
+        <Input
+          bind:value={draft}
+          placeholder="mail.google.com, docs.google.com"
+          aria-label="Sites to block, separated by commas"
+          aria-invalid={draftError !== undefined}
+          oninput={() => (draftError = undefined)}
+        />
+        <Button type="submit" variant="outline" disabled={draft.trim() === ""}>Block</Button>
+      </form>
+      {#if draftError !== undefined}
+        <p class="text-destructive text-sm">{draftError}</p>
+      {/if}
+      {#if blocked.length === 0}
+        <p class="text-muted-foreground text-sm">No blocked sites.</p>
+      {:else}
+        <ul class="flex flex-col divide-y rounded-md border">
+          {#each blocked as host (host)}
+            <li class="flex items-center justify-between gap-4 py-1 pr-1 pl-3">
+              <span class="min-w-0 truncate text-sm" title={host}>{host}</span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Unblock {host}"
+                title="Unblock"
+                onclick={() => void removeContextSite(host)}
+              >
+                <XIcon />
+              </Button>
+            </li>
+          {/each}
+        </ul>
       {/if}
     </div>
   </div>
