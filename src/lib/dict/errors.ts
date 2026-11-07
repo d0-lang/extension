@@ -74,7 +74,7 @@ export const invalidUrlError = (): DictError => ({
   message: "Enter an http(s) URL without credentials, query or fragment",
 })
 
-export const fromUnknown =(cause: unknown): DictError => ({
+export const fromUnknown = (cause: unknown): DictError => ({
   kind: "network",
   message: cause instanceof Error ? cause.message : String(cause),
 })

@@ -76,12 +76,7 @@ export const wordAt = (x: number, y: number, locale: string | undefined): WordHi
 const hasArea = ({ width, height }: DOMRect): boolean => width > 0 || height > 0
 
 /** Record the selection and the word under the cursor, plus the box to open next to. */
-export const pickAt = (
-  x: number,
-  y: number,
-  target: Element | null,
-  locale: string | undefined,
-): Picked => {
+export const pickAt = (x: number, y: number, target: Element | null, locale: string | undefined): Picked => {
   const point: AnchorRect = { top: y, bottom: y, left: x, right: x }
   const selection = window.getSelection()
   const selected = selection?.toString().trim() ?? ""

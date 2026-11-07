@@ -1,21 +1,12 @@
 <script lang="ts">
-  import LoaderCircleIcon from "@lucide/svelte/icons/loader-circle";
-  import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
-  } from "$lib/components/ui/alert";
-  import { Button } from "$lib/components/ui/button";
-  import {
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-  } from "$lib/components/ui/dialog";
-  import { Input } from "$lib/components/ui/input";
-  import { Label } from "$lib/components/ui/label";
-  import { HandshakeSession } from "../HandshakeSession.svelte";
-  import { ServerSetup } from "../ServerSetup.svelte";
+  import LoaderCircleIcon from "@lucide/svelte/icons/loader-circle"
+  import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert"
+  import { Button } from "$lib/components/ui/button"
+  import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "$lib/components/ui/dialog"
+  import { Input } from "$lib/components/ui/input"
+  import { Label } from "$lib/components/ui/label"
+  import { HandshakeSession } from "../HandshakeSession.svelte"
+  import { ServerSetup } from "../ServerSetup.svelte"
 
   let {
     setup,
@@ -23,15 +14,13 @@
     url = $bindable(),
     onConnect,
   }: {
-    setup: ServerSetup;
-    session: HandshakeSession;
-    url: string;
-    onConnect: () => void;
-  } = $props();
+    setup: ServerSetup
+    session: HandshakeSession
+    url: string
+    onConnect: () => void
+  } = $props()
 
-  const editName = $derived(
-    setup.editUrl === undefined ? undefined : setup.servers[setup.editUrl]?.name,
-  );
+  const editName = $derived(setup.editUrl === undefined ? undefined : setup.servers[setup.editUrl]?.name)
 </script>
 
 {#snippet failure()}
@@ -40,18 +29,15 @@
       <AlertTitle>Can't verify this server</AlertTitle>
       <AlertDescription>
         <p>
-          Its answer failed the signature check, so it can't be trusted. The
-          server may be misconfigured, or someone may be tampering with the
-          connection.
+          Its answer failed the signature check, so it can't be trusted. The server may be misconfigured, or
+          someone may be tampering with the connection.
         </p>
         {#if session.brokenUrls.length > 0}
           <p class="mt-2">Check the maintainers' pages for news:</p>
           <ul class="mt-1 list-disc pl-4">
             {#each session.brokenUrls as href (href)}
               <li>
-                <a class="underline" {href} target="_blank" rel="noreferrer"
-                  >{href}</a
-                >
+                <a class="underline" {href} target="_blank" rel="noreferrer">{href}</a>
               </li>
             {/each}
           </ul>
@@ -83,8 +69,8 @@
   <form
     class="flex flex-col gap-4"
     onsubmit={(event) => {
-      event.preventDefault();
-      onConnect();
+      event.preventDefault()
+      onConnect()
     }}
   >
     <div class="flex flex-col gap-2">

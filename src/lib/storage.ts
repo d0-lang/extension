@@ -5,8 +5,7 @@ import { ResultAsync } from "neverthrow"
 /** Language pair advertised by a dictionary server, e.g. `de_en`. */
 export type LanguagePair = string
 
-const fromUnknown = (cause: unknown): Error =>
-  cause instanceof Error ? cause : new Error(String(cause))
+const fromUnknown = (cause: unknown): Error => (cause instanceof Error ? cause : new Error(String(cause)))
 
 export type BoundServer = {
   url: string
@@ -68,7 +67,7 @@ export const setShowIpa = async (showIpa: boolean): Promise<void> => {
 
 export const getTheme = async (): Promise<Theme> => {
   const { theme } = await browser.storage.local.get("theme")
-  return typeof theme === "string" && themes.includes(theme) ? theme as Theme : empty.theme
+  return typeof theme === "string" && themes.includes(theme) ? (theme as Theme) : empty.theme
 }
 
 export const setTheme = async (theme: Theme): Promise<void> => {
@@ -78,7 +77,7 @@ export const setTheme = async (theme: Theme): Promise<void> => {
 export const getContextSites = async (): Promise<ContextSites> => {
   const { contextSites } = await browser.storage.local.get("contextSites")
   return contextSites !== undefined && typeof contextSites === "object" && !Array.isArray(contextSites)
-    ? contextSites as ContextSites
+    ? (contextSites as ContextSites)
     : empty.contextSites
 }
 
@@ -109,7 +108,10 @@ export const getContextEnabled = async (host: string): Promise<boolean> => {
 export const blockContextSite = async (host: string): Promise<void> => {
   const site = host.replace(/^www\./, "")
   await browser.storage.local.set({
-    contextSites: { ...blockedSites(await getContextSites(), (blocked) => !covers(site, blocked)), [site]: false },
+    contextSites: {
+      ...blockedSites(await getContextSites(), (blocked) => !covers(site, blocked)),
+      [site]: false,
+    },
   })
 }
 
@@ -122,21 +124,21 @@ export const removeContextSite = async (host: string): Promise<void> => {
 export const getServers = async (): Promise<Servers> => {
   const { servers } = await browser.storage.local.get("servers")
   return servers !== undefined && typeof servers === "object" && !Array.isArray(servers)
-    ? servers as Servers
+    ? (servers as Servers)
     : empty.servers
 }
 
 export const getServerByLang = async (): Promise<ServerByLang> => {
   const { serverByLang } = await browser.storage.local.get("serverByLang")
   return serverByLang !== undefined && typeof serverByLang === "object" && !Array.isArray(serverByLang)
-    ? serverByLang as ServerByLang
+    ? (serverByLang as ServerByLang)
     : empty.serverByLang
 }
 
 export const getServerIssues = async (): Promise<ServerIssues> => {
   const { serverIssues } = await browser.storage.local.get("serverIssues")
   return serverIssues !== undefined && typeof serverIssues === "object" && !Array.isArray(serverIssues)
-    ? serverIssues as ServerIssues
+    ? (serverIssues as ServerIssues)
     : empty.serverIssues
 }
 
@@ -170,9 +172,7 @@ export const removeServer = (url: string): ResultAsync<void, Error> =>
 
       await browser.storage.local.set({
         servers: nextServers,
-        serverByLang: Object.fromEntries(
-          Object.entries(serverByLang).filter(([, mapped]) => mapped !== url),
-        ),
+        serverByLang: Object.fromEntries(Object.entries(serverByLang).filter(([, mapped]) => mapped !== url)),
         serverIssues: withoutIssues(serverIssues, [url]),
       })
     })(),
@@ -197,9 +197,7 @@ export const bindServer = (
       ])
 
       const nextServerByLang = Object.fromEntries(
-        Object.entries(serverByLang).filter(
-          ([, url]) => url !== server.url && url !== movedFrom,
-        ),
+        Object.entries(serverByLang).filter(([, url]) => url !== server.url && url !== movedFrom),
       )
       for (const lang of selectedLanguages) {
         nextServerByLang[lang] = server.url

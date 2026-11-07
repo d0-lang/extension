@@ -3,13 +3,10 @@ import { invalidUrlError, type DictError } from "./errors"
 
 const parseHttpUrl = (value: string): URL | undefined => {
   const url = URL.parse(value)
-  return url !== null && (url.protocol === "https:" || url.protocol === "http:")
-    ? url
-    : undefined
+  return url !== null && (url.protocol === "https:" || url.protocol === "http:") ? url : undefined
 }
 
-export const isHttpUrl = (value: string): boolean =>
-  parseHttpUrl(value) !== undefined
+export const isHttpUrl = (value: string): boolean => parseHttpUrl(value) !== undefined
 
 /**
  * Canonical server URL, the key a server is pinned under. Keeps a subpath.

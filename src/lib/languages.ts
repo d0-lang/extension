@@ -13,5 +13,4 @@ const languageName = (code: string): string => {
 }
 
 /** `de_en` → "German → English". */
-export const pairName = (pair: LanguagePair): string =>
-  pair.split("_").map(languageName).join(" → ")
+export const pairName = (pair: LanguagePair): string => pair.split("_").map(languageName).join(" → ")

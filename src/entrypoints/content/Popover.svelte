@@ -1,23 +1,18 @@
 <script lang="ts">
-  import { onDestroy, untrack } from "svelte";
-  import ArrowLeft from "@lucide/svelte/icons/arrow-left";
-  import Play from "@lucide/svelte/icons/play";
-  import VolumeX from "@lucide/svelte/icons/volume-x";
-  import { Kbd } from "$lib/components/ui/kbd";
-  import {
-    entriesForLemma,
-    isAllowedAudioUrl,
-    linkSense,
-    splitBySegments,
-  } from "$lib/dict/entries";
-  import type { DictError } from "$lib/dict/errors";
-  import type { LookupEntry } from "$lib/dict/types";
-  import type { LookupReply } from "$lib/messages";
-  import { suspendAccessKeys } from "./accesskeys";
-  import { isTyping } from "./hold";
-  import type { AnchorRect } from "./pick";
-  import { placePopover, type Side } from "./position";
-  import { splitStress, stressedLetter } from "./stress";
+  import { onDestroy, untrack } from "svelte"
+  import ArrowLeft from "@lucide/svelte/icons/arrow-left"
+  import Play from "@lucide/svelte/icons/play"
+  import VolumeX from "@lucide/svelte/icons/volume-x"
+  import { Kbd } from "$lib/components/ui/kbd"
+  import { entriesForLemma, isAllowedAudioUrl, linkSense, splitBySegments } from "$lib/dict/entries"
+  import type { DictError } from "$lib/dict/errors"
+  import type { LookupEntry } from "$lib/dict/types"
+  import type { LookupReply } from "$lib/messages"
+  import { suspendAccessKeys } from "./accesskeys"
+  import { isTyping } from "./hold"
+  import type { AnchorRect } from "./pick"
+  import { placePopover, type Side } from "./position"
+  import { splitStress, stressedLetter } from "./stress"
 
   let {
     word,
@@ -29,89 +24,79 @@
     search,
     follow,
   }: {
-    word: string;
-    anchor: AnchorRect;
-    dark: boolean;
-    showIpa: boolean;
+    word: string
+    anchor: AnchorRect
+    dark: boolean
+    showIpa: boolean
     /** The looked-up word's box. `dark` is the page behind it, which picks the accent that shows up there. */
-    underline: { rect: AnchorRect; dark: boolean } | undefined;
+    underline: { rect: AnchorRect; dark: boolean } | undefined
     /** Finds the parts of the sentence a context entry's `match` names, to underline instead. */
-    marks:
-      | { rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>; dark: boolean }
-      | undefined;
+    marks: { rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>; dark: boolean } | undefined
     /** Unset when `word` cannot be looked up. A language becomes the default for the rest of this page. */
-    search:
-      | ((language?: string, target?: string) => Promise<LookupReply>)
-      | undefined;
+    search: ((language?: string, target?: string) => Promise<LookupReply>) | undefined
     /** Look up a `see` word in `language`. */
-    follow: (
-      target: string,
-      language: string | undefined,
-    ) => Promise<LookupReply>;
-  } = $props();
+    follow: (target: string, language: string | undefined) => Promise<LookupReply>
+  } = $props()
 
   /** `followed` shows only the entries whose lemma is `word`. `scrollTop` is where Back left it. */
   type View = {
-    word: string;
-    followed: boolean;
-    reply: Promise<LookupReply> | undefined;
-    scrollTop?: number;
-  };
+    word: string
+    followed: boolean
+    reply: Promise<LookupReply> | undefined
+    scrollTop?: number
+  }
 
-  let view = $state.raw<View>(
-    untrack(() => ({ word, followed: false, reply: search?.() })),
-  );
-  let history = $state.raw<Array<View>>([]);
+  let view = $state.raw<View>(untrack(() => ({ word, followed: false, reply: search?.() })))
+  let history = $state.raw<Array<View>>([])
   /** The parts of the sentence the first context entry covers, while the looked-up word is shown. */
-  let matched = $state.raw<Array<AnchorRect>>([]);
+  let matched = $state.raw<Array<AnchorRect>>([])
 
   $effect(() => {
-    const { reply, followed } = view;
-    matched = [];
+    const { reply, followed } = view
+    matched = []
     if (reply === undefined || followed || marks === undefined) {
-      return;
+      return
     }
-    let current = true;
+    let current = true
     void reply.then((result) => {
-      const match = result.ok ? result.entries.find((entry) => entry.match !== undefined)?.match : undefined;
+      const match = result.ok ? result.entries.find((entry) => entry.match !== undefined)?.match : undefined
       if (current && match !== undefined) {
-        matched = marks.rectsOf(match);
+        matched = marks.rectsOf(match)
       }
-    });
+    })
     return () => {
-      current = false;
-    };
-  });
-  let scroller: HTMLElement | undefined;
+      current = false
+    }
+  })
+  let scroller: HTMLElement | undefined
 
-  let element = $state<HTMLElement>();
+  let element = $state<HTMLElement>()
   let place = $state<{ top: number; left: number; side: Side; maxHeight?: number }>({
     top: 0,
     left: 0,
     side: "below",
-  });
+  })
   /** Set once the content would scroll at the normal width. It stays set, so the popover does not jump back. */
-  let wide = $state(false);
+  let wide = $state(false)
   /** Set by the first followed link, so the popover no longer moves away from the cursor. It only grows from then on. */
-  let lock = $state<{ side: Side; minHeight: number }>();
+  let lock = $state<{ side: Side; minHeight: number }>()
   /** Bound languages from the last reply, and the one shown or being looked up. */
-  let languages = $state.raw<Array<string>>([]);
-  let language = $state<string>();
-  let failedAudio = $state<string>();
+  let languages = $state.raw<Array<string>>([])
+  let language = $state<string>()
+  let failedAudio = $state<string>()
   /** URL of the audio being fetched or played. */
-  let playing = $state<string>();
-  let player: HTMLAudioElement | undefined;
+  let playing = $state<string>()
+  let player: HTMLAudioElement | undefined
 
   const reposition = () => {
     if (element === undefined) {
-      return;
+      return
     }
-    const root = document.scrollingElement;
-    const content = shownScroller();
+    const root = document.scrollingElement
+    const content = shownScroller()
     // Only the scroller shrinks under the cap, so what it hides is what the popover would grow by.
     const height =
-      element.offsetHeight +
-      (content === undefined ? 0 : content.scrollHeight - content.clientHeight);
+      element.offsetHeight + (content === undefined ? 0 : content.scrollHeight - content.clientHeight)
     place = placePopover(
       anchor,
       { width: element.offsetWidth, height: Math.max(height, lock?.minHeight ?? 0) },
@@ -120,158 +105,154 @@
         height: root?.clientHeight ?? window.innerHeight,
       },
       lock?.side,
-    );
+    )
     if (place.maxHeight !== undefined && height > place.maxHeight) {
-      wide = true;
+      wide = true
     }
     // Back can shrink the content, and Back sits where the cursor is.
     if (lock !== undefined && element.offsetHeight > lock.minHeight) {
-      lock = { ...lock, minHeight: element.offsetHeight };
+      lock = { ...lock, minHeight: element.offsetHeight }
     }
-  };
+  }
 
   $effect(() => {
     if (element === undefined) {
-      return;
+      return
     }
-    const observer = new ResizeObserver(reposition);
-    observer.observe(element);
-    window.addEventListener("resize", reposition);
+    const observer = new ResizeObserver(reposition)
+    observer.observe(element)
+    window.addEventListener("resize", reposition)
     return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", reposition);
-    };
-  });
+      observer.disconnect()
+      window.removeEventListener("resize", reposition)
+    }
+  })
 
   // Runs before the rendered reply is in the document, where setting a scroll position does nothing.
   const restoreScroll = (target: HTMLElement) => {
-    scroller = target;
-    const top = untrack(() => view.scrollTop);
+    scroller = target
+    const top = untrack(() => view.scrollTop)
     if (top !== undefined) {
       const frame = requestAnimationFrame(() => {
-        target.scrollTop = top;
-      });
-      return () => cancelAnimationFrame(frame);
+        target.scrollTop = top
+      })
+      return () => cancelAnimationFrame(frame)
     }
-  };
+  }
 
   const followLink = (target: string, language: string | undefined) => {
-    lock ??= { side: place.side, minHeight: element?.offsetHeight ?? 0 };
-    history = [...history, { ...view, scrollTop: scroller?.scrollTop }];
-    view = { word: target, followed: true, reply: follow(target, language) };
-  };
+    lock ??= { side: place.side, minHeight: element?.offsetHeight ?? 0 }
+    history = [...history, { ...view, scrollTop: scroller?.scrollTop }]
+    view = { word: target, followed: true, reply: follow(target, language) }
+  }
 
   const scrollToSegment = (index: number) => {
-    const target = shownScroller();
-    const section = target?.querySelector(`[data-segment="${index}"]`);
+    const target = shownScroller()
+    const section = target?.querySelector(`[data-segment="${index}"]`)
     if (target === undefined || section === null || section === undefined) {
-      return;
+      return
     }
     // Not `scrollIntoView`, which can scroll the page behind the popover too.
-    target.scrollTop +=
-      section.getBoundingClientRect().top - target.getBoundingClientRect().top;
-  };
+    target.scrollTop += section.getBoundingClientRect().top - target.getBoundingClientRect().top
+  }
 
   const goBack = () => {
-    view = history.at(-1) ?? view;
-    history = history.slice(0, -1);
-  };
+    view = history.at(-1) ?? view
+    history = history.slice(0, -1)
+  }
 
   const switchLanguage = (target: string) => {
-    language = target;
+    language = target
     view = {
       ...view,
       reply: search?.(target, view.word),
       scrollTop: undefined,
-    };
-  };
+    }
+  }
 
   /** The language that answered, or the only one asked when it did not. Unset when several were asked and none answered. */
   const shownLanguage = (result: LookupReply): string | undefined =>
-    (result.ok ? result.lang : undefined) ??
-    (result.tried.length === 1 ? result.tried[0] : undefined);
+    (result.ok ? result.lang : undefined) ?? (result.tried.length === 1 ? result.tried[0] : undefined)
 
   $effect(() => {
-    const reply = view.reply;
+    const reply = view.reply
     void reply?.then((result) => {
       if (view.reply !== reply) {
-        return;
+        return
       }
-      languages = result.languages;
-      language = shownLanguage(result) ?? language;
-    });
-  });
+      languages = result.languages
+      language = shownLanguage(result) ?? language
+    })
+  })
 
   /** Wraps around. Without a current language, D starts at the first and A at the last. */
   const stepLanguage = (step: 1 | -1): boolean => {
     if (search === undefined || languages.length < 2) {
-      return false;
+      return false
     }
-    const index = language === undefined ? -1 : languages.indexOf(language);
+    const index = language === undefined ? -1 : languages.indexOf(language)
     const next =
       index === -1
         ? step === 1
           ? 0
           : languages.length - 1
-        : (index + step + languages.length) % languages.length;
-    switchLanguage(languages[next]!);
-    return true;
-  };
+        : (index + step + languages.length) % languages.length
+    switchLanguage(languages[next]!)
+    return true
+  }
 
   // Physical keys, so they stay under the same fingers on any layout.
-  const languageSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 };
-  const scrollSteps: Record<string, 1 | -1> = { KeyW: -1, KeyS: 1 };
-  const PLAY_KEY = "KeyE";
+  const languageSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 }
+  const scrollSteps: Record<string, 1 | -1> = { KeyW: -1, KeyS: 1 }
+  const PLAY_KEY = "KeyE"
 
-  const SCROLL_PX_PER_MS = 0.6;
+  const SCROLL_PX_PER_MS = 0.6
   /** A tap scrolls at least this far, however quickly the key comes up. */
-  const SCROLL_TAP_PX = 48;
+  const SCROLL_TAP_PX = 48
 
   /** Scrolling frame by frame, because repeated smooth `scrollBy` calls move at different speeds in Chrome and Firefox. */
   let scrolling:
-    | { code: string; step: 1 | -1; held: boolean; moved: number; last: number; frame: number }
-    | undefined;
+    { code: string; step: 1 | -1; held: boolean; moved: number; last: number; frame: number } | undefined
 
-  const shownScroller = (): HTMLElement | undefined =>
-    scroller?.isConnected ? scroller : undefined;
+  const shownScroller = (): HTMLElement | undefined => (scroller?.isConnected ? scroller : undefined)
 
   const stopScroll = () => {
     if (scrolling !== undefined) {
-      cancelAnimationFrame(scrolling.frame);
+      cancelAnimationFrame(scrolling.frame)
     }
-    scrolling = undefined;
-  };
+    scrolling = undefined
+  }
 
   const scrollFrame = (now: number) => {
-    const target = shownScroller();
+    const target = shownScroller()
     if (scrolling === undefined || target === undefined) {
-      scrolling = undefined;
-      return;
+      scrolling = undefined
+      return
     }
     // A frame's timestamp can be a little older than the key press.
-    const distance = Math.max(0, now - scrolling.last) * SCROLL_PX_PER_MS;
-    const before = target.scrollTop;
-    target.scrollTop = before + scrolling.step * distance;
-    scrolling.last = now;
-    scrolling.moved += Math.abs(target.scrollTop - before);
+    const distance = Math.max(0, now - scrolling.last) * SCROLL_PX_PER_MS
+    const before = target.scrollTop
+    target.scrollTop = before + scrolling.step * distance
+    scrolling.last = now
+    scrolling.moved += Math.abs(target.scrollTop - before)
     const atEnd =
       scrolling.step === 1
         ? target.scrollTop + target.clientHeight >= target.scrollHeight - 1
-        : target.scrollTop <= 0;
+        : target.scrollTop <= 0
     if (atEnd || (!scrolling.held && scrolling.moved >= SCROLL_TAP_PX)) {
-      scrolling = undefined;
-      return;
+      scrolling = undefined
+      return
     }
-    scrolling.frame = requestAnimationFrame(scrollFrame);
-  };
+    scrolling.frame = requestAnimationFrame(scrollFrame)
+  }
 
   const startScroll = (code: string, step: 1 | -1): boolean => {
     if (shownScroller() === undefined) {
-      return false;
+      return false
     }
     // Key repeats keep the scroll that the first press started.
     if (scrolling?.code !== code) {
-      stopScroll();
+      stopScroll()
       scrolling = {
         code,
         step,
@@ -279,143 +260,141 @@
         moved: 0,
         last: performance.now(),
         frame: requestAnimationFrame(scrollFrame),
-      };
+      }
     }
-    return true;
-  };
+    return true
+  }
 
   /** The topmost entry with audio that is not scrolled out of view above. */
   const playShown = (): boolean => {
-    const target = shownScroller();
+    const target = shownScroller()
     if (target === undefined) {
-      return false;
+      return false
     }
-    const top = target.getBoundingClientRect().top;
+    const top = target.getBoundingClientRect().top
     const url = [...target.querySelectorAll<HTMLElement>("[data-audio]")].find(
       (section) => section.getBoundingClientRect().bottom > top,
-    )?.dataset.audio;
+    )?.dataset.audio
     if (url === undefined) {
-      return false;
+      return false
     }
-    play(url);
-    return true;
-  };
+    play(url)
+    return true
+  }
 
   const handleKey = (event: KeyboardEvent): boolean => {
-    const languageStep = languageSteps[event.code];
+    const languageStep = languageSteps[event.code]
     if (languageStep !== undefined) {
-      return !event.repeat && stepLanguage(languageStep);
+      return !event.repeat && stepLanguage(languageStep)
     }
-    const scrollStep = scrollSteps[event.code];
+    const scrollStep = scrollSteps[event.code]
     if (scrollStep !== undefined) {
-      return startScroll(event.code, scrollStep);
+      return startScroll(event.code, scrollStep)
     }
-    return event.code === PLAY_KEY && !event.repeat && playShown();
-  };
+    return event.code === PLAY_KEY && !event.repeat && playShown()
+  }
 
   $effect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       // Alt stays allowed, because the popover is open while Alt is held.
       if (event.ctrlKey || event.metaKey || isTyping()) {
-        return;
+        return
       }
       if (handleKey(event)) {
         // Pages bind single letters too, like YouTube and Gmail.
-        event.preventDefault();
-        event.stopImmediatePropagation();
+        event.preventDefault()
+        event.stopImmediatePropagation()
       }
-    };
+    }
     const onKeyUp = (event: KeyboardEvent) => {
       if (scrolling?.code === event.code) {
-        scrolling.held = false;
+        scrolling.held = false
       }
-    };
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    window.addEventListener("keyup", onKeyUp, { capture: true });
+    }
+    window.addEventListener("keydown", onKeyDown, { capture: true })
+    window.addEventListener("keyup", onKeyUp, { capture: true })
     // The key-up goes unseen once focus leaves the page.
-    window.addEventListener("blur", stopScroll);
+    window.addEventListener("blur", stopScroll)
     const restoreAccessKeys = suspendAccessKeys([
       ...Object.keys(languageSteps),
       ...Object.keys(scrollSteps),
       PLAY_KEY,
-    ]);
+    ])
     return () => {
-      restoreAccessKeys();
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-      window.removeEventListener("keyup", onKeyUp, { capture: true });
-      window.removeEventListener("blur", stopScroll);
-      stopScroll();
-    };
-  });
+      restoreAccessKeys()
+      window.removeEventListener("keydown", onKeyDown, { capture: true })
+      window.removeEventListener("keyup", onKeyUp, { capture: true })
+      window.removeEventListener("blur", stopScroll)
+      stopScroll()
+    }
+  })
 
   const shownEntries = (result: LookupReply) => {
     if (!result.ok) {
-      return [];
+      return []
     }
-    return view.followed
-      ? entriesForLemma(result.entries, view.word)
-      : result.entries;
-  };
+    return view.followed ? entriesForLemma(result.entries, view.word) : result.entries
+  }
 
   /** Unset for a followed link, whose entries no longer line up with the indexes, and for a split into one part. */
   const shownSplit = (result: LookupReply) => {
     if (!result.ok || view.followed || result.segments === undefined) {
-      return undefined;
+      return undefined
     }
-    const split = splitBySegments(result.entries, result.segments);
-    return split.parts.length < 2 ? undefined : split;
-  };
+    const split = splitBySegments(result.entries, result.segments)
+    return split.parts.length < 2 ? undefined : split
+  }
 
   const stopAudio = () => {
-    player?.pause();
-    player = undefined;
-    playing = undefined;
-  };
+    player?.pause()
+    player = undefined
+    playing = undefined
+  }
 
   /** Stops instead when `url` is the audio already going. */
   const play = (url: string) => {
-    const again = playing === url;
-    stopAudio();
+    const again = playing === url
+    stopAudio()
     if (again) {
-      return;
+      return
     }
-    failedAudio = undefined;
-    const next = new Audio(url);
-    player = next;
-    playing = url;
+    failedAudio = undefined
+    const next = new Audio(url)
+    player = next
+    playing = url
     const fail = () => {
       if (player === next) {
-        stopAudio();
-        failedAudio = url;
+        stopAudio()
+        failedAudio = url
       }
-    };
+    }
     next.addEventListener("ended", () => {
       if (player === next) {
-        stopAudio();
+        stopAudio()
       }
-    });
-    next.addEventListener("error", fail);
-    void next.play().catch(fail);
-  };
+    })
+    next.addEventListener("error", fail)
+    void next.play().catch(fail)
+  }
 
-  onDestroy(stopAudio);
+  onDestroy(stopAudio)
 
   const errorText = (error: DictError): string => {
     switch (error.kind) {
       case "no-server":
-        return "No dictionary server is set up. Click the extension icon to add one.";
+        return "No dictionary server is set up. Click the extension icon to add one."
       case "network":
-        return "Could not reach the dictionary server.";
+        return "Could not reach the dictionary server."
       case "http":
-        return "The dictionary server returned an error.";
+        return "The dictionary server returned an error."
       case "bad-request":
-        return "The dictionary server rejected this request.";
+        return "The dictionary server rejected this request."
       case "unsupported-lang":
-        return "The dictionary server does not support this language.";
+        return "The dictionary server does not support this language."
       default:
-        return "The dictionary server sent an unexpected response.";
+        return "The dictionary server sent an unexpected response."
     }
-  };
+  }
 </script>
 
 {#snippet entryList(list: Array<LookupEntry>, language: string | undefined)}
@@ -429,7 +408,8 @@
           <div class="min-w-0 flex-1 leading-6 wrap-anywhere">
             <h2 class="inline text-base font-semibold">
               {@render stressed(entry.lemma)}
-            </h2>{" "}<span class="text-muted-foreground text-xs">{entry.pos}</span
+            </h2>
+            {" "}<span class="text-muted-foreground text-xs">{entry.pos}</span
             >{#each entry.labels ?? [] as label (label)}{" "}<span
                 class="bg-muted text-muted-foreground rounded px-1 text-xs whitespace-nowrap"
                 data-label>{label}</span
@@ -444,11 +424,7 @@
               aria-label={going
                 ? `Stop pronunciation of ${entry.lemma}`
                 : `Play pronunciation of ${entry.lemma}`}
-              title={failed
-                ? "Could not play this audio"
-                : going
-                  ? "Stop (E)"
-                  : "Play pronunciation (E)"}
+              title={failed ? "Could not play this audio" : going ? "Stop (E)" : "Play pronunciation (E)"}
               disabled={failed}
               onclick={() => play(url)}
             >
@@ -473,10 +449,7 @@
       </div>
       <ol class="flex list-decimal flex-col gap-1 pl-5">
         {#each entry.senses as sense, senseIndex (senseIndex)}
-          {@const linked = linkSense(
-            sense.translations.join("; "),
-            sense.see ?? [],
-          )}
+          {@const linked = linkSense(sense.translations.join("; "), sense.see ?? [])}
           <li class="wrap-anywhere">
             {#each linked.parts as part, partIndex (partIndex)}{#if part.target === undefined}{part.text}{:else}{@render seeLink(
                   part.text,
@@ -485,11 +458,7 @@
                 )}{/if}{/each}{#if linked.unfound.length > 0}; see {#each linked.unfound as target, targetIndex (target)}{targetIndex >
                 0
                   ? ", "
-                  : ""}{@render seeLink(
-                  target,
-                  target,
-                  language,
-                )}{/each}{/if}
+                  : ""}{@render seeLink(target, target, language)}{/each}{/if}
           </li>
         {/each}
       </ol>
@@ -498,9 +467,9 @@
 {/snippet}
 
 {#snippet stressed(text: string)}
-  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter =
-        stressedLetter(part.text)}<span class="dict-stress" data-lift={letter.lift}>{letter.text}</span
-      >{:else}{part.text}{/if}{/each}
+  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter = stressedLetter(
+        part.text,
+      )}<span class="dict-stress" data-lift={letter.lift}>{letter.text}</span>{:else}{part.text}{/if}{/each}
 {/snippet}
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}
@@ -509,8 +478,8 @@
     href="#see"
     class="underline underline-offset-2"
     onclick={(event) => {
-      event.preventDefault();
-      followLink(target, language);
+      event.preventDefault()
+      followLink(target, language)
     }}>{text}</a
   >
 {/snippet}
@@ -607,8 +576,8 @@
                       href="#segment"
                       class="font-medium underline underline-offset-2"
                       onclick={(event) => {
-                        event.preventDefault();
-                        scrollToSegment(partIndex);
+                        event.preventDefault()
+                        scrollToSegment(partIndex)
                       }}>{part.text}</a
                     >
                   {/if}

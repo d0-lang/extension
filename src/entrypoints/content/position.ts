@@ -17,15 +17,14 @@ const clamp = (value: number, size: number, viewport: number): number =>
 
 /** Height the popover can take on `side` of the anchor without leaving the viewport. */
 export const roomOn = (side: Side, anchor: AnchorRect, viewport: Size): number =>
-  side === "below"
-    ? viewport.height - anchor.bottom - GAP_PX - MARGIN_PX
-    : anchor.top - GAP_PX - MARGIN_PX
+  side === "below" ? viewport.height - anchor.bottom - GAP_PX - MARGIN_PX : anchor.top - GAP_PX - MARGIN_PX
 
 const heightCap = (viewport: Size): number => Math.min(MAX_HEIGHT_PX, viewport.height * MAX_HEIGHT_SHARE)
 
 const pickSide = (anchor: AnchorRect, size: Size, viewport: Size): Side => {
   const roomBelow = roomOn("below", anchor, viewport)
-  return Math.min(size.height, heightCap(viewport)) <= roomBelow || roomBelow >= roomOn("above", anchor, viewport)
+  return Math.min(size.height, heightCap(viewport)) <= roomBelow ||
+    roomBelow >= roomOn("above", anchor, viewport)
     ? "below"
     : "above"
 }

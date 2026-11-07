@@ -21,8 +21,7 @@ export type LookupRequestMessage = {
  * `tried` are the languages asked, in order, whether or not one answered.
  */
 export type LookupReply = { languages: Array<string>; tried: Array<string> } & (
-  | ({ ok: true } & LookupOutcome)
-  | { ok: false; error: DictError }
+  ({ ok: true } & LookupOutcome) | { ok: false; error: DictError }
 )
 
 export const isOpenLookupMessage = (message: unknown): message is OpenLookupMessage =>

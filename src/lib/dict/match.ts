@@ -30,7 +30,11 @@ export const copyNumber = (text: string, word: string, start: number): number | 
     return undefined
   }
   let count = 0
-  for (let index = text.indexOf(word); index >= 0 && index <= start; index = text.indexOf(word, index + word.length)) {
+  for (
+    let index = text.indexOf(word);
+    index >= 0 && index <= start;
+    index = text.indexOf(word, index + word.length)
+  ) {
     count++
     if (index === start) {
       return count

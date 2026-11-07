@@ -5,10 +5,8 @@ const AUDIO_HOSTS: ReadonlyArray<string> = ["upload.wikimedia.org"]
 const lemmaKey = (lemma: string): string => lemma.toLowerCase()
 
 /** Entries whose lemma is `word` (as a `see` link names it), ignoring case. */
-export const entriesForLemma = (
-  entries: ReadonlyArray<LookupEntry>,
-  word: string,
-): Array<LookupEntry> => entries.filter(({ lemma }) => lemmaKey(lemma) === lemmaKey(word))
+export const entriesForLemma = (entries: ReadonlyArray<LookupEntry>, word: string): Array<LookupEntry> =>
+  entries.filter(({ lemma }) => lemmaKey(lemma) === lemmaKey(word))
 
 /** A run of sense text. `target` is the `see` word it links to, if any. */
 export type SensePart = { text: string; target: string | undefined }

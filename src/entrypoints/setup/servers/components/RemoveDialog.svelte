@@ -1,10 +1,6 @@
 <script lang="ts">
-  import {
-    Alert,
-    AlertDescription,
-    AlertTitle,
-  } from "$lib/components/ui/alert";
-  import { Button } from "$lib/components/ui/button";
+  import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert"
+  import { Button } from "$lib/components/ui/button"
   import {
     Dialog,
     DialogContent,
@@ -12,13 +8,13 @@
     DialogFooter,
     DialogHeader,
     DialogTitle,
-  } from "$lib/components/ui/dialog";
-  import { pairName } from "$lib/languages";
-  import { ServerSetup } from "../ServerSetup.svelte";
+  } from "$lib/components/ui/dialog"
+  import { pairName } from "$lib/languages"
+  import { ServerSetup } from "../ServerSetup.svelte"
 
-  let { setup }: { setup: ServerSetup } = $props();
+  let { setup }: { setup: ServerSetup } = $props()
 
-  const target = $derived(setup.removeTarget);
+  const target = $derived(setup.removeTarget)
 </script>
 
 {#if target}
@@ -26,7 +22,7 @@
     open
     onOpenChange={(next) => {
       if (!next) {
-        setup.cancelRemove();
+        setup.cancelRemove()
       }
     }}
   >
@@ -39,8 +35,7 @@
         {#if target.languages.length > 0}
           Lookups for {target.languages.map(pairName).join(", ")} will stop working.
         {/if}
-        The stored key is deleted too, so adding this server again trusts whatever
-        key it sends then.
+        The stored key is deleted too, so adding this server again trusts whatever key it sends then.
       </p>
       {#if setup.removeError}
         <Alert variant="destructive">
@@ -49,18 +44,8 @@
         </Alert>
       {/if}
       <DialogFooter>
-        <Button
-          variant="outline"
-          disabled={setup.removing}
-          onclick={setup.cancelRemove}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="destructive"
-          disabled={setup.removing}
-          onclick={() => void setup.confirmRemove()}
-        >
+        <Button variant="outline" disabled={setup.removing} onclick={setup.cancelRemove}>Cancel</Button>
+        <Button variant="destructive" disabled={setup.removing} onclick={() => void setup.confirmRemove()}>
           {setup.removing ? "Removing…" : "Remove"}
         </Button>
       </DialogFooter>

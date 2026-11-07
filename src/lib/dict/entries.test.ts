@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { entriesForLemma, isValidSplit, linkSense, splitBySegments } from "./entries"
 
-const entry = (lemma: string, senses: Array<{ translations: Array<string>; see?: Array<string> }>, pos = "NOUN") => ({
+const entry = (
+  lemma: string,
+  senses: Array<{ translations: Array<string>; see?: Array<string> }>,
+  pos = "NOUN",
+) => ({
   lemma,
   pos,
   senses,
@@ -12,7 +16,12 @@ const links = (text: string, see: Array<string>) =>
 
 describe("entriesForLemma", () => {
   it("drops other lemmas and ignores case", () => {
-    const entries = [entry("mat", []), entry("Mata", [], "PROPN"), entry("mata", []), entry("matać", [], "VERB")]
+    const entries = [
+      entry("mat", []),
+      entry("Mata", [], "PROPN"),
+      entry("mata", []),
+      entry("matać", [], "VERB"),
+    ]
     expect(entriesForLemma(entries, "mata").map(({ lemma }) => lemma)).toEqual(["Mata", "mata"])
   })
 
@@ -79,7 +88,9 @@ describe("linkSense", () => {
   })
 
   it("matches multi-word targets across any separator", () => {
-    expect(links("synonym of wychodzić za mąż (“to marry”)", ["wychodzić za mąż"])).toEqual(["wychodzić za mąż"])
+    expect(links("synonym of wychodzić za mąż (“to marry”)", ["wychodzić za mąż"])).toEqual([
+      "wychodzić za mąż",
+    ])
     expect(linkSense("synonym of śmigus-dyngus", ["śmigus-dyngus"]).parts).toEqual([
       { text: "synonym of ", target: undefined },
       { text: "śmigus-dyngus", target: "śmigus-dyngus" },
@@ -113,7 +124,16 @@ describe("isValidSplit", () => {
 
   it("rejects an index out of range or claimed twice", () => {
     expect(isValidSplit(segments, "Arbeitsamt", 2)).toBe(false)
-    expect(isValidSplit([{ text: "ab", entries: [0] }, { text: "c", entries: [0] }], "abc", 1)).toBe(false)
+    expect(
+      isValidSplit(
+        [
+          { text: "ab", entries: [0] },
+          { text: "c", entries: [0] },
+        ],
+        "abc",
+        1,
+      ),
+    ).toBe(false)
   })
 })
 

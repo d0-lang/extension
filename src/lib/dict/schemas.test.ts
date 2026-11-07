@@ -10,12 +10,18 @@ describe("lookupResultSchema", () => {
   })
 
   it("keeps segments", () => {
-    const parsed = lookupResultSchema.parse({ ...body({ translations: ["in"] }), segments: [{ text: "ssa", entries: [0] }] })
+    const parsed = lookupResultSchema.parse({
+      ...body({ translations: ["in"] }),
+      segments: [{ text: "ssa", entries: [0] }],
+    })
     expect(parsed.segments).toEqual([{ text: "ssa", entries: [0] }])
   })
 
   it("drops malformed segments but keeps the entries", () => {
-    const parsed = lookupResultSchema.parse({ ...body({ translations: ["in"] }), segments: [{ text: "ssa", entries: [-1] }] })
+    const parsed = lookupResultSchema.parse({
+      ...body({ translations: ["in"] }),
+      segments: [{ text: "ssa", entries: [-1] }],
+    })
     expect(parsed.segments).toBeUndefined()
     expect(parsed.entries).toHaveLength(1)
   })

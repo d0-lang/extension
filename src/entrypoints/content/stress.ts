@@ -23,7 +23,7 @@ export const splitStress = (text: string): Array<{ text: string; stressed: boole
 }
 
 /** Letters whose dot the accent replaces, as in í. */
-const DOTLESS: Record<string, string> = { i: "ı", "і": "ı" }
+const DOTLESS: Record<string, string> = { i: "ı", і: "ı" }
 
 /** Combining marks that sit below the letter, which leave room for the accent. */
 const isMarkBelow = (mark: string): boolean => {

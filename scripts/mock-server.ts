@@ -36,12 +36,26 @@ const scenarios: Record<string, Scenario> = {
   },
   many: {
     name: "Big Multilingual Dictionary Server With A Long Name",
-    languages: ["de_en", "fr_en", "es_en", "it_en", "pt_en", "nl_en", "pl_en", "uk_en", "ja_en", "zh_en", "ko_en", "lv_en"],
+    languages: [
+      "de_en",
+      "fr_en",
+      "es_en",
+      "it_en",
+      "pt_en",
+      "nl_en",
+      "pl_en",
+      "uk_en",
+      "ja_en",
+      "zh_en",
+      "ko_en",
+      "lv_en",
+    ],
     verificationUrls: [`${ORIGIN}/many/news`, "https://example.org/status"],
     section: "adds",
     summary: "Twelve languages and a long name.",
     steps: ["Add basic first and tick Polish.", "Add this one and tick Polish too."],
-    expect: "The list scrolls with the buttons still visible, and Select all shows. Polish reads \"Used by Test Polish\", then \"Moves from Test Polish\" once ticked.",
+    expect:
+      'The list scrolls with the buttons still visible, and Select all shows. Polish reads "Used by Test Polish", then "Moves from Test Polish" once ticked.',
   },
   overlap: {
     name: "German and Polish",
@@ -57,7 +71,7 @@ const scenarios: Record<string, Scenario> = {
     verificationUrls: [],
     section: "adds",
     summary: "Lists no languages.",
-    expect: "\"This server doesn't offer any languages yet.\" Add server stays disabled.",
+    expect: '"This server doesn\'t offer any languages yet." Add server stays disabled.',
   },
   slow: {
     name: "Slow Server",
@@ -80,7 +94,8 @@ const scenarios: Record<string, Scenario> = {
       "Reload the extension or restart the browser, which runs the startup check.",
       "Press Review on the card, or open ⋯ → Edit languages.",
     ],
-    expect: "After the reload: a notification, a ! badge on the icon, a line in the popup, and a red card. Review shows \"This server's identity has changed\". Cancel has focus, and Trust new key counts down 5 seconds. Trusting and saving clears the warning.",
+    expect:
+      'After the reload: a notification, a ! badge on the icon, a line in the popup, and a red card. Review shows "This server\'s identity has changed". Cancel has focus, and Trust new key counts down 5 seconds. Trusting and saving clears the warning.',
   },
   moved: {
     name: "Old Host",
@@ -94,7 +109,8 @@ const scenarios: Record<string, Scenario> = {
       "Press Move to moved-target below.",
       "Reload the extension or restart the browser. Or, without reloading, open ⋯ → Edit languages on Old Host.",
     ],
-    expect: "After the reload: a notification that Old Host moved, and the card is now New Host at /moved-target with French kept. No identity warning. Through Edit languages: a review with \"This server has moved\".",
+    expect:
+      'After the reload: a notification that Old Host moved, and the card is now New Host at /moved-target with French kept. No identity warning. Through Edit languages: a review with "This server has moved".',
   },
   "moved-target": {
     name: "New Host",
@@ -112,7 +128,7 @@ const scenarios: Record<string, Scenario> = {
     fault: "wrong-key",
     section: "fails",
     summary: "Meta is signed with a different key than get-key serves.",
-    expect: "\"Can't verify this server\".",
+    expect: '"Can\'t verify this server".',
   },
   unsigned: {
     name: "Unsigned",
@@ -121,7 +137,7 @@ const scenarios: Record<string, Scenario> = {
     fault: "no-signature",
     section: "fails",
     summary: "No X-Signature header.",
-    expect: "\"Can't verify this server\".",
+    expect: '"Can\'t verify this server".',
   },
   nonce: {
     name: "Stale Nonce",
@@ -130,7 +146,7 @@ const scenarios: Record<string, Scenario> = {
     fault: "bad-nonce",
     section: "fails",
     summary: "Signed, but the nonce does not match the request.",
-    expect: "\"The server's answer did not match this request. Try again.\"",
+    expect: '"The server\'s answer did not match this request. Try again."',
   },
   garbage: {
     name: "",
@@ -138,7 +154,7 @@ const scenarios: Record<string, Scenario> = {
     verificationUrls: ["javascript:alert(1)"],
     section: "fails",
     summary: "Signed meta that fails the schema: empty name, bad language code, javascript: link.",
-    expect: "\"This does not look like a dictionary server.\"",
+    expect: '"This does not look like a dictionary server."',
   },
   down: {
     name: "Down",
@@ -147,7 +163,7 @@ const scenarios: Record<string, Scenario> = {
     fault: "http-500",
     section: "fails",
     summary: "Every request is a 500.",
-    expect: "\"The server answered with an error…\" Details shows get-key failed: 500.",
+    expect: '"The server answered with an error…" Details shows get-key failed: 500.',
   },
 }
 
@@ -164,9 +180,12 @@ const initial = structuredClone(scenarios)
 const keyGeneration: Record<string, number> = {}
 
 // An Ed25519 PKCS#8 key is this prefix followed by the 32-byte seed.
-const PKCS8_PREFIX = Uint8Array.from([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20])
+const PKCS8_PREFIX = Uint8Array.from([
+  0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20,
+])
 
-const toBase64 = (bytes: ArrayBuffer | Uint8Array): string => Buffer.from(new Uint8Array(bytes)).toString("base64")
+const toBase64 = (bytes: ArrayBuffer | Uint8Array): string =>
+  Buffer.from(new Uint8Array(bytes)).toString("base64")
 
 /** Same seed, same key, so a restart does not look like an identity change. */
 const keyPair = async (seedText: string) => {
@@ -210,7 +229,8 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
           verification_urls: scenario.verificationUrls,
         },
   )
-  const { privateKey } = scenario.fault === "wrong-key" ? await keyPair(`${id}#other`) : await scenarioKey(id, scenario)
+  const { privateKey } =
+    scenario.fault === "wrong-key" ? await keyPair(`${id}#other`) : await scenarioKey(id, scenario)
   const signature = toBase64(await crypto.subtle.sign("Ed25519", privateKey, new TextEncoder().encode(body)))
   return new Response(body, {
     headers: {
@@ -274,9 +294,10 @@ const card = (id: string, scenario: Scenario) => {
       ? ""
       : `<details><summary>Change languages</summary><form action="/_languages/${id}"><input name="v" value="${escapeHtml(scenario.languages.join(","))}" placeholder="de_en,pl_en"><button>Set</button></form><p class="muted small">After a reload, dropped languages are struck through on the card. Edit languages shows added and removed ones.</p></details>`,
   ].join("")
-  const steps = scenario.steps === undefined
-    ? ""
-    : `<ol>${scenario.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>`
+  const steps =
+    scenario.steps === undefined
+      ? ""
+      : `<ol>${scenario.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>`
   return `<article id="${id}">
   <header><h3>${escapeHtml(scenario.name || "(no name)")}</h3><span class="muted small">${escapeHtml(id)}</span></header>
   <div class="address"><code>${address}</code><button type="button" data-copy="${address}">Copy</button></div>
@@ -331,7 +352,13 @@ input{font:12.5px ui-monospace,monospace;flex:1;min-width:0;padding:3px 6px;bord
 <div class="how"><b>How to test</b><ol>
 <li>Open the extension's settings and press <b>Add server</b>.</li>
 <li>Copy an address from a card below. A bare host like <code>localhost:8787/basic</code> works too.</li>
-<li>Compare what you see with <b>Expect</b>. Lookups answer with "&lt;word&gt; in &lt;lang&gt;, answered by &lt;server name&gt;". Only <code>pl_en</code> and <code>de_en</code> are picky: they know just ${Object.entries(VOCABULARY).map(([lang, words]) => `<code>${lang}</code>: ${words.join(", ")}`).join("; ")}. So a German word on a Polish page finds nothing in <code>pl_en</code>. Every other language answers any word.</li>
+<li>Compare what you see with <b>Expect</b>. Lookups answer with "&lt;word&gt; in &lt;lang&gt;, answered by &lt;server name&gt;". Only <code>pl_en</code> and <code>de_en</code> are picky: they know just ${Object.entries(
+      VOCABULARY,
+    )
+      .map(([lang, words]) => `<code>${lang}</code>: ${words.join(", ")}`)
+      .join(
+        "; ",
+      )}. So a German word on a Polish page finds nothing in <code>pl_en</code>. Every other language answers any word.</li>
 </ol><p class="muted small" style="margin:8px 0 0">Keys come from fixed seeds, so servers you added still verify after a restart or a reset. A reset does undo rotated keys, so a rotated server you trusted shows an identity change again.</p></div>
 ${body}
 </main>
@@ -350,7 +377,8 @@ document.addEventListener("click", (event) => {
 }
 
 /** Back to the card that was used, so the page does not jump to the top. */
-const backToIndex = (id: string | undefined) => Response.redirect(`${ORIGIN}/${id === undefined ? "" : `#${id}`}`, 303)
+const backToIndex = (id: string | undefined) =>
+  Response.redirect(`${ORIGIN}/${id === undefined ? "" : `#${id}`}`, 303)
 
 Bun.serve({
   port: PORT,
@@ -387,7 +415,10 @@ Bun.serve({
       } else if (first === "_unmove") {
         delete scenario.newSource
       } else if (first === "_languages") {
-        scenario.languages = (url.searchParams.get("v") ?? "").split(",").map((lang) => lang.trim()).filter(Boolean)
+        scenario.languages = (url.searchParams.get("v") ?? "")
+          .split(",")
+          .map((lang) => lang.trim())
+          .filter(Boolean)
       }
       console.log(`${first} ${second}`)
       return backToIndex(second)

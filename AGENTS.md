@@ -2,6 +2,10 @@
 
 Dict client lives in `src/lib/dict`. Protocol is `../Protocol.md`.
 
+## Formatting
+
+Prettier, configured in `.prettierrc.json`. Run `bun run format` after editing.
+
 ## Comments
 
 Match comments already in the tree.

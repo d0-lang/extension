@@ -1,5 +1,5 @@
-@import 'tailwindcss' source(none);
-@import '../../tokens.css';
+@import "tailwindcss" source(none);
+@import "../../tokens.css";
 
 @source './Popover.svelte';
 @source '../../lib/components/ui/kbd';
@@ -8,103 +8,103 @@
 
 /* A page can set any root font size, so nothing here may scale with rem. */
 @theme {
-	--font-sans: ui-sans-serif, system-ui, sans-serif;
-	--spacing: 4px;
-	--text-xs: 12px;
-	--text-sm: 14px;
-	--text-base: 16px;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --spacing: 4px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
 }
 
 @layer base {
-	* {
-		@apply border-border outline-ring/50;
-		/* Chrome 121+ and Firefox both read these, and Chrome then ignores `::-webkit-scrollbar`. */
-		scrollbar-width: thin;
-		scrollbar-color: var(--scrollbar) transparent;
-	}
+  * {
+    @apply border-border outline-ring/50;
+    /* Chrome 121+ and Firefox both read these, and Chrome then ignores `::-webkit-scrollbar`. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
 }
 
 .dict-popover {
-	--radius: 7px;
-	width: min(340px, calc(100vw - 16px));
-	/* Until the first measure sets the real cap. */
-	max-height: calc(100vh - 16px);
-	z-index: 2147483647;
+  --radius: 7px;
+  width: min(340px, calc(100vw - 16px));
+  /* Until the first measure sets the real cap. */
+  max-height: calc(100vh - 16px);
+  z-index: 2147483647;
 }
 
 .dict-popover.wide {
-	width: min(420px, calc(100vw - 16px));
+  width: min(420px, calc(100vw - 16px));
 }
 
 .dict-stress {
-	position: relative;
+  position: relative;
 }
 
 /* An acute drawn over the letter. Sized in em, so it follows the headword's size and sits above x-height. */
 .dict-stress::after {
-	content: '';
-	position: absolute;
-	left: 50%;
-	top: 0.1em;
-	width: 0.08em;
-	height: 0.26em;
-	border-radius: 0.04em;
-	background: currentColor;
-	transform: translateX(-20%) rotate(40deg);
-	pointer-events: none;
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.1em;
+  width: 0.08em;
+  height: 0.26em;
+  border-radius: 0.04em;
+  background: currentColor;
+  transform: translateX(-20%) rotate(40deg);
+  pointer-events: none;
 }
 
-.dict-stress[data-lift='1']::after {
-	top: -0.15em;
+.dict-stress[data-lift="1"]::after {
+  top: -0.15em;
 }
 
-.dict-stress[data-lift='2']::after {
-	top: -0.36em;
+.dict-stress[data-lift="2"]::after {
+  top: -0.36em;
 }
 
 .dict-playing {
-	display: inline-flex;
-	align-items: center;
-	gap: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .dict-playing > span {
-	width: 3px;
-	height: 3px;
-	border-radius: 9999px;
-	background: currentColor;
-	animation: dict-bounce 0.6s ease-in-out infinite;
-	/* Negative, so every dot is already mid-bounce on the first frame. */
-	animation-delay: -0.4s;
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: dict-bounce 0.6s ease-in-out infinite;
+  /* Negative, so every dot is already mid-bounce on the first frame. */
+  animation-delay: -0.4s;
 }
 
 .dict-playing > span:nth-child(2) {
-	animation-delay: -0.25s;
+  animation-delay: -0.25s;
 }
 
 .dict-playing > span:nth-child(3) {
-	animation-delay: -0.1s;
+  animation-delay: -0.1s;
 }
 
 @keyframes dict-bounce {
-	0%,
-	100% {
-		transform: translateY(2px);
-	}
-	50% {
-		transform: translateY(-3px);
-	}
+  0%,
+  100% {
+    transform: translateY(2px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.dict-playing > span {
-		animation: none;
-	}
+  .dict-playing > span {
+    animation: none;
+  }
 }
 
 .dict-underline {
-	height: 2px;
-	border-radius: 1px;
-	pointer-events: none;
-	z-index: 2147483647;
+  height: 2px;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2147483647;
 }

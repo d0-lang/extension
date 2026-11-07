@@ -9,8 +9,7 @@ export type LookupHints = {
 }
 
 // `de_en` is German to English. A detected `zh-Hant` is matched as `zh`.
-const baseLanguage = (code: string): string =>
-  code.toLowerCase().split(/[-_]/, 1)[0] ?? ""
+const baseLanguage = (code: string): string => code.toLowerCase().split(/[-_]/, 1)[0] ?? ""
 
 /**
  * Bound languages to try, in order.

@@ -11,8 +11,7 @@ const segmenters = new Map<string, Intl.Segmenter>()
 const segmenterFor = (locale: string | undefined): Intl.Segmenter => {
   const key = locale ?? ""
   const segmenter =
-    segmenters.get(key) ??
-    fromThrowable(() => createSegmenter(locale))().unwrapOr(createSegmenter(undefined))
+    segmenters.get(key) ?? fromThrowable(() => createSegmenter(locale))().unwrapOr(createSegmenter(undefined))
   segmenters.set(key, segmenter)
   return segmenter
 }

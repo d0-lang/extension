@@ -12,18 +12,12 @@ import {
 
 /** `name` and `url` are the ones now stored. `failed` changes nothing, since a server can be down for a moment. */
 export type CheckResult = { name: string; url: string } & (
-  | { kind: "ok" | "failed" }
-  | { kind: "moved"; movedFrom: string }
-  | { kind: ServerIssue["kind"] }
+  { kind: "ok" | "failed" } | { kind: "moved"; movedFrom: string } | { kind: ServerIssue["kind"] }
 )
 
-const fromUnknown = (cause: unknown): Error =>
-  cause instanceof Error ? cause : new Error(String(cause))
+const fromUnknown = (cause: unknown): Error => (cause instanceof Error ? cause : new Error(String(cause)))
 
-const checkServer = (
-  server: BoundServer,
-  mapped: Array<string>,
-): ResultAsync<CheckResult, Error> =>
+const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<CheckResult, Error> =>
   safeTry(async function* () {
     const result = await handshake(server.url)
     if (result.isErr()) {

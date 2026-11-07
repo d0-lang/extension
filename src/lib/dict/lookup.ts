@@ -41,9 +41,7 @@ const tryTargets = (
   safeTry(async function* () {
     const [target, ...rest] = targets
     if (target === undefined) {
-      return firstFailure !== undefined && !sawMiss
-        ? err(firstFailure)
-        : ok({ lang: undefined, entries: [] })
+      return firstFailure !== undefined && !sawMiss ? err(firstFailure) : ok({ lang: undefined, entries: [] })
     }
     const result = await lookup(
       target.url,
@@ -79,7 +77,10 @@ export const lookupWord = (
     if (targets.length === 0) {
       return err(noServerError())
     }
-    const ranked = rankLanguages(targets.map(({ lang }) => lang), hints)
+    const ranked = rankLanguages(
+      targets.map(({ lang }) => lang),
+      hints,
+    )
     return ok(
       yield* tryTargets(
         word,
