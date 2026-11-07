@@ -21,3 +21,26 @@ export const splitStress = (text: string): Array<{ text: string; stressed: boole
   }
   return parts
 }
+
+/** Letters whose dot the accent replaces, as in í. */
+const DOTLESS: Record<string, string> = { i: "ı", "і": "ı" }
+
+/** Combining marks that sit below the letter, which leave room for the accent. */
+const isMarkBelow = (mark: string): boolean => {
+  const code = mark.codePointAt(0) ?? 0
+  return code >= 0x316 && code <= 0x333
+}
+
+/**
+ * How to draw the accent over a stressed `letter`.
+ * `lift` is 1 over a capital or a mark above, like ї or ё, and 2 over both.
+ */
+export const stressedLetter = (letter: string): { text: string; lift: 0 | 1 | 2 } => {
+  const dotless = DOTLESS[letter]
+  if (dotless !== undefined) {
+    return { text: dotless, lift: 0 }
+  }
+  const upper = letter !== letter.toLowerCase()
+  const marked = [...letter.normalize("NFD").matchAll(/\p{M}/gu)].some(([mark]) => !isMarkBelow(mark))
+  return { text: letter, lift: upper && marked ? 2 : upper || marked ? 1 : 0 }
+}

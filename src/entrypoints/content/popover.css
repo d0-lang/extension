@@ -54,8 +54,12 @@
 	pointer-events: none;
 }
 
-.dict-stress.upper::after {
-	top: -0.12em;
+.dict-stress[data-lift='1']::after {
+	top: -0.15em;
+}
+
+.dict-stress[data-lift='2']::after {
+	top: -0.36em;
 }
 
 .dict-playing {

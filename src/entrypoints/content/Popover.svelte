@@ -17,7 +17,7 @@
   import { isTyping } from "./hold";
   import type { AnchorRect } from "./pick";
   import { placePopover, type Side } from "./position";
-  import { splitStress } from "./stress";
+  import { splitStress, stressedLetter } from "./stress";
 
   let {
     word,
@@ -498,8 +498,8 @@
 {/snippet}
 
 {#snippet stressed(text: string)}
-  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}<span
-        class={["dict-stress", part.text !== part.text.toLowerCase() && "upper"]}>{part.text}</span
+  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter =
+        stressedLetter(part.text)}<span class="dict-stress" data-lift={letter.lift}>{letter.text}</span
       >{:else}{part.text}{/if}{/each}
 {/snippet}
 

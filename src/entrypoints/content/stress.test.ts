@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { splitStress } from "./stress"
+import { splitStress, stressedLetter } from "./stress"
 
 describe("splitStress", () => {
   it("sets the stressed letter apart without its mark", () => {
@@ -31,5 +31,24 @@ describe("splitStress", () => {
 
   it("keeps a stray mark with nothing before it", () => {
     expect(splitStress("́а")).toEqual([{ text: "́а", stressed: false }])
+  })
+})
+
+describe("stressedLetter", () => {
+  it("drops the dot the accent replaces", () => {
+    expect(stressedLetter("і")).toEqual({ text: "ı", lift: 0 })
+    expect(stressedLetter("i")).toEqual({ text: "ı", lift: 0 })
+  })
+
+  it("lifts the accent over marks above and capitals", () => {
+    expect(stressedLetter("а")).toEqual({ text: "а", lift: 0 })
+    expect(stressedLetter("ї")).toEqual({ text: "ї", lift: 1 })
+    expect(stressedLetter("ё")).toEqual({ text: "ё", lift: 1 })
+    expect(stressedLetter("О")).toEqual({ text: "О", lift: 1 })
+    expect(stressedLetter("Ї")).toEqual({ text: "Ї", lift: 2 })
+  })
+
+  it("leaves it low over a mark below", () => {
+    expect(stressedLetter("ą")).toEqual({ text: "ą", lift: 0 })
   })
 })
