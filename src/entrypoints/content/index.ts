@@ -32,14 +32,15 @@ export default defineContentScript({
     let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined;
     // Building the UI is async, so a newer open or a close must cancel an older one.
     let latestOpen = 0;
-    // Lasts as long as this page does, so no list of visited sites gets stored.
+    // Both last as long as this page does, so no list of visited sites gets stored.
+    let pinned: string | undefined;
     let lastWorked: string | undefined;
     let enabled = false;
     let contextEnabled = false;
     const replies = new Map<string, LookupReply>();
 
     // `de_en` is read as German. Unset until a language has answered on this page.
-    const pageLocale = (): string | undefined => lastWorked?.split('_')[0];
+    const pageLocale = (): string | undefined => (pinned ?? lastWorked)?.split('_')[0];
 
     const close = () => {
       latestOpen++;
@@ -50,7 +51,7 @@ export default defineContentScript({
     const search = async (
       word: string,
       element: Element | null,
-      language?: string,
+      language: string | undefined = pinned,
       context?: LookupContext,
     ): Promise<LookupReply> => {
       const key = JSON.stringify([language, word, context]);
@@ -100,14 +101,16 @@ export default defineContentScript({
         search:
           word === '' || word.length > MAX_WORD_CHARS
             ? undefined
-            : (language?: string, target: string = word) =>
+            : (language?: string, target: string = word) => {
+                pinned = language ?? pinned;
                 // The sentence is around `word`, not around a followed link.
-                search(
+                return search(
                   target,
                   element,
-                  language,
+                  pinned,
                   target === word && context !== undefined ? { text: context.text, at: context.at } : undefined,
-                ),
+                );
+              },
         follow: (target: string, language: string | undefined) => search(target, element, language),
       };
       const ui = await createShadowRootUi(ctx, {
@@ -193,7 +196,7 @@ export default defineContentScript({
       if ('servers' in changes || 'serverByLang' in changes) {
         replies.clear();
       }
-      if ('contextSites' in changes) {
+      if ('contextSites' in changes || 'contextEnabled' in changes) {
         void syncContextEnabled();
       }
     });

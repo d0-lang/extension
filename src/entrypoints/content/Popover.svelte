@@ -39,7 +39,7 @@
     marks:
       | { rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>; dark: boolean }
       | undefined;
-    /** Unset when `word` cannot be looked up. A language applies to this lookup only. */
+    /** Unset when `word` cannot be looked up. A language becomes the default for the rest of this page. */
     search:
       | ((language?: string, target?: string) => Promise<LookupReply>)
       | undefined;
@@ -640,6 +640,7 @@
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   ]}
                   aria-pressed={active}
+                  title="Use {code} on this page"
                   onclick={() => switchLanguage(code)}
                 >
                   {code}

@@ -5,47 +5,20 @@
 	import { Button } from '$lib/components/ui/button'
 	import { Label } from '$lib/components/ui/label'
 	import { Switch } from '$lib/components/ui/switch'
-	import {
-		getContextEnabled,
-		getLookupEnabled,
-		getServerIssues,
-		setContextEnabled,
-		setLookupEnabled,
-	} from '$lib/storage'
+	import { getLookupEnabled, getServerIssues, setLookupEnabled } from '$lib/storage'
 
 	let lookupEnabled = $state(false)
 	let issueCount = $state(0)
-	/** Host of the active tab. Unset on pages the content script cannot run on. */
-	let host = $state<string>()
-	let contextEnabled = $state(false)
-
-	const activeHost = async (): Promise<string | undefined> => {
-		const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-		const url = URL.parse(tab?.url ?? '')
-		return url !== null && (url.protocol === 'https:' || url.protocol === 'http:') ? url.hostname : undefined
-	}
 
 	onMount(async () => {
-		const [enabled, issues, tabHost] = await Promise.all([getLookupEnabled(), getServerIssues(), activeHost()])
+		const [enabled, issues] = await Promise.all([getLookupEnabled(), getServerIssues()])
 		lookupEnabled = enabled
 		issueCount = Object.keys(issues).length
-		host = tabHost
-		if (tabHost !== undefined) {
-			contextEnabled = await getContextEnabled(tabHost)
-		}
 	})
 
 	const onToggle = async (checked: boolean) => {
 		lookupEnabled = checked
 		await setLookupEnabled(checked)
-	}
-
-	const onContextToggle = async (checked: boolean) => {
-		if (host === undefined) {
-			return
-		}
-		contextEnabled = checked
-		await setContextEnabled(host, checked)
 	}
 
 	const openSetup = () => {
@@ -63,19 +36,6 @@
 			onCheckedChange={(checked) => void onToggle(checked)}
 		/>
 	</div>
-	{#if host !== undefined}
-		<div class="flex items-center justify-between gap-4">
-			<div class="flex min-w-0 flex-col gap-0.5">
-				<Label for="context-enabled">Send sentences</Label>
-				<p class="text-muted-foreground truncate text-xs" title={host}>on {host}</p>
-			</div>
-			<Switch
-				id="context-enabled"
-				checked={contextEnabled}
-				onCheckedChange={(checked) => void onContextToggle(checked)}
-			/>
-		</div>
-	{/if}
 	{#if issueCount > 0}
 		<button
 			type="button"
