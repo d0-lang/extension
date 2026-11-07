@@ -7,6 +7,8 @@ type Scenario = {
   name: string
   languages: Array<string>
   verificationUrls: Array<string>
+  /** Protocol features listed in meta. */
+  features?: Array<string>
   /** Scenarios with the same group sign with the same key, as one server on two hosts would. */
   keyGroup?: string
   /** Body sent instead of metadata, pointing here. */
@@ -56,6 +58,21 @@ const scenarios: Record<string, Scenario> = {
     steps: ["Add basic first and tick Polish.", "Add this one and tick Polish too."],
     expect:
       'The list scrolls with the buttons still visible, and Select all shows. Polish reads "Used by Test Polish", then "Moves from Test Polish" once ticked.',
+  },
+  huge: {
+    name: "Huge Dictionary",
+    languages: [
+      ..."de fr es it pt nl pl uk ru cs sk sl hr sr bg ro hu fi et lv lt sv da no is ga cy el tr ar he fa hi bn ur ta te th vi id ms tl ja zh ko ka hy kk sw"
+        .split(" ")
+        .map((lang) => `${lang}_en`),
+      ..."en_de en_fr en_es en_ru en_uk en_pl ru_de uk_ru pl_de de_fr fr_de".split(" "),
+    ],
+    verificationUrls: [`${ORIGIN}/huge/news`],
+    features: ["context", "context-match"],
+    section: "adds",
+    summary: "Fifty languages into English, eleven into other languages, and it takes sentences.",
+    expect:
+      "Languages are grouped by the language they translate into. The list scrolls, Select all shows, and Sentences sits below it with All sites except blocked ones picked. Edit shows the choice that was saved.",
   },
   overlap: {
     name: "German and Polish",
@@ -227,6 +244,7 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
           nonce: scenario.fault === "bad-nonce" ? "stale" : nonce,
           languages: scenario.languages,
           verification_urls: scenario.verificationUrls,
+          ...(scenario.features === undefined ? {} : { features: scenario.features }),
         },
   )
   const { privateKey } =

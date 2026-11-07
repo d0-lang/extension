@@ -3,18 +3,28 @@
   import { Button } from "$lib/components/ui/button"
   import { Checkbox } from "$lib/components/ui/checkbox"
   import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "$lib/components/ui/dialog"
+  import { Input } from "$lib/components/ui/input"
   import { Label } from "$lib/components/ui/label"
-  import { pairName } from "$lib/languages"
+  import { RadioGroup, RadioGroupItem } from "$lib/components/ui/radio-group"
+  import { groupByTarget, pairMatches, pairName, sourceName } from "$lib/languages"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
 
   /** Past this many languages, ticking them one by one gets tedious. */
   const SELECT_ALL_FROM = 6
+  /** From this many languages, the list gets a filter and its own scroll, so what follows stays in view. */
+  const FILTER_FROM = 8
 
   let { setup }: { setup: ServerSetup } = $props()
 
   const draft = $derived(setup.draft)
   const languages = $derived(draft?.meta.languages ?? [])
+  let filter = $state("")
+  const groups = $derived(groupByTarget(languages.filter((lang) => pairMatches(lang, filter))))
+
+  const pickContext = (value: string) => {
+    setup.context = contextOptions.find((option) => option.value === value)?.value ?? setup.context
+  }
 
   const contextOptions = [
     { value: "all", label: "From all sites" },
@@ -73,7 +83,8 @@
     {#if languages.length === 0}
       <p class="text-muted-foreground">This server doesn't offer any languages yet.</p>
     {:else}
-      <div class="flex flex-col gap-1">
+      <!-- Only the list shrinks when the dialog is short, so the choices after it stay in view. -->
+      <div class="flex min-h-0 flex-col gap-2">
         <div class="flex items-center justify-between gap-2">
           <p class="font-medium">Languages</p>
           {#if languages.length >= SELECT_ALL_FROM}
@@ -82,55 +93,83 @@
             </Button>
           {/if}
         </div>
+        {#if languages.length >= FILTER_FROM}
+          <Input bind:value={filter} placeholder="Filter languages" aria-label="Filter languages" />
+        {/if}
+        <!-- A fixed height, so filtering does not resize the dialog. No top padding, since rows would show above the sticky heading. -->
         <!-- Only delegates arrow keys between the checkboxes inside. -->
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <ul class="-mx-2 flex flex-col" onkeydown={cycleFocus}>
-          {#each languages as lang (lang)}
-            {@const owner = setup.ownerElsewhere(lang)}
-            <li>
-              <Label
-                for={`lang-${lang}`}
-                class="hover:bg-muted/50 has-focus-visible:bg-muted/50 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
-              >
-                <Checkbox id={`lang-${lang}`} bind:checked={setup.selected[lang]} />
-                <span class="flex min-w-0 flex-1 flex-col gap-1">
-                  <span title={lang}>{pairName(lang)}</span>
-                  {#if owner !== undefined}
-                    <span
-                      class={[
-                        "text-xs wrap-anywhere",
-                        setup.selected[lang] ? "text-foreground font-medium" : "text-muted-foreground",
-                      ]}
+        <div
+          class={[
+            "flex flex-col",
+            languages.length >= FILTER_FROM
+              ? "h-72 min-h-36 overflow-y-auto overscroll-contain rounded-md border px-1 pb-1"
+              : "-mx-2",
+          ]}
+          role="group"
+          aria-label="Languages"
+          onkeydown={cycleFocus}
+        >
+          {#each groups as group (group.into)}
+            <!-- Its own box, so the heading stops sticking where the group ends. -->
+            <div>
+              <p class="bg-popover text-muted-foreground sticky top-0 z-10 px-2 py-1 text-xs font-medium">
+                Into {group.into}
+              </p>
+              <ul class="flex flex-col">
+                {#each group.pairs as lang (lang)}
+                  {@const owner = setup.ownerElsewhere(lang)}
+                  <li>
+                    <Label
+                      for={`lang-${lang}`}
+                      class="hover:bg-muted/50 has-focus-visible:bg-muted/50 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
                     >
-                      {setup.selected[lang] ? `Moves from ${owner}` : `Used by ${owner}`}
-                    </span>
-                  {/if}
-                </span>
-              </Label>
-            </li>
+                      <Checkbox id={`lang-${lang}`} bind:checked={setup.selected[lang]} />
+                      <span class="flex min-w-0 flex-1 flex-col gap-1">
+                        <span title={pairName(lang)}>{sourceName(lang)}</span>
+                        {#if owner !== undefined}
+                          <span
+                            class={[
+                              "text-xs wrap-anywhere",
+                              setup.selected[lang] ? "text-foreground font-medium" : "text-muted-foreground",
+                            ]}
+                          >
+                            {setup.selected[lang] ? `Moves from ${owner}` : `Used by ${owner}`}
+                          </span>
+                        {/if}
+                      </span>
+                    </Label>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {:else}
+            <p class="text-muted-foreground px-2 py-2">No languages match.</p>
           {/each}
-        </ul>
+        </div>
       </div>
     {/if}
 
     {#if draft.meta.features.includes("context")}
-      <fieldset class="flex flex-col gap-1">
-        <legend class="font-medium">Sentences</legend>
-        <p class="text-muted-foreground">
-          Send this server the whole sentence, not just the word, for more accurate results.
-        </p>
-        <div class="-mx-2 flex flex-col">
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-1">
+          <p class="font-medium" id="context-label">Sentences</p>
+          <p class="text-muted-foreground">
+            Send this server the whole sentence, not just the word, for more accurate results.
+          </p>
+        </div>
+        <RadioGroup
+          class="-mx-2 gap-0"
+          value={setup.context}
+          onValueChange={pickContext}
+          aria-labelledby="context-label"
+        >
           {#each contextOptions as option (option.value)}
             <Label
+              for={`context-${option.value}`}
               class="hover:bg-muted/50 has-focus-visible:bg-muted/50 cursor-pointer items-start gap-3 rounded-md px-2 py-2 font-normal"
             >
-              <input
-                type="radio"
-                name="context"
-                value={option.value}
-                bind:group={setup.context}
-                class="accent-primary mt-0.5 size-4 shrink-0 cursor-pointer"
-              />
+              <RadioGroupItem id={`context-${option.value}`} value={option.value} class="mt-0.5" />
               <span class="flex min-w-0 flex-col gap-1">
                 <span>{option.label}</span>
                 {#if "hint" in option}
@@ -139,8 +178,8 @@
               </span>
             </Label>
           {/each}
-        </div>
-      </fieldset>
+        </RadioGroup>
+      </div>
     {/if}
 
     {#if setup.genericError}

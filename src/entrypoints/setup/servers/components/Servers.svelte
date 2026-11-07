@@ -19,7 +19,7 @@
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "$lib/components/ui/dropdown-menu"
-  import { pairName } from "$lib/languages"
+  import { groupByTarget, pairName, sourceName } from "$lib/languages"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
@@ -31,6 +31,29 @@
     all: "Gets sentences from all sites",
     unblocked: "Gets sentences, except from blocked sites",
     none: "Gets no sentences",
+  }
+
+  /** Languages a card shows before folding the rest away. */
+  const FOLDED_LANGUAGES = 8
+  /** Folding away fewer than this many would save less than the button takes. */
+  const MIN_FOLDED_AWAY = 3
+
+  /** Server URLs whose cards show every language. */
+  let unfolded = $state<Record<string, boolean>>({})
+
+  const folds = (languages: ReadonlyArray<string>): boolean =>
+    languages.length - FOLDED_LANGUAGES >= MIN_FOLDED_AWAY
+
+  /** The groups a card shows, cut after the first few languages while it is folded. */
+  const shownGroups = (languages: ReadonlyArray<string>, folded: boolean) => {
+    let left = folded ? FOLDED_LANGUAGES : languages.length
+    return groupByTarget(languages)
+      .map((group) => {
+        const pairs = group.pairs.slice(0, left)
+        left -= pairs.length
+        return { ...group, pairs }
+      })
+      .filter((group) => group.pairs.length > 0)
   }
 
   onMount(() => {
@@ -119,20 +142,42 @@
                 {#if row.languages.length === 0}
                   <p class="text-muted-foreground text-sm">No languages selected</p>
                 {:else}
-                  <ul class="flex flex-wrap gap-1.5">
-                    {#each row.languages as lang (lang)}
-                      {@const unoffered = row.unoffered.includes(lang)}
-                      <li
-                        class={[
-                          "bg-muted rounded-full px-2.5 py-0.5 text-xs",
-                          unoffered && "text-muted-foreground line-through",
-                        ]}
-                        title={unoffered ? `${lang}: no longer offered by this server` : lang}
-                      >
-                        {pairName(lang)}
-                      </li>
+                  {@const folded = folds(row.languages) && unfolded[row.url] !== true}
+                  {@const groups = shownGroups(row.languages, folded)}
+                  <div class="flex flex-col gap-2">
+                    {#each groups as group, groupIndex (group.into)}
+                      <div class="flex flex-col gap-1.5">
+                        <p class="text-muted-foreground text-xs">Into {group.into}</p>
+                        <ul class="flex flex-wrap gap-1.5">
+                          {#each group.pairs as lang (lang)}
+                            {@const unoffered = row.unoffered.includes(lang)}
+                            <li
+                              class={[
+                                "bg-muted rounded-full px-2.5 py-0.5 text-xs",
+                                unoffered && "text-muted-foreground line-through",
+                              ]}
+                              title={unoffered
+                                ? `${pairName(lang)}: no longer offered by this server`
+                                : pairName(lang)}
+                            >
+                              {sourceName(lang)}
+                            </li>
+                          {/each}
+                          {#if groupIndex === groups.length - 1 && folds(row.languages)}
+                            <li>
+                              <button
+                                type="button"
+                                class="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full border px-2.5 py-0.5 text-xs"
+                                onclick={() => (unfolded[row.url] = folded)}
+                              >
+                                {folded ? `+${row.languages.length - FOLDED_LANGUAGES} more` : "Show less"}
+                              </button>
+                            </li>
+                          {/if}
+                        </ul>
+                      </div>
                     {/each}
-                  </ul>
+                  </div>
                 {/if}
                 {#if row.context !== undefined}
                   <p class="text-muted-foreground text-sm">{contextText[row.context]}</p>
