@@ -16,8 +16,8 @@
   import type { LookupEntry } from "$lib/dict/types"
   import type { LookupReply } from "$lib/messages"
   import { suspendAccessKeys } from "./accesskeys"
-  import { isTyping } from "./hold"
-  import type { AnchorRect } from "./pick"
+  import { isTyping } from "../hold"
+  import type { AnchorRect } from "../page/pick"
   import { placePopover, type Side } from "./position"
   import { splitStress, stressedLetter } from "./stress"
 

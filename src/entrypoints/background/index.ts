@@ -1,4 +1,4 @@
-import { checkServers, type CheckResult } from "$lib/check"
+import { checkServers, type CheckResult } from "./check"
 import { boundLanguages, lookupWord, rankLanguages } from "$lib/dict"
 import {
   isLookupRequestMessage,

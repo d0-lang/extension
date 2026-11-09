@@ -1,9 +1,9 @@
 <script lang="ts">
   import Logo from "$lib/components/Logo.svelte"
-  import Appearance from "./Appearance.svelte"
-  import Hotkeys from "./Hotkeys.svelte"
-  import Lookup from "./Lookup.svelte"
-  import Servers from "./servers"
+  import Appearance from "./sections/Appearance.svelte"
+  import Hotkeys from "./sections/Hotkeys.svelte"
+  import Lookup from "./sections/Lookup.svelte"
+  import Servers from "./sections/servers"
 </script>
 
 <div class="bg-background min-h-svh">

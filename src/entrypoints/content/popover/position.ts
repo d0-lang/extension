@@ -1,4 +1,4 @@
-import type { AnchorRect } from "./pick"
+import type { AnchorRect } from "../page/pick"
 
 const GAP_PX = 6
 const MARGIN_PX = 8

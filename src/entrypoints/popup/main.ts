@@ -1,7 +1,7 @@
 import { mount } from "svelte"
 import App from "./App.svelte"
 import { syncTheme } from "$lib/theme"
-import "../../app.css"
+import "../../styles/app.css"
 
 await syncTheme()
 

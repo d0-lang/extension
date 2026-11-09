@@ -6,7 +6,7 @@
   import { Input } from "$lib/components/ui/input"
   import { Label } from "$lib/components/ui/label"
   import { RadioGroup, RadioGroupItem } from "$lib/components/ui/radio-group"
-  import { groupByTarget, pairMatches, pairName, sourceName } from "$lib/languages"
+  import { groupByTarget, pairMatches, pairName, sourceName } from "../languages"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
 

@@ -1,5 +1,5 @@
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import type { WordHit } from "./pick"
+import type { WordHit } from "./page/pick"
 
 /** Sweeping across a sentence must not send every word to a server. */
 const SETTLE_MS = 120

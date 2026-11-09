@@ -9,7 +9,7 @@
     DialogHeader,
     DialogTitle,
   } from "$lib/components/ui/dialog"
-  import { pairName } from "$lib/languages"
+  import { pairName } from "../languages"
   import { ServerSetup } from "../ServerSetup.svelte"
 
   let { setup }: { setup: ServerSetup } = $props()

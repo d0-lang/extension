@@ -19,7 +19,7 @@
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "$lib/components/ui/dropdown-menu"
-  import { groupByTarget, pairName, sourceName } from "$lib/languages"
+  import { groupByTarget, pairName, sourceName } from "../languages"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"

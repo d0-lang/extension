@@ -1,7 +1,7 @@
 /** Server check on client start: the protocol fetches metadata again whenever the client starts. */
 import { ResultAsync, ok, safeTry } from "neverthrow"
-import { handshake } from "./dict"
-import { toError } from "./errors"
+import { handshake } from "$lib/dict"
+import { toError } from "$lib/errors"
 import {
   bindServer,
   getServerByLang,
@@ -9,7 +9,7 @@ import {
   setServerIssue,
   type BoundServer,
   type ServerIssue,
-} from "./storage"
+} from "$lib/storage"
 
 /** `name` and `url` are the ones now stored. `failed` changes nothing, since a server can be down for a moment. */
 export type CheckResult = { name: string; url: string } & (

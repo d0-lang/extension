@@ -1,5 +1,5 @@
 /* Only `src`, so a build without `.gitignore`, like the one from the sources zip, finds the same classes. */
-@import "tailwindcss" source("./");
+@import "tailwindcss" source("../");
 @import "tw-animate-css";
 @import "shadcn-svelte/tailwind.css";
 @import "@fontsource-variable/geist";

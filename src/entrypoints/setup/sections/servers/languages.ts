@@ -1,5 +1,5 @@
 /** Human names for language pairs, in the browser's language. */
-import type { LanguagePair } from "./storage"
+import type { LanguagePair } from "$lib/storage"
 
 const names = new Intl.DisplayNames(undefined, { type: "language", fallback: "code" })
 

@@ -3,7 +3,7 @@ import type { LookupContext } from "$lib/dict/api"
 import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from "$lib/messages"
 import { getLookupEnabled, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
-import { contextText, detectLanguages } from "./context"
+import { contextText, detectLanguages } from "./page/language"
 import { watchAltHold } from "./hold"
 import {
   MAX_WORD_CHARS,
@@ -14,11 +14,11 @@ import {
   wordAt,
   type AnchorRect,
   type Picked,
-} from "./pick"
-import { isDarkBehind } from "./scheme"
-import { sentenceAround, type Sentence } from "./sentence"
-import Popover from "./Popover.svelte"
-import "./popover.css"
+} from "./page/pick"
+import { isDarkBehind } from "./page/scheme"
+import { sentenceAround, type Sentence } from "./page/sentence"
+import Popover from "./popover/Popover.svelte"
+import "./popover/popover.css"
 
 const NO_ANCHOR = { top: 8, bottom: 8, left: 8, right: 8 }
 const MAX_CACHED_REPLIES = 200

@@ -1,8 +1,8 @@
 @import "tailwindcss" source(none);
-@import "../../tokens.css";
+@import "../../../styles/tokens.css";
 
 @source './Popover.svelte';
-@source '../../lib/components/ui/kbd';
+@source '../../../lib/components/ui/kbd';
 
 @custom-variant dark (&:is(.dark *));
 
