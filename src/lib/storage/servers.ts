@@ -1,7 +1,9 @@
-/** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, server issues, and sites blocked from sending context.
- *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
+/**
+ * Bound servers, which server answers each language, and unresolved server issues.
+ * `bindServer` writes one server record and remaps the selected language pairs onto it.
+ */
 import { ResultAsync } from "neverthrow"
-import { toError } from "./errors"
+import { toError } from "../errors"
 
 /** Language pair advertised by a dictionary server, e.g. `de_en`. */
 export type LanguagePair = string
@@ -35,83 +37,10 @@ export type ServerIssue = { kind: "identity" | "broken" }
 /** Server URL → its unresolved issue. */
 export type ServerIssues = Record<string, ServerIssue>
 
-/** Host → `false` where lookups do not send the sentence around the word. A host also covers its subdomains. Any `true` is left from older builds and ignored. */
-export type ContextSites = Record<string, boolean>
-
-/** `system` follows the OS colour scheme. */
-export type Theme = "system" | "light" | "dark"
-
-const themes: ReadonlyArray<string> = ["system", "light", "dark"] satisfies Array<Theme>
-
 const empty = {
-  lookupEnabled: true,
-  showIpa: true,
-  theme: "system" as Theme,
   servers: {} as Servers,
   serverByLang: {} as ServerByLang,
   serverIssues: {} as ServerIssues,
-  contextSites: {} as ContextSites,
-}
-
-export const getLookupEnabled = async (): Promise<boolean> => {
-  const { lookupEnabled } = await browser.storage.local.get("lookupEnabled")
-  return typeof lookupEnabled === "boolean" ? lookupEnabled : empty.lookupEnabled
-}
-
-export const setLookupEnabled = async (lookupEnabled: boolean): Promise<void> => {
-  await browser.storage.local.set({ lookupEnabled })
-}
-
-export const getShowIpa = async (): Promise<boolean> => {
-  const { showIpa } = await browser.storage.local.get("showIpa")
-  return typeof showIpa === "boolean" ? showIpa : empty.showIpa
-}
-
-export const setShowIpa = async (showIpa: boolean): Promise<void> => {
-  await browser.storage.local.set({ showIpa })
-}
-
-export const getTheme = async (): Promise<Theme> => {
-  const { theme } = await browser.storage.local.get("theme")
-  return typeof theme === "string" && themes.includes(theme) ? (theme as Theme) : empty.theme
-}
-
-export const setTheme = async (theme: Theme): Promise<void> => {
-  await browser.storage.local.set({ theme })
-}
-
-export const getContextSites = async (): Promise<ContextSites> => {
-  const { contextSites } = await browser.storage.local.get("contextSites")
-  return contextSites !== undefined && typeof contextSites === "object" && !Array.isArray(contextSites)
-    ? (contextSites as ContextSites)
-    : empty.contextSites
-}
-
-const covers = (blocked: string, host: string): boolean => host === blocked || host.endsWith(`.${blocked}`)
-
-/** Blocked hosts, without what `keep` rejects. */
-const blockedSites = (sites: ContextSites, keep: (blocked: string) => boolean): ContextSites =>
-  Object.fromEntries(Object.entries(sites).filter(([blocked, on]) => on === false && keep(blocked)))
-
-/** Whether `host` or a parent domain of it is blocked. */
-export const isSiteBlocked = async (host: string): Promise<boolean> =>
-  Object.keys(blockedSites(await getContextSites(), (blocked) => covers(blocked, host))).length > 0
-
-/** Blocks `host` without `www.`, replacing the entries it covers. */
-export const blockContextSite = async (host: string): Promise<void> => {
-  const site = host.replace(/^www\./, "")
-  await browser.storage.local.set({
-    contextSites: {
-      ...blockedSites(await getContextSites(), (blocked) => !covers(site, blocked)),
-      [site]: false,
-    },
-  })
-}
-
-/** Unblocks this one entry. A parent domain can still block `host`. */
-export const removeContextSite = async (host: string): Promise<void> => {
-  const { [host]: _old, ...rest } = await getContextSites()
-  await browser.storage.local.set({ contextSites: rest })
 }
 
 export const getServers = async (): Promise<Servers> => {

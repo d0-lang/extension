@@ -1,10 +1,8 @@
-import { mount, unmount } from "svelte"
-import type { LookupContext } from "$lib/dict/api"
-import { isOpenLookupMessage, requestLookup, type LookupReply, type OpenLookupMessage } from "$lib/messages"
+import { isOpenLookupMessage, type OpenLookupMessage } from "$lib/messages"
 import { getLookupEnabled, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
-import { contextText, detectLanguages } from "./page/language"
 import { watchAltHold } from "./hold"
+import { createPopoverHost } from "./mount"
 import {
   MAX_WORD_CHARS,
   pickAt,
@@ -17,11 +15,9 @@ import {
 } from "./page/pick"
 import { isDarkBehind } from "./page/scheme"
 import { sentenceAround, type Sentence } from "./page/sentence"
-import Popover from "./popover/Popover.svelte"
-import "./popover/popover.css"
+import { createSession } from "./session"
 
 const NO_ANCHOR = { top: 8, bottom: 8, left: 8, right: 8 }
-const MAX_CACHED_REPLIES = 200
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -29,115 +25,45 @@ export default defineContentScript({
   cssInjectionMode: "ui",
   main(ctx) {
     let picked: Picked | undefined
-    let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined
-    // Building the UI is async, so a newer open or a close must cancel an older one.
-    let latestOpen = 0
-    // Both last as long as this page does, so no list of visited sites gets stored.
-    let pinned: string | undefined
-    let lastWorked: string | undefined
     let enabled = false
-    const replies = new Map<string, LookupReply>()
+    const session = createSession()
+    const popover = createPopoverHost(ctx)
 
-    // `de_en` is read as German. Unset until a language has answered on this page.
-    const pageLocale = (): string | undefined => (pinned ?? lastWorked)?.split("_")[0]
-
-    const close = () => {
-      latestOpen++
-      current?.remove()
-      current = undefined
-    }
-
-    const search = async (
-      word: string,
-      element: Element | null,
-      language: string | undefined = pinned,
-      context?: LookupContext,
-    ): Promise<LookupReply> => {
-      const key = JSON.stringify([language, word, context])
-      const cached = replies.get(key)
-      if (cached !== undefined) {
-        return cached
-      }
-      const reply = await requestLookup(
-        word,
-        {
-          pinned: language,
-          detected: language === undefined ? await detectLanguages(contextText(element)) : [],
-          lastWorked,
-        },
-        context,
-      )
-      if (reply.ok && reply.lang !== undefined) {
-        lastWorked = reply.lang
-      }
-      // A failure may be temporary, so only answers are kept.
-      if (reply.ok) {
-        replies.set(key, reply)
-        for (const oldest of replies.keys()) {
-          if (replies.size <= MAX_CACHED_REPLIES) {
-            break
-          }
-          replies.delete(oldest)
-        }
-      }
-      return reply
-    }
-
-    const open = async (
+    const open = (
       word: string,
       anchor: AnchorRect,
       element: Element | null,
       underlined: boolean,
       context: Sentence | undefined,
-    ) => {
-      close()
-      const thisOpen = latestOpen
-      const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()])
-      const props = {
-        word,
-        anchor,
-        dark: isDark(theme),
-        showIpa,
-        underline: underlined ? { rect: anchor, dark: isDarkBehind(element) } : undefined,
-        marks:
-          context === undefined
-            ? undefined
-            : { rectsOf: context.rectsOf, offsetIn: context.offsetIn, dark: isDarkBehind(element) },
-        search:
-          word === "" || word.length > MAX_WORD_CHARS
-            ? undefined
-            : (language?: string, target: string = word) => {
-                pinned = language ?? pinned
-                // The sentence is around `word`, not around a followed link.
-                return search(
-                  target,
-                  element,
-                  pinned,
-                  target === word && context !== undefined
-                    ? { text: context.text, at: context.at }
-                    : undefined,
-                )
-              },
-        follow: (target: string, language: string | undefined) => search(target, element, language),
-      }
-      const ui = await createShadowRootUi(ctx, {
-        name: "dict-lookup-popover",
-        position: "inline",
-        // Not the body: a transform on it would break the popover's fixed position.
-        anchor: document.documentElement,
-        onMount: (target) => mount(Popover, { target, props }),
-        onRemove: (app) => {
-          if (app !== undefined) {
-            void unmount(app)
-          }
-        },
+    ) =>
+      popover.show(async () => {
+        const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()])
+        return {
+          word,
+          anchor,
+          dark: isDark(theme),
+          showIpa,
+          underline: underlined ? { rect: anchor, dark: isDarkBehind(element) } : undefined,
+          marks:
+            context === undefined
+              ? undefined
+              : { rectsOf: context.rectsOf, offsetIn: context.offsetIn, dark: isDarkBehind(element) },
+          search:
+            word === "" || word.length > MAX_WORD_CHARS
+              ? undefined
+              : (language?: string, target: string = word) =>
+                  // The sentence is around `word`, not around a followed link.
+                  session.search(
+                    target,
+                    element,
+                    session.pin(language),
+                    target === word && context !== undefined
+                      ? { text: context.text, at: context.at }
+                      : undefined,
+                  ),
+          follow: (target: string, language: string | undefined) => session.search(target, element, language),
+        }
       })
-      if (thisOpen !== latestOpen) {
-        return
-      }
-      ui.mount()
-      current = { host: ui.shadowHost, shadow: ui.shadow, remove: ui.remove }
-    }
 
     ctx.addEventListener(
       window,
@@ -147,7 +73,7 @@ export default defineContentScript({
           event.clientX,
           event.clientY,
           event.target instanceof Element ? event.target : null,
-          pageLocale(),
+          session.locale(),
         )
       },
       { capture: true },
@@ -156,8 +82,8 @@ export default defineContentScript({
       window,
       "pointerdown",
       (event) => {
-        if (current !== undefined && !event.composedPath().includes(current.host)) {
-          close()
+        if (popover.isOpen() && !popover.contains(event)) {
+          popover.close()
         }
       },
       { capture: true },
@@ -167,7 +93,7 @@ export default defineContentScript({
       "keydown",
       (event) => {
         if (event.key === "Escape") {
-          close()
+          popover.close()
         }
       },
       { capture: true },
@@ -197,18 +123,18 @@ export default defineContentScript({
       }
       // A server's sentence setting and the blocked sites decide what an answer was based on.
       if ("servers" in changes || "serverByLang" in changes || "contextSites" in changes) {
-        replies.clear()
+        session.clearReplies()
       }
     })
 
     watchAltHold(ctx, {
       isEnabled: () => enabled,
-      wordAt: (x, y) => wordAt(x, y, pageLocale()),
-      isOverPopover: (x, y) => current !== undefined && document.elementFromPoint(x, y) === current.host,
-      popoverScroller: () => current?.shadow.querySelector("[data-popover-scroll]") ?? undefined,
+      wordAt: (x, y) => wordAt(x, y, session.locale()),
+      isOverPopover: popover.isAt,
+      popoverScroller: popover.scroller,
       show: ({ word, anchor, element, range }) =>
-        void open(word, anchor, element, true, sentenceAround(range, word, pageLocale())),
-      close,
+        void open(word, anchor, element, true, sentenceAround(range, word, session.locale())),
+      close: popover.close,
     })
   },
 })
