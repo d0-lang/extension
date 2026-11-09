@@ -16,6 +16,20 @@ const segmenterFor = (locale: string | undefined): Intl.Segmenter => {
   return segmenter
 }
 
+/** Whether the segmenter's piece is a word a dictionary could have. It counts numbers as words too. */
+const isWord = (segment: Intl.SegmentData): boolean =>
+  segment.isWordLike === true && /\p{L}/u.test(segment.segment)
+
+/** `text` cut into words and what lies between them, in order. `locale` is the language of the text, if known. */
+export const segmentsOf = (
+  text: string,
+  locale: string | undefined = undefined,
+): Array<{ text: string; word: boolean }> =>
+  Array.from(segmenterFor(locale).segment(text), (segment) => ({
+    text: segment.segment,
+    word: isWord(segment),
+  }))
+
 /**
  * Word spans around a caret offset, nearest first. `locale` is the language of the text, if known.
  * A caret in the right half of a letter sits after it, so the word before the caret also counts.
@@ -29,8 +43,7 @@ export const tokensAt = (
   const segments = segmenterFor(locale).segment(text)
   return [offset, offset - 1].flatMap((position) => {
     const segment = segments.containing(position)
-    // The segmenter also counts numbers as words, and a dictionary has nothing for those.
-    return segment?.isWordLike === true && /\p{L}/u.test(segment.segment)
+    return segment !== undefined && isWord(segment)
       ? [{ start: segment.index, end: segment.index + segment.segment.length }]
       : []
   })

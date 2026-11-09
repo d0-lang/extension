@@ -24,7 +24,6 @@
 
 [data-dadict-captions] > span {
   pointer-events: auto;
-  cursor: pointer;
   padding: 0.05em 0.3em;
   border-radius: 0.15em;
   background: rgb(8 8 8 / 0.75);
@@ -32,12 +31,20 @@
   -webkit-box-decoration-break: clone;
 }
 
-[data-dadict-captions] > span::selection {
-  background: rgb(255 255 255 / 0.3);
+/* Context for the line being said, so it steps back a little. */
+[data-dadict-captions] > [data-before] {
+  color: rgb(255 255 255 / 0.75);
 }
 
-::highlight(dadict-caption-hover) {
-  background-color: rgb(255 255 255 / 0.25);
+/* An inline box like the line's, so the hover is as tall as the dark background. */
+[data-dadict-captions] [data-word] {
+  cursor: pointer;
+  border-radius: 0.15em;
+}
+
+[data-dadict-captions] [data-word]:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 0.25);
 }
 
 .html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {

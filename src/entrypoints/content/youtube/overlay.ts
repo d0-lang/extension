@@ -1,9 +1,9 @@
-/** The cue shown inside the player, in the page's own DOM so picking a word, its sentence and Alt work on it as on any text. */
+/** The cues shown inside the player, in the page's own DOM so a word's sentence and Alt work on them as on any text. */
 import type { WordHit } from "../page/pick"
+import { segmentsOf } from "../page/tokenize"
 import css from "./overlay.css?inline"
 
 const STYLE_ID = "dadict-captions-style"
-const HOVER = "dadict-caption-hover"
 
 /** Of the player's height, like YouTube's own captions. */
 const SIZE_RATIO = 0.045
@@ -22,15 +22,10 @@ const SWALLOWED = [
   "touchend",
 ]
 
-type OverlayOptions = {
-  wordAt: (x: number, y: number) => WordHit | undefined
-  onWord: (hit: WordHit) => void
-}
-
 export type Overlay = {
   player: HTMLElement
-  /** `undefined` hides the overlay until the next cue. */
-  show: (text: string | undefined, lang: string) => void
+  /** One cue per line, oldest first. None hides the overlay until the next cue. */
+  show: (lines: ReadonlyArray<string>, lang: string) => void
   contains: (event: Event) => boolean
   remove: () => void
 }
@@ -44,16 +39,40 @@ const addStyle = () => {
   }
 }
 
-const clearHover = () => CSS.highlights?.delete(HOVER)
+/** A line with each word in its own span, so hovering and clicking a word need no hit testing. */
+const lineOf = (text: string, lang: string): HTMLElement => {
+  const line = document.createElement("span")
+  for (const segment of segmentsOf(text, lang)) {
+    if (segment.word) {
+      const word = document.createElement("span")
+      word.dataset.word = ""
+      word.textContent = segment.text
+      line.append(word)
+    } else {
+      line.append(segment.text)
+    }
+  }
+  return line
+}
+
+const hitOn = (word: HTMLElement): WordHit | undefined => {
+  const text = word.firstChild
+  if (!(text instanceof Text)) {
+    return undefined
+  }
+  const range = document.createRange()
+  range.setStart(text, 0)
+  range.setEnd(text, text.length)
+  const { top, bottom, left, right } = range.getBoundingClientRect()
+  return { word: text.data, anchor: { top, bottom, left, right }, element: word, range }
+}
 
 /** Adds the overlay to `player`, which hides YouTube's own captions while it is there. */
-export const createOverlay = (player: HTMLElement, { wordAt, onWord }: OverlayOptions): Overlay => {
+export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => void): Overlay => {
   addStyle()
   const root = document.createElement("div")
   root.dataset.dadictCaptions = ""
   root.hidden = true
-  const line = document.createElement("span")
-  root.append(line)
   player.append(root)
 
   const resize = new ResizeObserver(() => {
@@ -69,41 +88,42 @@ export const createOverlay = (player: HTMLElement, { wordAt, onWord }: OverlayOp
   resize.observe(player)
 
   for (const type of SWALLOWED) {
-    line.addEventListener(type, (event) => event.stopPropagation())
+    root.addEventListener(type, (event) => event.stopPropagation())
   }
-  line.addEventListener("click", (event) => {
-    const hit = wordAt(event.clientX, event.clientY)
+  root.addEventListener("click", (event) => {
+    const word = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-word]") : null
+    const hit = word === null ? undefined : hitOn(word)
     if (hit !== undefined) {
       onWord(hit)
     }
   })
-  line.addEventListener("pointermove", (event) => {
-    const hit = wordAt(event.clientX, event.clientY)
-    if (hit === undefined) {
-      clearHover()
-    } else {
-      CSS.highlights?.set(HOVER, new Highlight(hit.range))
-    }
-  })
-  line.addEventListener("pointerleave", clearHover)
 
-  let shown: string | undefined
+  let shown = ""
   return {
     player,
-    show: (text, lang) => {
-      root.hidden = text === undefined
-      if (text !== undefined && (text !== shown || root.lang !== lang)) {
-        shown = text
-        root.lang = lang
-        line.textContent = text
-        // The highlighted word went with the old text.
-        clearHover()
+    show: (lines, lang) => {
+      root.hidden = lines.length === 0
+      const key = JSON.stringify([lang, lines])
+      if (lines.length === 0 || key === shown) {
+        return
       }
+      shown = key
+      root.lang = lang
+      // A break, not a block per line, so the sentence around a word can run on from the line above.
+      root.replaceChildren(
+        ...lines.flatMap((text, index) => {
+          const line = lineOf(text, lang)
+          if (index < lines.length - 1) {
+            line.dataset.before = ""
+            return [line, document.createElement("br")]
+          }
+          return [line]
+        }),
+      )
     },
     contains: (event) => event.composedPath().includes(root),
     remove: () => {
       resize.disconnect()
-      clearHover()
       root.remove()
     },
   }

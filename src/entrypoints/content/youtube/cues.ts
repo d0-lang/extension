@@ -5,11 +5,11 @@ export type Cue = { startMs: number; endMs: number; text: string }
 
 type Word = { text: string; startMs: number; speakerChange: boolean }
 
-/** About two lines of 37 Latin letters. A wide character, like a kanji, counts as two. */
-export const MAX_WIDTH = 74
+/** One line of about 42 Latin letters. A wide character, like a kanji, counts as two. */
+export const MAX_WIDTH = 42
 
 /** A shorter cue takes in the next sentence rather than flash by alone. */
-const MIN_WIDTH = 20
+const MIN_WIDTH = 16
 
 /** Between the starts of two words, so it takes in the first word as well as the silence. */
 const PAUSE_MS = 1500
@@ -29,6 +29,9 @@ const GLUED_COST_MS = 4000
 
 /** How long a cue stays after its last word starts, unless the next cue comes first. */
 const TAIL_MS = 2000
+
+/** Silence after which the cue before is no longer context for the one showing. */
+const STALE_MS = 3000
 
 // Japanese auto captions have no punctuation, but polite endings close most sentences.
 const SENTENCE_END = /(?:[.!?…。！？]["'»”)]*|です|ます|ました|でした|ません|ください)$/u
@@ -175,8 +178,7 @@ const creatorCues = (json3: Json3): Array<Cue> => {
 /** Cues in the order they show, none overlapping. `asr` is whether the track is YouTube's auto captions. */
 export const cuesOf = (json3: Json3, asr: boolean): Array<Cue> => (asr ? asrCues(json3) : creatorCues(json3))
 
-/** The cue showing at `ms`, if any. */
-export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => {
+const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
   let low = 0
   let high = cues.length - 1
   while (low <= high) {
@@ -187,8 +189,32 @@ export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => 
     } else if (ms >= cue.endMs) {
       low = middle + 1
     } else {
-      return cue
+      return middle
     }
   }
   return undefined
+}
+
+/** The cue showing at `ms`, if any. */
+export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => {
+  const index = indexAt(cues, ms)
+  return index === undefined ? undefined : cues[index]
+}
+
+/**
+ * The cues to show at `ms`, oldest first: the one showing, and the one before it for context.
+ * The one before stays out after a silence, and when the two would take more than two lines.
+ */
+export const shownAt = (cues: ReadonlyArray<Cue>, ms: number): Array<Cue> => {
+  const index = indexAt(cues, ms)
+  if (index === undefined) {
+    return []
+  }
+  const current = cues[index]!
+  const before = cues[index - 1]
+  return before !== undefined &&
+    current.startMs - before.endMs < STALE_MS &&
+    width(before.text) + width(current.text) <= 2 * MAX_WIDTH
+    ? [before, current]
+    : [current]
 }
