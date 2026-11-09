@@ -11,7 +11,10 @@ import type { LookupEntry } from "$lib/dict/types"
 import type { LookupReply } from "$lib/messages"
 
 /** `clicked` are the parts the looked-up word is in, when the split is of a longer word around it. */
-export type Split = { whole: Array<LookupEntry>; parts: Array<SegmentPart>; clicked: Array<number> }
+export type Split = { parts: Array<SegmentPart>; clicked: Array<number> }
+
+/** The first part with entries, which holds the whole word's own entries when there are any. */
+export const firstTab = (split: Split): number => split.parts.findIndex((part) => part.entries.length > 0)
 
 /** The language that answered, or the only one asked when it did not. Unset when several were asked and none answered. */
 export const shownLanguage = (result: LookupReply): string | undefined =>
@@ -26,6 +29,7 @@ export const shownEntries = (result: LookupReply, word: string, followed: boolea
 }
 
 /**
+ * The whole word's own entries go first in the first part, so they show before any tab is picked.
  * Unset for a followed link, whose entries no longer line up with the indexes, and for a split into one part.
  * `offsetIn` finds where `word` starts inside the longer word around it, when it can tell.
  */
@@ -38,17 +42,19 @@ export const shownSplit = (
   if (!result.ok || followed || result.segments === undefined) {
     return undefined
   }
-  const split = splitBySegments(result.entries, result.segments)
-  if (split.parts.length < 2) {
+  const { whole: wholeEntries, parts } = splitBySegments(result.entries, result.segments)
+  const [first, ...rest] = parts
+  if (first === undefined || rest.length === 0) {
     return undefined
   }
+  const merged = [{ ...first, entries: [...wholeEntries, ...first.entries] }, ...rest]
   const whole = splitWord(result.entries, word)
   if (whole === word) {
-    return { ...split, clicked: [] }
+    return { parts: merged, clicked: [] }
   }
   const start = offsetIn?.(whole) ?? whole.indexOf(word)
-  const texts = split.parts.map(({ text }) => text)
-  return { ...split, clicked: partsCovering(texts, start, start + word.length) }
+  const texts = parts.map(({ text }) => text)
+  return { parts: merged, clicked: partsCovering(texts, start, start + word.length) }
 }
 
 export const errorText = (error: DictError): string => {

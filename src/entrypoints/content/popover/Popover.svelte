@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte"
   import ArrowLeft from "@lucide/svelte/icons/arrow-left"
-  import type { LookupEntry } from "$lib/dict/types"
   import type { LookupReply } from "$lib/messages"
   import type { AnchorRect } from "../page/pick"
   import { AudioPlayer } from "./audio.svelte"
@@ -9,8 +8,8 @@
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
-  import { errorText, shownEntries, shownLanguage, shownSplit } from "./reply"
-  import Segments from "./Segments.svelte"
+  import { errorText, firstTab, shownEntries, shownLanguage, shownSplit } from "./reply"
+  import SegmentTabs from "./SegmentTabs.svelte"
   import Underlines from "./Underlines.svelte"
 
   let {
@@ -44,16 +43,19 @@
     follow: (target: string, language: string | undefined) => Promise<LookupReply>
   } = $props()
 
-  /** `followed` shows only the entries whose lemma is `word`. `scrollTop` is where Back left it. */
+  /** `followed` shows only the entries whose lemma is `word`. `scrollTop` and `tab` are where Back left it. */
   type View = {
     word: string
     followed: boolean
     reply: Promise<LookupReply> | undefined
     scrollTop?: number
+    tab?: number
   }
 
   let view = $state.raw<View>(untrack(() => ({ word, followed: false, reply: search?.() })))
   let history = $state.raw<Array<View>>([])
+  /** The split word's tab picked in this view. Kept out of `view`, which would rebuild the reply on every pick. */
+  let tab = $state<number>()
   /** The parts of the sentence the first context entry covers, while the looked-up word is shown. */
   let matched = $state.raw<Array<AnchorRect>>([])
 
@@ -145,29 +147,36 @@
     }
   }
 
-  const followLink = (target: string, language: string | undefined) => {
+  /** Stops the popover moving away from the cursor once the content starts changing under it. */
+  const lockPlace = () => {
     lock ??= { side: place.side, minHeight: element?.offsetHeight ?? 0 }
-    history = [...history, { ...view, scrollTop: scroller?.scrollTop }]
-    view = { word: target, followed: true, reply: follow(target, language) }
   }
 
-  const scrollToSegment = (index: number) => {
+  const followLink = (target: string, language: string | undefined) => {
+    lockPlace()
+    history = [...history, { ...view, scrollTop: scroller?.scrollTop, tab }]
+    view = { word: target, followed: true, reply: follow(target, language) }
+    tab = undefined
+  }
+
+  const pickTab = (next: number) => {
+    lockPlace()
+    tab = next
     const target = shownScroller()
-    const section = target?.querySelector(`[data-segment="${index}"]`)
-    if (target === undefined || section === null || section === undefined) {
-      return
+    if (target !== undefined) {
+      target.scrollTop = 0
     }
-    // Not `scrollIntoView`, which can scroll the page behind the popover too.
-    target.scrollTop += section.getBoundingClientRect().top - target.getBoundingClientRect().top
   }
 
   const goBack = () => {
     view = history.at(-1) ?? view
+    tab = view.tab
     history = history.slice(0, -1)
   }
 
   const switchLanguage = (target: string) => {
     language = target
+    tab = undefined
     view = {
       ...view,
       reply: search?.(target, view.word),
@@ -256,6 +265,7 @@
         {@const entries = shownEntries(result, view.word, view.followed)}
         {@const shown = shownLanguage(result)}
         {@const split = shownSplit(result, view.word, view.followed, marks?.offsetIn)}
+        {@const shownTab = split === undefined ? undefined : (tab ?? firstTab(split))}
         {#if !result.ok}
           <p class="text-destructive px-3 py-2 wrap-anywhere" role="alert">
             {errorText(result.error)}
@@ -265,19 +275,24 @@
             No entries for {view.word}{shown === undefined ? "" : ` in ${shown}`}.
           </p>
         {:else}
-          {#snippet entryList(list: Array<LookupEntry>)}
-            <EntryList entries={list} language={result.lang} {showIpa} {audio} follow={followLink} />
-          {/snippet}
+          {#if split !== undefined && shownTab !== undefined}
+            <SegmentTabs {split} tab={shownTab} pick={pickTab} />
+          {/if}
           <div
             {@attach restoreScroll}
             data-popover-scroll
+            role={split === undefined ? undefined : "tabpanel"}
             class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
-            {#if split === undefined}
-              {@render entryList(entries)}
-            {:else}
-              <Segments {split} {entryList} jump={scrollToSegment} />
-            {/if}
+            <EntryList
+              entries={split === undefined || shownTab === undefined
+                ? entries
+                : (split.parts[shownTab]?.entries ?? [])}
+              language={result.lang}
+              {showIpa}
+              {audio}
+              follow={followLink}
+            />
           </div>
         {/if}
         {#if result.languages.length > 1}
