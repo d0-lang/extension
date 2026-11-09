@@ -1,25 +1,17 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte"
   import ArrowLeft from "@lucide/svelte/icons/arrow-left"
-  import Play from "@lucide/svelte/icons/play"
-  import VolumeX from "@lucide/svelte/icons/volume-x"
-  import { Kbd } from "$lib/components/ui/kbd"
-  import {
-    entriesForLemma,
-    isAllowedAudioUrl,
-    linkSense,
-    partsCovering,
-    splitBySegments,
-    splitWord,
-  } from "$lib/dict/entries"
-  import type { DictError } from "$lib/dict/errors"
   import type { LookupEntry } from "$lib/dict/types"
   import type { LookupReply } from "$lib/messages"
-  import { suspendAccessKeys } from "./accesskeys"
-  import { isTyping } from "../hold"
   import type { AnchorRect } from "../page/pick"
+  import { AudioPlayer } from "./audio.svelte"
+  import EntryList from "./EntryList.svelte"
+  import { listenForKeys } from "./keyboard"
+  import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
-  import { splitStress, stressedLetter } from "./stress"
+  import { errorText, shownEntries, shownLanguage, shownSplit } from "./reply"
+  import Segments from "./Segments.svelte"
+  import Underlines from "./Underlines.svelte"
 
   let {
     word,
@@ -83,6 +75,7 @@
     }
   })
   let scroller: HTMLElement | undefined
+  const shownScroller = (): HTMLElement | undefined => (scroller?.isConnected ? scroller : undefined)
 
   let element = $state<HTMLElement>()
   let place = $state<{ top: number; left: number; side: Side; maxHeight?: number }>({
@@ -97,10 +90,8 @@
   /** Bound languages from the last reply, and the one shown or being looked up. */
   let languages = $state.raw<Array<string>>([])
   let language = $state<string>()
-  let failedAudio = $state<string>()
-  /** URL of the audio being fetched or played. */
-  let playing = $state<string>()
-  let player: HTMLAudioElement | undefined
+  const audio = new AudioPlayer()
+  onDestroy(audio.stop)
 
   const reposition = () => {
     if (element === undefined) {
@@ -184,10 +175,6 @@
     }
   }
 
-  /** The language that answered, or the only one asked when it did not. Unset when several were asked and none answered. */
-  const shownLanguage = (result: LookupReply): string | undefined =>
-    (result.ok ? result.lang : undefined) ?? (result.tried.length === 1 ? result.tried[0] : undefined)
-
   $effect(() => {
     const reply = view.reply
     void reply?.then((result) => {
@@ -215,320 +202,13 @@
     return true
   }
 
-  // Physical keys, so they stay under the same fingers on any layout.
-  const languageSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 }
-  const scrollSteps: Record<string, 1 | -1> = { KeyW: -1, KeyS: 1 }
-  const PLAY_KEY = "KeyE"
-
-  const SCROLL_PX_PER_MS = 0.6
-  /** A tap scrolls at least this far, however quickly the key comes up. */
-  const SCROLL_TAP_PX = 48
-
-  /** Scrolling frame by frame, because repeated smooth `scrollBy` calls move at different speeds in Chrome and Firefox. */
-  let scrolling:
-    { code: string; step: 1 | -1; held: boolean; moved: number; last: number; frame: number } | undefined
-
-  const shownScroller = (): HTMLElement | undefined => (scroller?.isConnected ? scroller : undefined)
-
-  const stopScroll = () => {
-    if (scrolling !== undefined) {
-      cancelAnimationFrame(scrolling.frame)
-    }
-    scrolling = undefined
-  }
-
-  const scrollFrame = (now: number) => {
-    const target = shownScroller()
-    if (scrolling === undefined || target === undefined) {
-      scrolling = undefined
-      return
-    }
-    // A frame's timestamp can be a little older than the key press.
-    const distance = Math.max(0, now - scrolling.last) * SCROLL_PX_PER_MS
-    const before = target.scrollTop
-    target.scrollTop = before + scrolling.step * distance
-    scrolling.last = now
-    scrolling.moved += Math.abs(target.scrollTop - before)
-    const atEnd =
-      scrolling.step === 1
-        ? target.scrollTop + target.clientHeight >= target.scrollHeight - 1
-        : target.scrollTop <= 0
-    if (atEnd || (!scrolling.held && scrolling.moved >= SCROLL_TAP_PX)) {
-      scrolling = undefined
-      return
-    }
-    scrolling.frame = requestAnimationFrame(scrollFrame)
-  }
-
-  const startScroll = (code: string, step: 1 | -1): boolean => {
-    if (shownScroller() === undefined) {
-      return false
-    }
-    // Key repeats keep the scroll that the first press started.
-    if (scrolling?.code !== code) {
-      stopScroll()
-      scrolling = {
-        code,
-        step,
-        held: true,
-        moved: 0,
-        last: performance.now(),
-        frame: requestAnimationFrame(scrollFrame),
-      }
-    }
-    return true
-  }
-
-  /** The topmost entry with audio that is not scrolled out of view above. */
-  const playShown = (): boolean => {
-    const target = shownScroller()
-    if (target === undefined) {
-      return false
-    }
-    const top = target.getBoundingClientRect().top
-    const url = [...target.querySelectorAll<HTMLElement>("[data-audio]")].find(
-      (section) => section.getBoundingClientRect().bottom > top,
-    )?.dataset.audio
-    if (url === undefined) {
-      return false
-    }
-    play(url)
-    return true
-  }
-
-  const handleKey = (event: KeyboardEvent): boolean => {
-    const languageStep = languageSteps[event.code]
-    if (languageStep !== undefined) {
-      return !event.repeat && stepLanguage(languageStep)
-    }
-    const scrollStep = scrollSteps[event.code]
-    if (scrollStep !== undefined) {
-      return startScroll(event.code, scrollStep)
-    }
-    return event.code === PLAY_KEY && !event.repeat && playShown()
-  }
-
-  $effect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      // Alt stays allowed, because the popover is open while Alt is held.
-      if (event.ctrlKey || event.metaKey || isTyping()) {
-        return
-      }
-      if (handleKey(event)) {
-        // Pages bind single letters too, like YouTube and Gmail.
-        event.preventDefault()
-        event.stopImmediatePropagation()
-      }
-    }
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (scrolling?.code === event.code) {
-        scrolling.held = false
-      }
-    }
-    window.addEventListener("keydown", onKeyDown, { capture: true })
-    window.addEventListener("keyup", onKeyUp, { capture: true })
-    // The key-up goes unseen once focus leaves the page.
-    window.addEventListener("blur", stopScroll)
-    const restoreAccessKeys = suspendAccessKeys([
-      ...Object.keys(languageSteps),
-      ...Object.keys(scrollSteps),
-      PLAY_KEY,
-    ])
-    return () => {
-      restoreAccessKeys()
-      window.removeEventListener("keydown", onKeyDown, { capture: true })
-      window.removeEventListener("keyup", onKeyUp, { capture: true })
-      window.removeEventListener("blur", stopScroll)
-      stopScroll()
-    }
-  })
-
-  const shownEntries = (result: LookupReply) => {
-    if (!result.ok) {
-      return []
-    }
-    return view.followed ? entriesForLemma(result.entries, view.word) : result.entries
-  }
-
-  /**
-   * Unset for a followed link, whose entries no longer line up with the indexes, and for a split into one part.
-   * `clicked` are the parts the looked-up word is in, when the split is of a longer word around it.
-   */
-  const shownSplit = (result: LookupReply) => {
-    if (!result.ok || view.followed || result.segments === undefined) {
-      return undefined
-    }
-    const split = splitBySegments(result.entries, result.segments)
-    if (split.parts.length < 2) {
-      return undefined
-    }
-    const whole = splitWord(result.entries, view.word)
-    if (whole === view.word) {
-      return { ...split, clicked: [] }
-    }
-    const start = marks?.offsetIn(whole) ?? whole.indexOf(view.word)
-    const texts = split.parts.map(({ text }) => text)
-    return { ...split, clicked: partsCovering(texts, start, start + view.word.length) }
-  }
-
-  const stopAudio = () => {
-    player?.pause()
-    player = undefined
-    playing = undefined
-  }
-
-  /** Stops instead when `url` is the audio already going. */
-  const play = (url: string) => {
-    const again = playing === url
-    stopAudio()
-    if (again) {
-      return
-    }
-    failedAudio = undefined
-    const next = new Audio(url)
-    player = next
-    playing = url
-    const fail = () => {
-      if (player === next) {
-        stopAudio()
-        failedAudio = url
-      }
-    }
-    next.addEventListener("ended", () => {
-      if (player === next) {
-        stopAudio()
-      }
-    })
-    next.addEventListener("error", fail)
-    void next.play().catch(fail)
-  }
-
-  onDestroy(stopAudio)
-
-  const errorText = (error: DictError): string => {
-    switch (error.kind) {
-      case "no-server":
-        return "No dictionary server is set up. Click the extension icon to add one."
-      case "network":
-        return "Could not reach the dictionary server."
-      case "http":
-        return "The dictionary server returned an error."
-      case "bad-request":
-        return "The dictionary server rejected this request."
-      case "unsupported-lang":
-        return "The dictionary server does not support this language."
-      default:
-        return "The dictionary server sent an unexpected response."
-    }
-  }
+  $effect(() => listenForKeys({ scroller: shownScroller, stepLanguage, play: audio.play }))
 </script>
 
-{#snippet entryList(list: Array<LookupEntry>, language: string | undefined)}
-  {#each list as entry, index (index)}
-    {@const url = entry.pron?.audio?.find(isAllowedAudioUrl)}
-    {@const ipa = entry.pron?.ipa ?? []}
-    <section class="flex flex-col gap-1.5" data-audio={url}>
-      <div class="flex flex-col">
-        <div class="flex items-start gap-2">
-          <!-- Inline, so the tags follow a long headword onto its last line. -->
-          <div class="min-w-0 flex-1 leading-6 wrap-anywhere">
-            <h2 class="inline text-base font-semibold">
-              {@render stressed(entry.lemma)}
-            </h2>
-            {" "}<span class="text-muted-foreground text-xs">{entry.pos}</span
-            >{#each entry.labels ?? [] as label (label)}{" "}<span
-                class="bg-muted text-muted-foreground rounded px-1 text-xs whitespace-nowrap"
-                data-label>{label}</span
-              >{/each}
-          </div>
-          {#if url !== undefined}
-            {@const going = playing === url}
-            {@const failed = failedAudio === url}
-            <button
-              type="button"
-              class="bg-muted text-foreground hover:bg-accent inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md disabled:cursor-default disabled:opacity-50"
-              aria-label={going
-                ? `Stop pronunciation of ${entry.lemma}`
-                : `Play pronunciation of ${entry.lemma}`}
-              title={failed ? "Could not play this audio" : going ? "Stop (E)" : "Play pronunciation (E)"}
-              disabled={failed}
-              onclick={() => play(url)}
-            >
-              {#if failed}
-                <VolumeX class="size-3" />
-              {:else if going}
-                <span class="dict-playing" aria-hidden="true"><span></span><span></span><span></span></span>
-              {:else}
-                <Play class="size-3" />
-              {/if}
-            </button>
-          {/if}
-        </div>
-        <!-- Kana words often come with themselves as the reading. -->
-        {#if entry.pron?.reading !== undefined && entry.pron.reading !== entry.lemma}
-          <p class="wrap-anywhere">{@render stressed(entry.pron.reading)}</p>
-        {/if}
-        {#if showIpa && ipa.length > 0}
-          <p class="text-muted-foreground text-xs wrap-anywhere">
-            {ipa.join(" ")}
-          </p>
-        {/if}
-      </div>
-      <ol class="flex list-decimal flex-col gap-1 pl-5">
-        {#each entry.senses as sense, senseIndex (senseIndex)}
-          {@const linked = linkSense(sense.translations.join("; "), sense.see ?? [])}
-          <li class="wrap-anywhere">
-            {#each linked.parts as part, partIndex (partIndex)}{#if part.target === undefined}{part.text}{:else}{@render seeLink(
-                  part.text,
-                  part.target,
-                  language,
-                )}{/if}{/each}{#if linked.unfound.length > 0}; see {#each linked.unfound as target, targetIndex (target)}{targetIndex >
-                0
-                  ? ", "
-                  : ""}{@render seeLink(target, target, language)}{/each}{/if}
-          </li>
-        {/each}
-      </ol>
-    </section>
-  {/each}
-{/snippet}
-
-{#snippet stressed(text: string)}
-  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter = stressedLetter(
-        part.text,
-      )}<span class="dict-stress" data-lift={letter.lift}>{letter.text}</span>{:else}{part.text}{/if}{/each}
-{/snippet}
-
-{#snippet seeLink(text: string, target: string, language: string | undefined)}
-  <!-- A button would stay one box, which pushes a long link onto its own line. -->
-  <a
-    href="#see"
-    class="underline underline-offset-2"
-    onclick={(event) => {
-      event.preventDefault()
-      followLink(target, language)
-    }}>{text}</a
-  >
-{/snippet}
-
 {#if matched.length > 0 && marks !== undefined}
-  {#each matched as rect, rectIndex (rectIndex)}
-    <div
-      class={["dict-underline bg-link fixed", marks.dark && "dark"]}
-      style:top="{rect.bottom - 2}px"
-      style:left="{rect.left}px"
-      style:width="{rect.right - rect.left}px"
-      aria-hidden="true"
-    ></div>
-  {/each}
+  <Underlines rects={matched} dark={marks.dark} />
 {:else if underline !== undefined}
-  <div
-    class={["dict-underline bg-link fixed", underline.dark && "dark"]}
-    style:top="{underline.rect.bottom - 2}px"
-    style:left="{underline.rect.left}px"
-    style:width="{underline.rect.right - underline.rect.left}px"
-    aria-hidden="true"
-  ></div>
+  <Underlines rects={[underline.rect]} dark={underline.dark} />
 {/if}
 
 <div
@@ -573,9 +253,9 @@
           Looking up {view.word}…
         </p>
       {:then result}
-        {@const entries = shownEntries(result)}
+        {@const entries = shownEntries(result, view.word, view.followed)}
         {@const shown = shownLanguage(result)}
-        {@const split = shownSplit(result)}
+        {@const split = shownSplit(result, view.word, view.followed, marks?.offsetIn)}
         {#if !result.ok}
           <p class="text-destructive px-3 py-2 wrap-anywhere" role="alert">
             {errorText(result.error)}
@@ -585,70 +265,23 @@
             No entries for {view.word}{shown === undefined ? "" : ` in ${shown}`}.
           </p>
         {:else}
+          {#snippet entryList(list: Array<LookupEntry>)}
+            <EntryList entries={list} language={result.lang} {showIpa} {audio} follow={followLink} />
+          {/snippet}
           <div
             {@attach restoreScroll}
             data-popover-scroll
             class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
             {#if split === undefined}
-              {@render entryList(entries, result.lang)}
+              {@render entryList(entries)}
             {:else}
-              <p class="flex flex-wrap items-baseline gap-x-1 text-base">
-                {#each split.parts as part, partIndex (partIndex)}
-                  {@const clicked = split.clicked.includes(partIndex)}
-                  {#if partIndex > 0}<span class="text-muted-foreground" aria-hidden="true">+</span>{/if}
-                  {#if part.entries.length === 0}
-                    <span class={["text-muted-foreground", clicked && "bg-muted rounded px-1"]}
-                      >{part.text}</span
-                    >
-                  {:else}
-                    <a
-                      href="#segment"
-                      class={["font-medium underline underline-offset-2", clicked && "bg-muted rounded px-1"]}
-                      title={clicked ? "The part you looked up" : undefined}
-                      onclick={(event) => {
-                        event.preventDefault()
-                        scrollToSegment(partIndex)
-                      }}>{part.text}</a
-                    >
-                  {/if}
-                {/each}
-              </p>
-              {@render entryList(split.whole, result.lang)}
-              {#each split.parts as part, partIndex (partIndex)}
-                {#if part.entries.length > 0}
-                  <div class="flex flex-col gap-2 border-t pt-2" data-segment={partIndex}>
-                    {@render entryList(part.entries, result.lang)}
-                  </div>
-                {/if}
-              {/each}
+              <Segments {split} {entryList} jump={scrollToSegment} />
             {/if}
           </div>
         {/if}
         {#if result.languages.length > 1}
-          <div class="mt-auto flex shrink-0 items-center gap-2 border-t p-2">
-            <Kbd class="shrink-0" title="Previous language">A</Kbd>
-            <div class="flex flex-1 flex-wrap justify-center gap-1" role="group" aria-label="Languages">
-              {#each result.languages as code (code)}
-                {@const active = shown === code}
-                <button
-                  type="button"
-                  class={[
-                    "h-6 cursor-pointer rounded-md px-2 text-xs font-medium",
-                    active
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  ]}
-                  aria-pressed={active}
-                  title="Use {code} on this page"
-                  onclick={() => switchLanguage(code)}
-                >
-                  {code}
-                </button>
-              {/each}
-            </div>
-            <Kbd class="shrink-0" title="Next language">D</Kbd>
-          </div>
+          <LanguageBar languages={result.languages} {shown} pick={switchLanguage} />
         {/if}
       {/await}
     {/key}
