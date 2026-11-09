@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "postinstall": "wxt prepare",
-    "mock-server": "bun scripts/mock-server.ts"
+    "mock-server": "bun scripts/mock-server.ts",
+    "youtube": "bun scripts/youtube.ts"
   },
   "dependencies": {
     "neverthrow": "^8.2.0",
