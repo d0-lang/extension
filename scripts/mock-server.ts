@@ -3,6 +3,8 @@
  * Open `http://localhost:8787` for an overview with test steps and controls. State lives in memory.
  */
 
+import { testPage, testPageLinks } from "./test-pages"
+
 type Scenario = {
   name: string
   languages: Array<string>
@@ -469,6 +471,7 @@ input{font:12.5px ui-monospace,monospace;flex:1;min-width:0;padding:3px 6px;bord
       )}. So a German word on a Polish page finds nothing in <code>pl_en</code>. Every other language answers any word.</li>
 </ol><p class="muted small" style="margin:8px 0 0">Keys come from fixed seeds, so servers you added still verify after a restart or a reset. A reset does undo rotated keys, so a rotated server you trusted shows an identity change again.</p></div>
 ${body}
+<section><h2>Test pages</h2><p class="muted">Pages for checking lookups on the page itself. Add any server above first.</p><ul>${testPageLinks()}</ul></section>
 </main>
 <script>
 document.addEventListener("click", (event) => {
@@ -500,6 +503,9 @@ Bun.serve({
     }
 
     const [first = "", second = "", ...rest] = url.pathname.split("/").filter(Boolean)
+    if (first === "pages") {
+      return testPage(second)
+    }
     if (first === "_reset") {
       for (const [id, scenario] of Object.entries(structuredClone(initial))) {
         scenarios[id] = scenario

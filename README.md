@@ -52,9 +52,11 @@ bun run dev:firefox    # Firefox, with live reload
 | `bun run zip`           | Zip the Chrome build for the store                     |
 | `bun run zip:firefox`   | Zip the Firefox build, plus a zip of the sources       |
 | `bun run check`         | Type check                                             |
-| `bun run test`          | Unit tests                                             |
+| `bun run test`          | Unit tests, and layout tests in Chromium               |
 | `bun run format`        | Format with Prettier                                   |
 | `bun run mock-server`   | Test dictionary servers on `http://localhost:8787`     |
+
+Tests named `*.browser.test.ts` need real layout, so they run in headless Chromium. Install it once with `bunx playwright install chromium`.
 
 The mock server runs a set of dictionary servers for trying out adding servers, key changes, moves and failures. Open `http://localhost:8787` for the list and what each one should do.
 

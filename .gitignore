@@ -12,6 +12,8 @@ node_modules
 stats.html
 stats-*.json
 .wxt
+# Screenshots of failed browser tests
+.vitest
 web-ext.config.ts
 
 # Editor directories and files

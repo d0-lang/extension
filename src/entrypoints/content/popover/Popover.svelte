@@ -26,12 +26,12 @@
     anchor: AnchorRect
     dark: boolean
     showIpa: boolean
-    /** The looked-up word's box. `dark` is the page behind it, which picks the accent that shows up there. */
-    underline: { rect: AnchorRect; dark: boolean } | undefined
+    /** Covers the looked-up word. `dark` is the page behind it, which picks the accent that shows up there. */
+    underline: { range: Range; dark: boolean } | undefined
     /** Finds the parts of the sentence a context entry's `match` names, to underline instead. */
     marks:
       | {
-          rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>
+          rangesOf: (match: ReadonlyArray<string>) => Array<Range>
           /** Where `word` starts inside the copy of a part of the sentence that covers it. */
           offsetIn: (part: string) => number | undefined
           dark: boolean
@@ -57,7 +57,7 @@
   /** The split word's tab picked in this view. Kept out of `view`, which would rebuild the reply on every pick. */
   let tab = $state<number>()
   /** The parts of the sentence the first context entry covers, while the looked-up word is shown. */
-  let matched = $state.raw<Array<AnchorRect>>([])
+  let matched = $state.raw<Array<Range>>([])
 
   $effect(() => {
     const { reply, followed } = view
@@ -69,7 +69,7 @@
     void reply.then((result) => {
       const match = result.ok ? result.entries.find((entry) => entry.match !== undefined)?.match : undefined
       if (current && match !== undefined) {
-        matched = marks.rectsOf(match)
+        matched = marks.rangesOf(match)
       }
     })
     return () => {
@@ -215,9 +215,9 @@
 </script>
 
 {#if matched.length > 0 && marks !== undefined}
-  <Underlines rects={matched} dark={marks.dark} />
+  <Underlines ranges={matched} dark={marks.dark} />
 {:else if underline !== undefined}
-  <Underlines rects={[underline.rect]} dark={underline.dark} />
+  <Underlines ranges={[underline.range]} dark={underline.dark} />
 {/if}
 
 <div

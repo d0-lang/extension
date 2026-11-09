@@ -1,21 +1,9 @@
 import { fromThrowable } from "neverthrow"
 import { collapseWhitespace, copyNumber, placeMatch } from "$lib/dict/match"
+import { firstText, indexIn, rangeIn, runAround } from "./text"
 
 /** A longer run is not one sentence, so nothing is sent. */
 const MAX_SENTENCE_CHARS = 500
-
-const isInline = (element: Element): boolean => {
-  const display = getComputedStyle(element).display
-  return display === "inline" || display === "contents"
-}
-
-/** The nearest ancestor that is not inline, like a paragraph or a subtitle line. */
-const blockOf = (node: Node): Element | null => {
-  const element = node instanceof Element ? node : node.parentElement
-  return element === null || !isInline(element) || element.parentElement === null
-    ? element
-    : blockOf(element.parentElement)
-}
 
 const createSegmenter = (locale: string | undefined): Intl.Segmenter =>
   new Intl.Segmenter(locale, { granularity: "sentence" })
@@ -24,37 +12,15 @@ const createSegmenter = (locale: string | undefined): Intl.Segmenter =>
 const segmenterFor = (locale: string | undefined): Intl.Segmenter =>
   fromThrowable(() => createSegmenter(locale))().unwrapOr(createSegmenter(undefined))
 
-/** Length of the block's text before `node` at `offset`, counted the way `textContent` counts it. */
-const offsetIn = (block: Element, node: Node, offset: number): number => {
-  const before = document.createRange()
-  before.setStart(block, 0)
-  before.setEnd(node, offset)
-  return before.toString().length
-}
-
 /** The sentence sent as `context`, and where the looked-up word is in it. */
 export type Sentence = {
   text: string
   /** Which copy of the word in `text` was looked up, from 1: the protocol's `at`. */
   at: number | undefined
-  /** Boxes of the parts of `text` a context entry's `match` names, placed around the word. Empty when they don't fit. */
-  rectsOf: (match: ReadonlyArray<string>) => Array<DOMRect>
+  /** The parts of `text` a context entry's `match` names, placed around the word. Empty when they don't fit. */
+  rangesOf: (match: ReadonlyArray<string>) => Array<Range>
   /** Where the looked-up word starts inside the copy of `part` that covers it. Unset when no copy does. */
   offsetIn: (part: string) => number | undefined
-}
-
-/** A DOM position for the character at `index` of `block`'s text. */
-const positionIn = (block: Element, index: number): { node: Node; offset: number } | undefined => {
-  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
-  let seen = 0
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    const length = node.textContent?.length ?? 0
-    if (index <= seen + length) {
-      return { node, offset: index - seen }
-    }
-    seen += length
-  }
-  return undefined
 }
 
 /**
@@ -66,13 +32,15 @@ export const sentenceAround = (
   word: string,
   locale: string | undefined,
 ): Sentence | undefined => {
-  const block = blockOf(range.commonAncestorContainer)
-  if (block === null) {
+  const from = firstText(range)
+  if (from === undefined) {
     return undefined
   }
-  const text = block.textContent ?? ""
-  const start = offsetIn(block, range.startContainer, range.startOffset)
-  const end = offsetIn(block, range.endContainer, range.endOffset)
+  // One past the limit, so a sentence cut off at the edge of the run is too long to send.
+  const run = runAround(from, MAX_SENTENCE_CHARS + 1)
+  const text = run.text
+  const start = indexIn(run, range.startContainer, range.startOffset)
+  const end = indexIn(run, range.endContainer, range.endOffset)
   const segments = segmenterFor(locale).segment(text)
   const first = segments.containing(start)
   const last = segments.containing(Math.max(start, end - 1))
@@ -91,18 +59,10 @@ export const sentenceAround = (
   return {
     text: sentence,
     at: clicked < 0 ? undefined : copyNumber(sentence, spaced, clicked),
-    rectsOf: (match) =>
-      (clicked < 0 ? undefined : placeMatch(sentence, match, clicked))?.flatMap(([from, to]) => {
-        const startAt = positionIn(block, toRaw(from))
-        const endAt = positionIn(block, toRaw(to - 1) + 1)
-        if (startAt === undefined || endAt === undefined) {
-          return []
-        }
-        const part = document.createRange()
-        part.setStart(startAt.node, startAt.offset)
-        part.setEnd(endAt.node, endAt.offset)
-        return [...part.getClientRects()]
-      }) ?? [],
+    rangesOf: (match) =>
+      (clicked < 0 ? undefined : placeMatch(sentence, match, clicked))?.flatMap(
+        ([from, to]) => rangeIn(run, toRaw(from), toRaw(to - 1) + 1) ?? [],
+      ) ?? [],
     offsetIn: (part) => {
       const start = clicked < 0 ? undefined : placeMatch(sentence, [part], clicked)?.[0]?.[0]
       return start === undefined ? undefined : clicked - start

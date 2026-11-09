@@ -33,7 +33,8 @@ export default defineContentScript({
       word: string,
       anchor: AnchorRect,
       element: Element | null,
-      underlined: boolean,
+      /** Covers `word` when it is the one under the cursor, to underline it. */
+      range: Range | undefined,
       context: Sentence | undefined,
     ) =>
       popover.show(async () => {
@@ -43,11 +44,11 @@ export default defineContentScript({
           anchor,
           dark: isDark(theme),
           showIpa,
-          underline: underlined ? { rect: anchor, dark: isDarkBehind(element) } : undefined,
+          underline: range === undefined ? undefined : { range, dark: isDarkBehind(element) },
           marks:
             context === undefined
               ? undefined
-              : { rectsOf: context.rectsOf, offsetIn: context.offsetIn, dark: isDarkBehind(element) },
+              : { rangesOf: context.rangesOf, offsetIn: context.offsetIn, dark: isDarkBehind(element) },
           search:
             word === "" || word.length > MAX_WORD_CHARS
               ? undefined
@@ -104,7 +105,7 @@ export default defineContentScript({
         pickedWord(picked, selectionText),
         picked?.anchor ?? NO_ANCHOR,
         picked?.element ?? null,
-        pickedUnderCursor(picked, selectionText),
+        pickedUnderCursor(picked, selectionText) ? picked?.range : undefined,
         pickedContext(picked, pickedWord(picked, selectionText)),
       )
 
@@ -133,7 +134,7 @@ export default defineContentScript({
       isOverPopover: popover.isAt,
       popoverScroller: popover.scroller,
       show: ({ word, anchor, element, range }) =>
-        void open(word, anchor, element, true, sentenceAround(range, word, session.locale())),
+        void open(word, anchor, element, range, sentenceAround(range, word, session.locale())),
       close: popover.close,
     })
   },

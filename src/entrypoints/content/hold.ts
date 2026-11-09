@@ -36,7 +36,12 @@ const wheelUnitPx = (deltaMode: number, scroller: Element): number => {
   }
 }
 
-const hitKey = ({ word, anchor }: WordHit): string => `${word}@${anchor.left},${anchor.top}`
+/** By place in the page, not on screen, so text moving under a still cursor is not looked up again. */
+const sameHit = (a: WordHit | undefined, b: WordHit): boolean =>
+  a !== undefined &&
+  a.word === b.word &&
+  a.range.startContainer === b.range.startContainer &&
+  a.range.startOffset === b.range.startOffset
 
 /**
  * While left Alt is held, show the word under the cursor.
@@ -51,19 +56,19 @@ export const watchAltHold = (
   let pointer: { x: number; y: number } | undefined
   let holding = false
   let frameQueued = false
-  let shownKey: string | undefined
-  let pendingKey: string | undefined
+  let shown: WordHit | undefined
+  let pending: WordHit | undefined
   let timer: number | undefined
 
   const cancelPending = () => {
     clearTimeout(timer)
     timer = undefined
-    pendingKey = undefined
+    pending = undefined
   }
 
-  const showNow = (hit: WordHit, key: string) => {
+  const showNow = (hit: WordHit) => {
     cancelPending()
-    shownKey = key
+    shown = hit
     show(hit)
   }
 
@@ -81,16 +86,15 @@ export const watchAltHold = (
       cancelPending()
       return
     }
-    const key = hitKey(hit)
-    if (key === shownKey) {
+    if (sameHit(shown, hit)) {
       cancelPending()
     } else if (immediate) {
-      showNow(hit, key)
-    } else if (key !== pendingKey) {
+      showNow(hit)
+    } else if (!sameHit(pending, hit)) {
       // Moving within one word must not restart the wait.
       cancelPending()
-      pendingKey = key
-      timer = ctx.setTimeout(() => showNow(hit, key), SETTLE_MS)
+      pending = hit
+      timer = ctx.setTimeout(() => showNow(hit), SETTLE_MS)
     }
   }
 
@@ -143,7 +147,7 @@ export const watchAltHold = (
         holding = true
         // Only during a hold, because a non-passive wheel listener makes every other scroll wait on this page's main thread.
         window.addEventListener("wheel", onWheel, { capture: true, passive: false, signal: ctx.signal })
-        shownKey = undefined
+        shown = undefined
         update(true)
       }
     },
