@@ -41,7 +41,9 @@ export const sentenceAround = (
   const text = run.text
   const start = indexIn(run, range.startContainer, range.startOffset)
   const end = indexIn(run, range.endContainer, range.endOffset)
-  const segments = segmenterFor(locale).segment(text)
+  // The segmenter ends a sentence at every line break, which in markup is mostly just a space.
+  // Each space becomes one plain space, so every index still points into `text`.
+  const segments = segmenterFor(locale).segment(text.replace(/\s/gu, " "))
   const first = segments.containing(start)
   const last = segments.containing(Math.max(start, end - 1))
   if (first === undefined || last === undefined) {

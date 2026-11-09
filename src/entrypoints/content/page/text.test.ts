@@ -112,6 +112,13 @@ describe("sentenceAround", () => {
     expect(sentence?.rangesOf(["Weltschmerz"]).map(String)).toEqual(["Weltschmerz"])
   })
 
+  it("reads on past a line break in the markup", () => {
+    render(`<p>Erster Satz. Ich habe\n      Weltschmerz heute. Letzter Satz.</p>`)
+    const run = runAround(textNode("Erster Satz. Ich habe\n      Weltschmerz heute. Letzter Satz."), 64)
+    const word = rangeIn(run, run.text.indexOf("Weltschmerz"), run.text.indexOf("Weltschmerz") + 11)!
+    expect(sentenceAround(word, "Weltschmerz", "de")?.text).toBe("Ich habe Weltschmerz heute.")
+  })
+
   it("reads a sentence with ruby, without the readings", () => {
     render(`<p>私は<ruby>勉<rt>べん</rt>強<rt>きょう</rt></ruby>しています。</p>`)
     const run = runAround(textNode("勉"), 64)
