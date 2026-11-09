@@ -1,5 +1,6 @@
 /** YouTube's subtitles, shown by the extension up to two lines at a time, each word clickable. */
-import { getPauseOnLookup, getYoutubeCaptions } from "$lib/storage"
+import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
+import { getLookupEnabled, getPauseOnLookup, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { cueAt } from "./cues"
@@ -20,6 +21,7 @@ type CaptionsOptions = {
 /**
  * Shows the track the player last downloaded for the video on the page, in place of YouTube's captions.
  * It follows the CC button, hides during ads, and leaves YouTube's captions alone for tracks the hook never saw.
+ * While on, it also has the page's world undo the audio and captions YouTube picks from the viewer's language.
  */
 export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, lookUp }: CaptionsOptions) => {
   const tracks = new Map<string, Track>()
@@ -33,11 +35,18 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
   let running = false
 
   const loadSettings = async () => {
-    ;[showing, pauses] = await Promise.all([getYoutubeCaptions(), getPauseOnLookup()])
+    const [youtube, pause, lookup] = await Promise.all([
+      getYoutubeCaptions(),
+      getPauseOnLookup(),
+      getLookupEnabled(),
+    ])
+    showing = youtube
+    pauses = pause
+    document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
   void loadSettings()
   browser.storage.onChanged.addListener((changes) => {
-    if ("youtubeCaptions" in changes || "pauseOnLookup" in changes) {
+    if ("youtubeCaptions" in changes || "pauseOnLookup" in changes || "lookupEnabled" in changes) {
       void loadSettings()
     }
   })

@@ -1,5 +1,6 @@
-import { TIMEDTEXT_EVENT, timedtextDetail } from "$lib/captions"
+import { ORIGINAL_ATTRIBUTE, TIMEDTEXT_EVENT, timedtextDetail } from "$lib/captions"
 import { hookTimedtext } from "./hook"
+import { keepOriginal } from "./original"
 
 export default defineContentScript({
   matches: ["*://www.youtube.com/*", "*://m.youtube.com/*", "*://www.youtube-nocookie.com/*"],
@@ -12,5 +13,6 @@ export default defineContentScript({
     hookTimedtext(window, (url, body) =>
       window.dispatchEvent(new CustomEvent(TIMEDTEXT_EVENT, { detail: timedtextDetail({ url, body }) })),
     )
+    keepOriginal(() => document.documentElement.hasAttribute(ORIGINAL_ATTRIBUTE))
   },
 })

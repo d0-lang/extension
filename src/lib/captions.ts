@@ -5,5 +5,8 @@ export const TIMEDTEXT_EVENT = "dadict:timedtext"
 
 export type Timedtext = { url: string; body: string }
 
+/** On `<html>` while the extension shows YouTube's subtitles, so the page's world also undoes YouTube's language picks. */
+export const ORIGINAL_ATTRIBUTE = "data-dadict-original"
+
 /** A string, because an object made in one world does not reach the other whole in every browser. */
 export const timedtextDetail = (timedtext: Timedtext): string => JSON.stringify(timedtext)
