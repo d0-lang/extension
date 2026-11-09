@@ -75,20 +75,18 @@ export const listenForKeys = ({ scroller, stepLanguage, play }: KeyActions): (()
   }
 
   /** The topmost entry with audio that is not scrolled out of view above. */
-  const playShown = (): boolean => {
+  const playShown = () => {
     const target = scroller()
     if (target === undefined) {
-      return false
+      return
     }
     const top = target.getBoundingClientRect().top
     const url = [...target.querySelectorAll<HTMLElement>("[data-audio]")].find(
       (section) => section.getBoundingClientRect().bottom > top,
     )?.dataset.audio
-    if (url === undefined) {
-      return false
+    if (url !== undefined) {
+      play(url)
     }
-    play(url)
-    return true
   }
 
   const handleKey = (event: KeyboardEvent): boolean => {
@@ -100,7 +98,14 @@ export const listenForKeys = ({ scroller, stepLanguage, play }: KeyActions): (()
     if (scrollStep !== undefined) {
       return startScroll(event.code, scrollStep)
     }
-    return event.code === PLAY_KEY && !event.repeat && playShown()
+    if (event.code !== PLAY_KEY) {
+      return false
+    }
+    if (!event.repeat) {
+      playShown()
+    }
+    // Taken even without audio, so the page never sees E or Alt + E on words that have none.
+    return true
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
