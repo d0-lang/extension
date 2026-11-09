@@ -1,4 +1,4 @@
-/** Lookup toggle, IPA toggle and theme. */
+/** Lookup toggle, YouTube subtitles, IPA toggle and theme. */
 
 /** `system` follows the OS colour scheme. */
 export type Theme = "system" | "light" | "dark"
@@ -7,6 +7,8 @@ const themes: ReadonlyArray<string> = ["system", "light", "dark"] satisfies Arra
 
 const empty = {
   lookupEnabled: true,
+  youtubeCaptions: true,
+  pauseOnLookup: true,
   showIpa: true,
   theme: "system" as Theme,
 }
@@ -18,6 +20,26 @@ export const getLookupEnabled = async (): Promise<boolean> => {
 
 export const setLookupEnabled = async (lookupEnabled: boolean): Promise<void> => {
   await browser.storage.local.set({ lookupEnabled })
+}
+
+/** Whether YouTube's subtitles are shown by the extension, two lines at a time and clickable. */
+export const getYoutubeCaptions = async (): Promise<boolean> => {
+  const { youtubeCaptions } = await browser.storage.local.get("youtubeCaptions")
+  return typeof youtubeCaptions === "boolean" ? youtubeCaptions : empty.youtubeCaptions
+}
+
+export const setYoutubeCaptions = async (youtubeCaptions: boolean): Promise<void> => {
+  await browser.storage.local.set({ youtubeCaptions })
+}
+
+/** Whether a video pauses while a word from its subtitles is looked up. */
+export const getPauseOnLookup = async (): Promise<boolean> => {
+  const { pauseOnLookup } = await browser.storage.local.get("pauseOnLookup")
+  return typeof pauseOnLookup === "boolean" ? pauseOnLookup : empty.pauseOnLookup
+}
+
+export const setPauseOnLookup = async (pauseOnLookup: boolean): Promise<void> => {
+  await browser.storage.local.set({ pauseOnLookup })
 }
 
 export const getShowIpa = async (): Promise<boolean> => {

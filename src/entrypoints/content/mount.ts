@@ -10,16 +10,24 @@ export const createPopoverHost = (ctx: ContentScriptContext) => {
   let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined
   // Building the UI is async, so a newer open or a close must cancel an older one.
   let latestOpen = 0
+  const closeListeners = new Set<() => void>()
 
-  const close = () => {
+  const remove = () => {
     latestOpen++
     current?.remove()
     current = undefined
   }
 
-  /** Close the open popover and show a new one. A later `show` or `close` cancels it while `props` is pending. */
+  const close = () => {
+    remove()
+    for (const listener of closeListeners) {
+      listener()
+    }
+  }
+
+  /** Replace the open popover with a new one. A later `show` or `close` cancels it while `props` is pending. */
   const show = async (props: () => Promise<PopoverProps>) => {
-    close()
+    remove()
     const thisOpen = latestOpen
     const resolved = await props()
     const ui = await createShadowRootUi(ctx, {
@@ -45,6 +53,10 @@ export const createPopoverHost = (ctx: ContentScriptContext) => {
     show,
     close,
     isOpen: (): boolean => current !== undefined,
+    /** Calls `listener` on each close, though not when a new popover replaces the open one. */
+    onClose: (listener: () => void) => {
+      closeListeners.add(listener)
+    },
     /** Whether `event` happened inside the popover. */
     contains: (event: Event): boolean => current !== undefined && event.composedPath().includes(current.host),
     isAt: (x: number, y: number): boolean =>

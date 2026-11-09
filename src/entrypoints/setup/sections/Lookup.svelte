@@ -10,18 +10,31 @@
     blockContextSite,
     getContextSites,
     getLookupEnabled,
+    getPauseOnLookup,
+    getYoutubeCaptions,
     removeContextSite,
     setLookupEnabled,
+    setPauseOnLookup,
+    setYoutubeCaptions,
   } from "$lib/storage"
 
   let lookupEnabled = $state(true)
+  let youtubeCaptions = $state(true)
+  let pauseOnLookup = $state(true)
   let blocked = $state<Array<string>>([])
   let draft = $state("")
   let draftError = $state<string>()
 
   const load = async () => {
-    const [lookup, sites] = await Promise.all([getLookupEnabled(), getContextSites()])
+    const [lookup, youtube, pause, sites] = await Promise.all([
+      getLookupEnabled(),
+      getYoutubeCaptions(),
+      getPauseOnLookup(),
+      getContextSites(),
+    ])
     lookupEnabled = lookup
+    youtubeCaptions = youtube
+    pauseOnLookup = pause
     blocked = Object.keys(sites)
       .filter((host) => sites[host] === false)
       .sort()
@@ -31,7 +44,10 @@
     void load()
     // The popup can change lookup, and another settings tab the blocked sites.
     const onChanged = (changes: Record<string, unknown>, area: string) => {
-      if (area === "local" && ["lookupEnabled", "contextSites"].some((key) => key in changes)) {
+      if (
+        area === "local" &&
+        ["lookupEnabled", "youtubeCaptions", "pauseOnLookup", "contextSites"].some((key) => key in changes)
+      ) {
         void load()
       }
     }
@@ -42,6 +58,16 @@
   const onLookup = async (checked: boolean) => {
     lookupEnabled = checked
     await setLookupEnabled(checked)
+  }
+
+  const onYoutubeCaptions = async (checked: boolean) => {
+    youtubeCaptions = checked
+    await setYoutubeCaptions(checked)
+  }
+
+  const onPauseOnLookup = async (checked: boolean) => {
+    pauseOnLookup = checked
+    await setPauseOnLookup(checked)
   }
 
   /** The host of a typed site or pasted URL. A leading `www.` is dropped, so the block covers the whole site. */
@@ -86,6 +112,34 @@
         id="lookup-enabled"
         checked={lookupEnabled}
         onCheckedChange={(checked) => void onLookup(checked)}
+      />
+    </div>
+    <div class="flex items-center justify-between gap-4 p-4">
+      <div class="flex flex-col gap-0.5">
+        <Label for="youtube-captions">Clickable YouTube subtitles</Label>
+        <p class="text-muted-foreground text-sm">
+          Shows YouTube's subtitles a sentence or two at a time. Click a word to look it up.
+        </p>
+      </div>
+      <Switch
+        id="youtube-captions"
+        checked={youtubeCaptions}
+        disabled={!lookupEnabled}
+        onCheckedChange={(checked) => void onYoutubeCaptions(checked)}
+      />
+    </div>
+    <div class="flex items-center justify-between gap-4 p-4">
+      <div class="flex flex-col gap-0.5">
+        <Label for="pause-on-lookup">Pause while looking up</Label>
+        <p class="text-muted-foreground text-sm">
+          Pauses the video while a word from its subtitles is open, and plays it again when it closes.
+        </p>
+      </div>
+      <Switch
+        id="pause-on-lookup"
+        checked={pauseOnLookup}
+        disabled={!lookupEnabled || !youtubeCaptions}
+        onCheckedChange={(checked) => void onPauseOnLookup(checked)}
       />
     </div>
     <div class="flex flex-col gap-2 p-4">

@@ -16,6 +16,8 @@ import {
 import { isDarkBehind } from "./page/scheme"
 import { sentenceAround, type Sentence } from "./page/sentence"
 import { createSession } from "./session"
+import { showYouTubeCaptions } from "./youtube/captions"
+import { isYouTube } from "./youtube/player"
 
 const NO_ANCHOR = { top: 8, bottom: 8, left: 8, right: 8 }
 
@@ -36,6 +38,8 @@ export default defineContentScript({
       /** Covers `word` when it is the one under the cursor, to underline it. */
       range: Range | undefined,
       context: Sentence | undefined,
+      /** The language the text is known to be in, like a subtitle track's. */
+      known?: string,
     ) =>
       popover.show(async () => {
         const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()])
@@ -61,8 +65,10 @@ export default defineContentScript({
                     target === word && context !== undefined
                       ? { text: context.text, at: context.at }
                       : undefined,
+                    known,
                   ),
-          follow: (target: string, language: string | undefined) => session.search(target, element, language),
+          follow: (target: string, language: string | undefined) =>
+            session.search(target, element, language, undefined, known),
         }
       })
 
@@ -79,11 +85,23 @@ export default defineContentScript({
       },
       { capture: true },
     )
+    const captions = isYouTube(location.hostname)
+      ? showYouTubeCaptions(ctx, {
+          isEnabled: () => enabled,
+          lookUp: ({ word, anchor, element, range }, lang) =>
+            void open(word, anchor, element, range, sentenceAround(range, word, lang), lang.split("-")[0]),
+        })
+      : undefined
+    if (captions !== undefined) {
+      popover.onClose(captions.popoverClosed)
+    }
+
     ctx.addEventListener(
       window,
       "pointerdown",
       (event) => {
-        if (popover.isOpen() && !popover.contains(event)) {
+        // A click on another subtitle word replaces the popover rather than closing it, so the video stays paused.
+        if (popover.isOpen() && !popover.contains(event) && captions?.contains(event) !== true) {
           popover.close()
         }
       },

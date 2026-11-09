@@ -13,14 +13,18 @@ export const createSession = () => {
   let lastWorked: string | undefined
   const replies = new Map<string, LookupReply>()
 
-  /** `language` defaults to the pinned one. Without either, servers rank by the language detected around `element`. */
+  /**
+   * `language` defaults to the pinned one. Without either, servers rank by `known`, the language the text is known to be in,
+   * or else by the language detected around `element`.
+   */
   const search = async (
     word: string,
     element: Element | null,
     language: string | undefined = pinned,
     context?: LookupContext,
+    known?: string,
   ): Promise<LookupReply> => {
-    const key = JSON.stringify([language, word, context])
+    const key = JSON.stringify([language, word, context, known])
     const cached = replies.get(key)
     if (cached !== undefined) {
       return cached
@@ -29,7 +33,12 @@ export const createSession = () => {
       word,
       {
         pinned: language,
-        detected: language === undefined ? await detectLanguages(contextText(element)) : [],
+        detected:
+          language !== undefined
+            ? []
+            : known !== undefined
+              ? [known]
+              : await detectLanguages(contextText(element)),
         lastWorked,
       },
       context,
