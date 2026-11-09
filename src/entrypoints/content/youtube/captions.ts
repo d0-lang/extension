@@ -1,8 +1,8 @@
-/** YouTube's subtitles, shown by the extension two lines at a time, each word clickable. */
+/** YouTube's subtitles, shown by the extension up to two lines at a time, each word clickable. */
 import { getPauseOnLookup, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
-import { shownAt } from "./cues"
+import { cueAt } from "./cues"
 import { createOverlay, type Overlay } from "./overlay"
 import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn } from "./player"
 import { watchTracks, type Track } from "./track"
@@ -77,12 +77,9 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
       removeOverlay()
       overlay = createOverlay(player, onWord)
     }
-    const lines =
-      captionsOn(player) && !adShowing(player) ? shownAt(track.cues, video.currentTime * 1000) : []
-    overlay.show(
-      lines.map(({ text }) => text),
-      track.lang,
-    )
+    const cue =
+      captionsOn(player) && !adShowing(player) ? cueAt(track.cues, video.currentTime * 1000) : undefined
+    overlay.show(cue?.text, track.lang)
   }
 
   const tick = () => {

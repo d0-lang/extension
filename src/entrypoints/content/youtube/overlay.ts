@@ -1,4 +1,4 @@
-/** The cues shown inside the player, in the page's own DOM so a word's sentence and Alt work on them as on any text. */
+/** The cue shown inside the player, in the page's own DOM so a word's sentence and Alt work on it as on any text. */
 import type { WordHit } from "../page/pick"
 import { segmentsOf } from "../page/tokenize"
 import css from "./overlay.css?inline"
@@ -24,8 +24,8 @@ const SWALLOWED = [
 
 export type Overlay = {
   player: HTMLElement
-  /** One cue per line, oldest first. None hides the overlay until the next cue. */
-  show: (lines: ReadonlyArray<string>, lang: string) => void
+  /** A cue's text, lines apart with `\n`. `undefined` hides the overlay until the next cue. */
+  show: (text: string | undefined, lang: string) => void
   contains: (event: Event) => boolean
   remove: () => void
 }
@@ -101,24 +101,22 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
   let shown = ""
   return {
     player,
-    show: (lines, lang) => {
-      root.hidden = lines.length === 0
-      const key = JSON.stringify([lang, lines])
-      if (lines.length === 0 || key === shown) {
+    show: (text, lang) => {
+      root.hidden = text === undefined
+      const key = `${lang}\n${text}`
+      if (text === undefined || key === shown) {
         return
       }
       shown = key
       root.lang = lang
       // A break, not a block per line, so the sentence around a word can run on from the line above.
       root.replaceChildren(
-        ...lines.flatMap((text, index) => {
-          const line = lineOf(text, lang)
-          if (index < lines.length - 1) {
-            line.dataset.before = ""
-            return [line, document.createElement("br")]
-          }
-          return [line]
-        }),
+        ...text
+          .split("\n")
+          .flatMap((line, index) => [
+            ...(index === 0 ? [] : [document.createElement("br")]),
+            lineOf(line, lang),
+          ]),
       )
     },
     contains: (event) => event.composedPath().includes(root),

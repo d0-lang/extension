@@ -31,11 +31,6 @@
   -webkit-box-decoration-break: clone;
 }
 
-/* Context for the line being said, so it steps back a little. */
-[data-dadict-captions] > [data-before] {
-  color: rgb(255 255 255 / 0.75);
-}
-
 /* An inline box like the line's, so the hover is as tall as the dark background. */
 [data-dadict-captions] [data-word] {
   cursor: pointer;
@@ -43,7 +38,6 @@
 }
 
 [data-dadict-captions] [data-word]:hover {
-  color: #fff;
   background: rgb(255 255 255 / 0.25);
 }
 

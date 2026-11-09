@@ -1,15 +1,19 @@
-/** Cuts a caption track into cues that show whole, about two lines at a time. */
+/** Cuts a caption track into cues of up to two lines, which show and go together. */
 import type { Json3 } from "./json3"
 
+/** `text` has its lines apart with `\n`. */
 export type Cue = { startMs: number; endMs: number; text: string }
 
 type Word = { text: string; startMs: number; speakerChange: boolean }
 
-/** One line of about 42 Latin letters. A wide character, like a kanji, counts as two. */
-export const MAX_WIDTH = 42
+/** About 42 Latin letters. A wide character, like a kanji, counts as two. */
+export const LINE_WIDTH = 42
 
-/** A shorter cue takes in the next sentence rather than flash by alone. */
-const MIN_WIDTH = 16
+/** A cue ends at a sentence or a pause only once it has most of a line, so short sentences share a cue rather than flash by. */
+const MIN_WIDTH = 32
+
+/** What each unit of width between a cue's two lines costs, so the lines come out about even. */
+const UNEVEN_MS = 60
 
 /** Between the starts of two words, so it takes in the first word as well as the silence. */
 const PAUSE_MS = 1500
@@ -29,9 +33,6 @@ const GLUED_COST_MS = 4000
 
 /** How long a cue stays after its last word starts, unless the next cue comes first. */
 const TAIL_MS = 2000
-
-/** Silence after which the cue before is no longer context for the one showing. */
-const STALE_MS = 3000
 
 // Japanese auto captions have no punctuation, but polite endings close most sentences.
 const SENTENCE_END = /(?:[.!?…。！？]["'»”)]*|です|ます|ました|でした|ません|ください)$/u
@@ -58,7 +59,7 @@ const joined = (words: ReadonlyArray<Word>): string => tidy(joinLines(words.map(
 /** One space between words, none at the ends. `\s` takes in no-break spaces, which creator tracks use for padding. */
 const tidy = (text: string): string => text.replace(/\s+/gu, " ").trim()
 
-/** A line break in a creator track joins its lines with a space, or with nothing between two wide characters. */
+/** Joins text across a line break with a space, or with nothing between two wide characters. */
 const joinLines = (text: string): string =>
   text.replace(/(.?)[^\S\n]*\n\s*(.?)/gu, (_, before: string, after: string) =>
     WIDE.test(before) && WIDE.test(after) ? before + after : `${before} ${after}`,
@@ -115,17 +116,41 @@ const cutScore = (head: ReadonlyArray<Word>, next: Word): number => {
   return gap + ending - (glued(last, next) ? GLUED_COST_MS : 0)
 }
 
+/** The cue's words on up to two lines, cut where it reads best and the lines come out about even. */
+const linesOf = (words: ReadonlyArray<Word>): Array<ReadonlyArray<Word>> => {
+  if (joinedWidth(words) <= LINE_WIDTH) {
+    return [words]
+  }
+  let best: { index: number; fits: boolean; score: number } | undefined
+  for (let index = 1; index < words.length; index++) {
+    const head = joinedWidth(words.slice(0, index))
+    const tail = joinedWidth(words.slice(index))
+    const fits = head <= LINE_WIDTH && tail <= LINE_WIDTH
+    const score = cutScore(words.slice(0, index), words[index]!) - Math.abs(head - tail) * UNEVEN_MS
+    // A cut that keeps both lines in width wins over any that does not.
+    if (best === undefined || (fits && !best.fits) || (fits === best.fits && score > best.score)) {
+      best = { index, fits, score }
+    }
+  }
+  return best === undefined ? [words] : [words.slice(0, best.index), words.slice(best.index)]
+}
+
+/** Whether some cut puts the words on two lines that each fit, which a cue under twice a line's width can still miss. */
+const fitsTwoLines = (words: ReadonlyArray<Word>): boolean =>
+  linesOf(words).every((line) => joinedWidth(line) <= LINE_WIDTH)
+
 /** Where to cut a cue that grew too wide: after a sentence or clause, or at the longest gap, keeping the head readable. */
 const cutIndex = (cue: ReadonlyArray<Word>): number => {
   let best = cue.length - 1
   let bestScore = -Infinity
   for (let index = 1; index < cue.length; index++) {
     const head = cue.slice(0, index)
-    if (joinedWidth(head) < MIN_WIDTH || joinedWidth(head) > MAX_WIDTH) {
+    if (joinedWidth(head) < MIN_WIDTH || !fitsTwoLines(head)) {
       continue
     }
     const score = cutScore(head, cue[index]!)
-    if (score > bestScore) {
+    // On a tie the later cut wins, so the cue comes out fuller.
+    if (score >= bestScore) {
       best = index
       bestScore = score
     }
@@ -142,7 +167,7 @@ const groupAsr = (words: ReadonlyArray<Word>): Array<Array<Word>> => {
       cue = []
     }
     cue.push(word)
-    if (joinedWidth(cue) > MAX_WIDTH && cue.length > 1) {
+    if (!fitsTwoLines(cue) && cue.length > 1) {
       const at = cutIndex(cue)
       groups.push(cue.slice(0, at))
       cue = cue.slice(at)
@@ -156,17 +181,27 @@ const asrCues = (json3: Json3): Array<Cue> => {
   return groups.map((words, index) => {
     const lastStart = words.at(-1)!.startMs
     const next = groups[index + 1]?.[0]?.startMs ?? Infinity
-    return { startMs: words[0]!.startMs, endMs: Math.min(next, lastStart + TAIL_MS), text: joined(words) }
+    return {
+      startMs: words[0]!.startMs,
+      endMs: Math.min(next, lastStart + TAIL_MS),
+      text: linesOf(words).map(joined).join("\n"),
+    }
   })
 }
 
-/** A creator's cues stay as they are, only joined into one line each. */
+/** A creator's cues stay as they are, lines and all. */
 const creatorCues = (json3: Json3): Array<Cue> => {
   const cues = json3.events.flatMap(({ tStartMs, dDurationMs, segs = [] }) => {
-    const text = tidy(joinLines(segs.map(({ utf8 }) => utf8).join("")).replace(SOUND, ""))
-    return text === "" || SOUND_ONLY.test(text)
+    const lines = segs
+      .map(({ utf8 }) => utf8)
+      .join("")
+      .replace(SOUND, "")
+      .split("\n")
+      .map(tidy)
+      .filter((line) => line !== "")
+    return lines.length === 0 || SOUND_ONLY.test(lines.join(" "))
       ? []
-      : [{ startMs: tStartMs, endMs: tStartMs + dDurationMs, text }]
+      : [{ startMs: tStartMs, endMs: tStartMs + dDurationMs, text: lines.join("\n") }]
   })
   // Only one cue shows at a time, so an overlap ends at the next start.
   return cues.map((cue, index) => ({
@@ -199,22 +234,4 @@ const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
 export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => {
   const index = indexAt(cues, ms)
   return index === undefined ? undefined : cues[index]
-}
-
-/**
- * The cues to show at `ms`, oldest first: the one showing, and the one before it for context.
- * The one before stays out after a silence, and when the two would take more than two lines.
- */
-export const shownAt = (cues: ReadonlyArray<Cue>, ms: number): Array<Cue> => {
-  const index = indexAt(cues, ms)
-  if (index === undefined) {
-    return []
-  }
-  const current = cues[index]!
-  const before = cues[index - 1]
-  return before !== undefined &&
-    current.startMs - before.endMs < STALE_MS &&
-    width(before.text) + width(current.text) <= 2 * MAX_WIDTH
-    ? [before, current]
-    : [current]
 }

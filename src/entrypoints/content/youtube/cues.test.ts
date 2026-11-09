@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { cueAt, cuesOf, MAX_WIDTH, shownAt, width, type Cue } from "./cues"
+import { cueAt, cuesOf, LINE_WIDTH, width, type Cue } from "./cues"
 import { parseJson3, type Json3 } from "./json3"
 
 type Seg = { utf8: string; tOffsetMs?: number; isSpeakerChange?: number }
@@ -93,10 +93,14 @@ describe("cuesOf for auto captions", () => {
   })
 
   it("cuts a cue that grows too wide after its clause", () => {
-    const json3 = asr(spoken("Heute, mehr als 40 Jahre später, warnen einige KI-Forscher vor einem Risiko"))
+    const json3 = asr(
+      spoken(
+        "Heute, mehr als 40 Jahre später, warnen einige KI-Forscher vor einem Risiko, das zumindest in einem Punkt an diese Geschichte erinnert",
+      ),
+    )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "Heute, mehr als 40 Jahre später,",
-      "warnen einige KI-Forscher vor einem Risiko",
+      "Heute, mehr als 40 Jahre später, warnen\neinige KI-Forscher vor einem Risiko,",
+      "das zumindest in einem Punkt\nan diese Geschichte erinnert",
     ])
   })
 
@@ -122,11 +126,11 @@ describe("cuesOf for auto captions", () => {
 
   it("ends a polite Japanese sentence", () => {
     const json3 = asr([
-      ["今日はリレーについての動画", 0],
+      ["今日はリレーの仕組みについての動画", 0],
       ["です", 300],
       ["制御盤", 600],
     ])
-    expect(texts(cuesOf(json3, true))).toEqual(["今日はリレーについての動画です", "制御盤"])
+    expect(texts(cuesOf(json3, true))).toEqual(["今日はリレーの仕組みについての動画です", "制御盤"])
   })
 
   it("drops sounds and bleeps, cutting where they were", () => {
@@ -143,32 +147,34 @@ describe("cuesOf for auto captions", () => {
 
   it("shows a cue until the next one, or a while after its last word", () => {
     const json3 = asr([
-      ...spoken("Nie wiem, co mam powiedzieć."),
-      ...spoken(" Na lekarstwach.", 1500),
+      ...spoken("Nie wiem, co mam teraz na to powiedzieć."),
+      ...spoken(" Na lekarstwach.", 2400),
       ...spoken(" No tak", 10_000),
     ])
     expect(cuesOf(json3, true).map(({ startMs, endMs }) => [startMs, endMs])).toEqual([
-      [0, 1500],
-      [1500, 3800],
+      [0, 2400],
+      [2400, 4700],
       [10_000, 12_300],
     ])
   })
 })
 
 describe("cuesOf for creator captions", () => {
-  it("keeps each cue, joining its lines", () => {
+  it("keeps each cue and its lines", () => {
     const json3 = creator(
       [" Sie löst eigenständig \n einen Atomkrieg aus, ", 2960, 5080],
       ["制御盤や\n電気機器", 5200, 8000],
     )
     expect(cuesOf(json3, false)).toEqual([
-      { startMs: 2960, endMs: 5080, text: "Sie löst eigenständig einen Atomkrieg aus," },
-      { startMs: 5200, endMs: 8000, text: "制御盤や電気機器" },
+      { startMs: 2960, endMs: 5080, text: "Sie löst eigenständig\neinen Atomkrieg aus," },
+      { startMs: 5200, endMs: 8000, text: "制御盤や\n電気機器" },
     ])
   })
 
   it("drops the padding of no-break spaces", () => {
-    expect(texts(cuesOf(creator(["Дуже добре, \nдякую.  ", 0, 1000]), false))).toEqual(["Дуже добре, дякую."])
+    expect(texts(cuesOf(creator(["Дуже добре,\u00a0\nдякую.\u00a0\u00a0", 0, 1000]), false))).toEqual([
+      "Дуже добре,\nдякую.",
+    ])
   })
 
   it("drops sounds, and cues that only describe one", () => {
@@ -222,9 +228,13 @@ describe("cuesOf on recorded tracks", () => {
     expect(letters(texts(cuesOf(json3, asr)).join(""))).toBe(letters(source))
   })
 
-  it.each(tracks.filter(({ asr }) => asr))("$name fits each cue in a line", ({ json3 }) => {
+  it.each(tracks.filter(({ asr }) => asr))("$name fits each cue in two lines", ({ json3 }) => {
     for (const { text } of cuesOf(json3, true)) {
-      expect(width(text), text).toBeLessThanOrEqual(MAX_WIDTH)
+      const lines = text.split("\n")
+      expect(lines.length, text).toBeLessThanOrEqual(2)
+      for (const line of lines) {
+        expect(width(line), text).toBeLessThanOrEqual(LINE_WIDTH)
+      }
     }
   })
 })
@@ -247,36 +257,5 @@ describe("cueAt", () => {
     expect(cueAt(cues, -1)).toBeUndefined()
     expect(cueAt(cues, 6000)).toBeUndefined()
     expect(cueAt([], 0)).toBeUndefined()
-  })
-})
-
-describe("shownAt", () => {
-  const line = (text: string, startMs: number, endMs: number): Cue => ({ startMs, endMs, text })
-
-  it("shows the line before with the one being said", () => {
-    const cues = [
-      line("Eine künstliche Intelligenz", 0, 1400),
-      line("gerät völlig außer Kontrolle.", 1400, 3100),
-    ]
-    expect(texts(shownAt(cues, 2000))).toEqual([
-      "Eine künstliche Intelligenz",
-      "gerät völlig außer Kontrolle.",
-    ])
-    expect(texts(shownAt(cues, 500))).toEqual(["Eine künstliche Intelligenz"])
-  })
-
-  it("leaves out the line before after a silence", () => {
-    const cues = [line("Nie wiem.", 0, 1000), line("Na lekarstwach.", 9000, 10_000)]
-    expect(texts(shownAt(cues, 9500))).toEqual(["Na lekarstwach."])
-  })
-
-  it("leaves out the cue before when the two take more than two lines", () => {
-    const long = "Сьогодні сонячний день. Ми зустрілись в Ботанічному саду."
-    const cues = [line(long, 0, 5000), line(long, 5000, 10_000)]
-    expect(texts(shownAt(cues, 6000))).toEqual([long])
-  })
-
-  it("shows nothing between cues", () => {
-    expect(shownAt([line("Raz", 0, 1000), line("Dwa", 5000, 6000)], 3000)).toEqual([])
   })
 })
