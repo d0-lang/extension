@@ -2,6 +2,23 @@
 
 Dict client lives in `src/lib/dict`. Protocol is `../Protocol.md`.
 
+## Layout
+
+```
+src/
+  entrypoints/   one folder per context: background, content, popup, setup
+  lib/           code more than one entrypoint uses: dict client, storage, messages, theme, UI components
+  styles/        app.css and the shared tokens
+```
+
+Code lives in the entrypoint folder that uses it. It moves to `lib/` once a second entrypoint needs it. Entrypoints do not import each other, and `lib/` does not import entrypoints.
+
+An entrypoint's `index.ts` or `main.ts` only wires things up: listeners, mounting, and calls into named modules. Logic goes in those modules.
+
+Inside an entrypoint, group files by job, like `content/page` for reading the page and `content/popover` for the popover. Split a folder once it mixes jobs, and split a component once it renders separate parts. Do not wait for it to get large.
+
+Tests sit next to the file they test, as `name.test.ts`.
+
 ## Formatting
 
 Prettier, configured in `.prettierrc.json`. Run `bun run format` after editing.
