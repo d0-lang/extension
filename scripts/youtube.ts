@@ -1,8 +1,13 @@
 /**
  * Checks what the YouTube subtitles rely on against real YouTube, and records caption fixtures from it.
+ * It builds the extension and loads it, so the check covers our hook too.
  * `bun run youtube` checks every video. Pass video ids to check only those, and `--record` to save their fixtures.
  */
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { chromium, type Page, type Response } from "playwright"
+import { TIMEDTEXT_EVENT } from "../src/lib/captions"
 
 type Track = { lang: string; kind: "manual" | "asr" }
 type Video = {
@@ -12,6 +17,8 @@ type Video = {
   note: string
   tracks: Array<Track>
 }
+
+const EXTENSION = new URL("../.output/chrome-mv3", import.meta.url).pathname
 
 const FIXTURES = new URL("../src/entrypoints/content/youtube/fixtures/", import.meta.url)
 
@@ -224,6 +231,10 @@ const checkVideo = async (page: Page, video: Video): Promise<Array<string>> => {
     ) {
       problems.push(`${key} has no word timings`)
     }
+    const hooked = await page.evaluate(() => (window as unknown as { hooked: Array<string> }).hooked)
+    if (!hooked.includes(key)) {
+      problems.push(`our hook did not pass on ${key}`)
+    }
     if (record) {
       await Bun.write(new URL(fixtureName(video, track), FIXTURES), trimmed(body))
     }
@@ -242,31 +253,55 @@ const checkVideo = async (page: Page, video: Video): Promise<Array<string>> => {
   return problems
 }
 
-const browser = await chromium.launch({
-  headless: true,
-  channel: "chromium",
-  // Like the user agent, `navigator.webdriver` gets empty captions.
-  args: ["--disable-blink-features=AutomationControlled"],
-})
-const major = browser.version().split(".")[0]
+const build = Bun.spawnSync(["bun", "run", "build"], { stdout: "ignore", stderr: "inherit" })
+if (build.exitCode !== 0) {
+  process.exit(1)
+}
+
+// YouTube sends empty captions to a user agent that says HeadlessChrome.
+const probe = await chromium.launch({ channel: "chromium" })
+const userAgent = `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${probe.version().split(".")[0]}.0.0.0 Safari/537.36`
+await probe.close()
 
 /** A fresh browser session per video, because the player carries caption and translation choices from one video to the next. */
-const openPage = async (video: Video): Promise<Page> => {
-  const context = await browser.newContext({
-    // YouTube sends empty captions to a user agent that says HeadlessChrome.
-    userAgent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`,
+const openPage = async (video: Video, profile: string): Promise<Page> => {
+  const context = await chromium.launchPersistentContext(profile, {
+    // The new headless mode, which loads extensions.
+    channel: "chromium",
+    headless: true,
+    userAgent,
     locale: video.lang,
+    // Like the user agent, `navigator.webdriver` gets empty captions.
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      `--disable-extensions-except=${EXTENSION}`,
+      `--load-extension=${EXTENSION}`,
+    ],
   })
   // Skips the EU consent page.
   await context.addCookies([{ name: "SOCS", value: "CAI", domain: ".youtube.com", path: "/" }])
+  // Collects the tracks our hook passes on, the way `trackKey` names them.
+  await context.addInitScript((event) => {
+    const page = window as unknown as { hooked: Array<string> }
+    page.hooked = []
+    window.addEventListener(event, (passed) => {
+      const { url } = JSON.parse((passed as CustomEvent<string>).detail) as { url: string }
+      const params = new URL(url).searchParams
+      if (!params.has("tlang")) {
+        page.hooked.push(`${params.get("kind") === "asr" ? "asr" : "manual"}:${params.get("lang")}`)
+      }
+    })
+  }, TIMEDTEXT_EVENT)
   return context.newPage()
 }
 
 let failed = false
 for (const video of picked) {
-  const page = await openPage(video)
+  const profile = mkdtempSync(join(tmpdir(), "dadict-youtube-"))
+  const page = await openPage(video, profile)
   const problems = await checkVideo(page, video).catch((error: unknown) => [String(error)])
   await page.context().close()
+  rmSync(profile, { recursive: true, force: true })
   failed ||= problems.length > 0
   console.log(`${problems.length === 0 ? "ok  " : "FAIL"} ${video.id}  ${video.note}`)
   for (const problem of problems) {
@@ -274,5 +309,4 @@ for (const video of picked) {
   }
 }
 
-await browser.close()
 process.exit(failed ? 1 : 0)
