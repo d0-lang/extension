@@ -1,6 +1,7 @@
 /** Server check on client start: the protocol fetches metadata again whenever the client starts. */
 import { ResultAsync, ok, safeTry } from "neverthrow"
 import { handshake } from "./dict"
+import { toError } from "./errors"
 import {
   bindServer,
   getServerByLang,
@@ -14,8 +15,6 @@ import {
 export type CheckResult = { name: string; url: string } & (
   { kind: "ok" | "failed" } | { kind: "moved"; movedFrom: string } | { kind: ServerIssue["kind"] }
 )
-
-const fromUnknown = (cause: unknown): Error => (cause instanceof Error ? cause : new Error(String(cause)))
 
 const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<CheckResult, Error> =>
   safeTry(async function* () {
@@ -60,13 +59,12 @@ export const checkServers = (
   results: Array<CheckResult> = [],
 ): ResultAsync<Array<CheckResult>, Error> =>
   safeTry(async function* () {
-    const [server, ...rest] =
-      pending ?? Object.values(yield* ResultAsync.fromPromise(getServers(), fromUnknown))
+    const [server, ...rest] = pending ?? Object.values(yield* ResultAsync.fromPromise(getServers(), toError))
     if (server === undefined) {
       return ok(results)
     }
     // Read again for each server, because an earlier move may have remapped languages.
-    const serverByLang = yield* ResultAsync.fromPromise(getServerByLang(), fromUnknown)
+    const serverByLang = yield* ResultAsync.fromPromise(getServerByLang(), toError)
     const mapped = Object.entries(serverByLang)
       .filter(([, url]) => url === server.url)
       .map(([lang]) => lang)

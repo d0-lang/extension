@@ -1,11 +1,10 @@
 /** Extension storage: lookup toggle, IPA toggle, theme, bound servers, language → server URL, server issues, and sites blocked from sending context.
  *  `bindServer` writes one server record and remaps the selected language pairs onto it. */
 import { ResultAsync } from "neverthrow"
+import { toError } from "./errors"
 
 /** Language pair advertised by a dictionary server, e.g. `de_en`. */
 export type LanguagePair = string
-
-const fromUnknown = (cause: unknown): Error => (cause instanceof Error ? cause : new Error(String(cause)))
 
 export type BoundServer = {
   url: string
@@ -142,7 +141,7 @@ export const setServerIssue = (url: string, issue: ServerIssue): ResultAsync<voi
       const serverIssues = await getServerIssues()
       await browser.storage.local.set({ serverIssues: { ...serverIssues, [url]: issue } })
     })(),
-    fromUnknown,
+    toError,
   )
 
 const withoutIssues = (serverIssues: ServerIssues, urls: ReadonlyArray<string | undefined>): ServerIssues =>
@@ -170,7 +169,7 @@ export const removeServer = (url: string): ResultAsync<void, Error> =>
         serverIssues: withoutIssues(serverIssues, [url]),
       })
     })(),
-    fromUnknown,
+    toError,
   )
 
 /**
@@ -208,5 +207,5 @@ export const bindServer = (
         serverIssues: withoutIssues(serverIssues, [server.url, movedFrom]),
       })
     })(),
-    fromUnknown,
+    toError,
   )
