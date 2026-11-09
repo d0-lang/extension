@@ -4,7 +4,14 @@
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
   import { Kbd } from "$lib/components/ui/kbd"
-  import { entriesForLemma, isAllowedAudioUrl, linkSense, splitBySegments } from "$lib/dict/entries"
+  import {
+    entriesForLemma,
+    isAllowedAudioUrl,
+    linkSense,
+    partsCovering,
+    splitBySegments,
+    splitWord,
+  } from "$lib/dict/entries"
   import type { DictError } from "$lib/dict/errors"
   import type { LookupEntry } from "$lib/dict/types"
   import type { LookupReply } from "$lib/messages"
@@ -31,7 +38,14 @@
     /** The looked-up word's box. `dark` is the page behind it, which picks the accent that shows up there. */
     underline: { rect: AnchorRect; dark: boolean } | undefined
     /** Finds the parts of the sentence a context entry's `match` names, to underline instead. */
-    marks: { rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>; dark: boolean } | undefined
+    marks:
+      | {
+          rectsOf: (match: ReadonlyArray<string>) => Array<AnchorRect>
+          /** Where `word` starts inside the copy of a part of the sentence that covers it. */
+          offsetIn: (part: string) => number | undefined
+          dark: boolean
+        }
+      | undefined
     /** Unset when `word` cannot be looked up. A language becomes the default for the rest of this page. */
     search: ((language?: string, target?: string) => Promise<LookupReply>) | undefined
     /** Look up a `see` word in `language`. */
@@ -336,13 +350,25 @@
     return view.followed ? entriesForLemma(result.entries, view.word) : result.entries
   }
 
-  /** Unset for a followed link, whose entries no longer line up with the indexes, and for a split into one part. */
+  /**
+   * Unset for a followed link, whose entries no longer line up with the indexes, and for a split into one part.
+   * `clicked` are the parts the looked-up word is in, when the split is of a longer word around it.
+   */
   const shownSplit = (result: LookupReply) => {
     if (!result.ok || view.followed || result.segments === undefined) {
       return undefined
     }
     const split = splitBySegments(result.entries, result.segments)
-    return split.parts.length < 2 ? undefined : split
+    if (split.parts.length < 2) {
+      return undefined
+    }
+    const whole = splitWord(result.entries, view.word)
+    if (whole === view.word) {
+      return { ...split, clicked: [] }
+    }
+    const start = marks?.offsetIn(whole) ?? whole.indexOf(view.word)
+    const texts = split.parts.map(({ text }) => text)
+    return { ...split, clicked: partsCovering(texts, start, start + view.word.length) }
   }
 
   const stopAudio = () => {
@@ -438,7 +464,8 @@
             </button>
           {/if}
         </div>
-        {#if entry.pron?.reading !== undefined}
+        <!-- Kana words often come with themselves as the reading. -->
+        {#if entry.pron?.reading !== undefined && entry.pron.reading !== entry.lemma}
           <p class="wrap-anywhere">{@render stressed(entry.pron.reading)}</p>
         {/if}
         {#if showIpa && ipa.length > 0}
@@ -568,13 +595,17 @@
             {:else}
               <p class="flex flex-wrap items-baseline gap-x-1 text-base">
                 {#each split.parts as part, partIndex (partIndex)}
+                  {@const clicked = split.clicked.includes(partIndex)}
                   {#if partIndex > 0}<span class="text-muted-foreground" aria-hidden="true">+</span>{/if}
                   {#if part.entries.length === 0}
-                    <span class="text-muted-foreground">{part.text}</span>
+                    <span class={["text-muted-foreground", clicked && "bg-muted rounded px-1"]}
+                      >{part.text}</span
+                    >
                   {:else}
                     <a
                       href="#segment"
-                      class="font-medium underline underline-offset-2"
+                      class={["font-medium underline underline-offset-2", clicked && "bg-muted rounded px-1"]}
+                      title={clicked ? "The part you looked up" : undefined}
                       onclick={(event) => {
                         event.preventDefault()
                         scrollToSegment(partIndex)

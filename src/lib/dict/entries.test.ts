@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { entriesForLemma, isValidSplit, linkSense, splitBySegments } from "./entries"
+import {
+  entriesForLemma,
+  isValidSplit,
+  linkSense,
+  partsCovering,
+  splitBySegments,
+  splitWord,
+} from "./entries"
 
 const entry = (
   lemma: string,
@@ -113,17 +120,18 @@ describe("linkSense", () => {
 
 describe("isValidSplit", () => {
   const segments = [{ text: "Arbeit", entries: [0] }, { text: "s" }, { text: "amt", entries: [1, 2] }]
+  const three = [entry("Arbeit", []), entry("Amt", []), entry("Amt", [])]
 
   it("accepts a split that spells the word", () => {
-    expect(isValidSplit(segments, "Arbeitsamt", 3)).toBe(true)
+    expect(isValidSplit(segments, "Arbeitsamt", three)).toBe(true)
   })
 
   it("rejects texts that do not join to the word as sent", () => {
-    expect(isValidSplit(segments, "arbeitsamt", 3)).toBe(false)
+    expect(isValidSplit(segments, "arbeitsamt", three)).toBe(false)
   })
 
   it("rejects an index out of range or claimed twice", () => {
-    expect(isValidSplit(segments, "Arbeitsamt", 2)).toBe(false)
+    expect(isValidSplit(segments, "Arbeitsamt", three.slice(0, 2))).toBe(false)
     expect(
       isValidSplit(
         [
@@ -131,9 +139,52 @@ describe("isValidSplit", () => {
           { text: "c", entries: [0] },
         ],
         "abc",
-        1,
+        three.slice(0, 1),
       ),
     ).toBe(false)
+  })
+
+  describe("for a word the tokenizer cut short", () => {
+    const studying = [
+      { ...entry("勉強する", [], "VERB"), match: ["勉強しています"] },
+      entry("勉強", []),
+      entry("する", [], "VERB"),
+      entry("ている", [], "AUX"),
+      entry("ます", [], "AUX"),
+    ]
+    const pieces = [
+      { text: "勉強", entries: [1] },
+      { text: "し", entries: [2] },
+      { text: "てい", entries: [3] },
+      { text: "ます", entries: [4] },
+    ]
+
+    it("accepts a split of the first entry's match", () => {
+      expect(splitWord(studying, "勉強")).toBe("勉強しています")
+      expect(isValidSplit(pieces, "勉強", studying)).toBe(true)
+    })
+
+    it("rejects a split of neither the match nor the word", () => {
+      expect(isValidSplit(pieces.slice(0, 3), "勉強", studying)).toBe(false)
+      expect(isValidSplit([{ text: "勉強", entries: [1] }], "勉強", studying)).toBe(false)
+    })
+
+    it("uses the word as sent when the match does not contain it", () => {
+      expect(splitWord(studying, "食")).toBe("食")
+      expect(isValidSplit(pieces, "食", studying)).toBe(false)
+    })
+
+    it("uses the word as sent when the match is on a later entry", () => {
+      const later = [entry("勉強", []), ...studying]
+      expect(splitWord(later, "勉強")).toBe("勉強")
+    })
+
+    it("does not count a match of two strings, which is a phrase", () => {
+      const phrase = [{ ...studying[0]!, match: ["勉強しています", "毎日"] }, ...studying.slice(1)]
+      expect(splitWord(phrase, "勉強")).toBe("勉強")
+      expect(isValidSplit(pieces, "勉強", phrase)).toBe(false)
+      expect(isValidSplit([{ text: "勉", entries: [1] }, { text: "強" }], "勉強", phrase)).toBe(true)
+    })
   })
 })
 
@@ -151,5 +202,18 @@ describe("splitBySegments", () => {
       ["s", []],
       ["amt", ["Amt"]],
     ])
+  })
+})
+
+describe("partsCovering", () => {
+  const texts = ["勉強", "し", "てい", "ます"]
+
+  it("finds the part a piece of the word sits in", () => {
+    expect(partsCovering(texts, 0, 2)).toEqual([0])
+    expect(partsCovering(texts, 3, 4)).toEqual([2])
+  })
+
+  it("finds every part a piece overlaps", () => {
+    expect(partsCovering(texts, 1, 4)).toEqual([0, 1, 2])
   })
 })

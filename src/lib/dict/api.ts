@@ -122,7 +122,7 @@ export type LookupContext = { text: string; at: number | undefined }
 /**
  * Get `/v1/lookup`. A word the server does not know is `ok` with no entries.
  * `context` is the sentence around `word`; pass it only to servers that list the `context` feature.
- * Segments that do not split `word` per the protocol are dropped.
+ * Segments that do not split `word`, or the whole word the first entry's `match` names, are dropped.
  */
 export const lookup = (
   baseUrl: string,
@@ -158,8 +158,6 @@ export const lookup = (
       "lookup",
     )
     return ok(
-      segments !== undefined && isValidSplit(segments, word, entries.length)
-        ? { entries, segments }
-        : { entries },
+      segments !== undefined && isValidSplit(segments, word, entries) ? { entries, segments } : { entries },
     )
   })

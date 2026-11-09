@@ -39,6 +39,8 @@ export type Sentence = {
   at: number | undefined
   /** Boxes of the parts of `text` a context entry's `match` names, placed around the word. Empty when they don't fit. */
   rectsOf: (match: ReadonlyArray<string>) => Array<DOMRect>
+  /** Where the looked-up word starts inside the copy of `part` that covers it. Unset when no copy does. */
+  offsetIn: (part: string) => number | undefined
 }
 
 /** A DOM position for the character at `index` of `block`'s text. */
@@ -101,5 +103,9 @@ export const sentenceAround = (
         part.setEnd(endAt.node, endAt.offset)
         return [...part.getClientRects()]
       }) ?? [],
+    offsetIn: (part) => {
+      const start = clicked < 0 ? undefined : placeMatch(sentence, [part], clicked)?.[0]?.[0]
+      return start === undefined ? undefined : clicked - start
+    },
   }
 }

@@ -138,6 +138,21 @@ const scenarios: Record<string, Scenario> = {
     summary: "Where moved points once moved. Same key as moved.",
     expect: "Adds fine on its own too.",
   },
+  japanese: {
+    name: "Test Japanese",
+    languages: ["ja_en"],
+    verificationUrls: [`${ORIGIN}/japanese/sample`],
+    features: ["context", "context-match"],
+    section: "steps",
+    summary:
+      "Finds the whole word around a cut-short piece from the sentence, and splits it into logical pieces.",
+    steps: [
+      "Add it, tick Japanese, and let it take sentences.",
+      `Open ${ORIGIN}/japanese/sample and hold Alt over 勉強 or 食, or any other piece of those words.`,
+    ],
+    expect:
+      "The whole word is underlined (勉強しています, 食べました). The popover header splits it (勉強 + し + てい + ます), the piece you held over is tinted, and 勉強する or 食べる comes first with its kana reading under it. Without sentences, 勉強 and 食 answer only themselves.",
+  },
   broken: {
     name: "Broken Signature",
     languages: ["it_en"],
@@ -188,6 +203,78 @@ const scenarios: Record<string, Scenario> = {
 const VOCABULARY: Record<string, Array<string>> = {
   pl_en: ["monarchia", "władza", "państwo", "państwach", "cesarstwo", "cesarstwa", "rzymskiego", "tytuły"],
   de_en: ["weltschmerz", "kaiser", "reich", "haus", "zeitgeist"],
+}
+
+type MockEntry = {
+  lemma: string
+  pos: string
+  pron?: { reading: string }
+  senses: Array<{ translations: Array<string> }>
+  match?: Array<string>
+}
+
+const jaEntry = (lemma: string, pos: string, translation: string, reading?: string): MockEntry => ({
+  lemma,
+  pos,
+  ...(reading === undefined ? {} : { pron: { reading } }),
+  senses: [{ translations: [translation] }],
+})
+
+/**
+ * Japanese words the client's tokenizer cuts short. A piece of `whole` with `whole` in `context`
+ * gets the whole word: the first entry's `match`, split by `segments`.
+ */
+const CUT_SHORT: Array<{
+  whole: string
+  entries: Array<MockEntry>
+  segments: Array<{ text: string; entries?: Array<number> }>
+}> = [
+  {
+    whole: "勉強しています",
+    entries: [
+      jaEntry("勉強する", "VERB", "to study", "べんきょうする"),
+      jaEntry("勉強", "NOUN", "studying, study", "べんきょう"),
+      jaEntry("する", "VERB", "to do"),
+      jaEntry("ている", "AUX", "-ing; ongoing action or state"),
+      jaEntry("ます", "AUX", "polite"),
+    ],
+    segments: [
+      { text: "勉強", entries: [1] },
+      { text: "し", entries: [2] },
+      { text: "てい", entries: [3] },
+      { text: "ます", entries: [4] },
+    ],
+  },
+  {
+    whole: "食べました",
+    entries: [
+      jaEntry("食べる", "VERB", "to eat", "たべる"),
+      jaEntry("ます", "AUX", "polite"),
+      jaEntry("た", "AUX", "past"),
+    ],
+    segments: [{ text: "食べ" }, { text: "ました", entries: [1, 2] }],
+  },
+]
+
+/** What a Japanese word answers on its own, without a sentence to find the whole word in. */
+const JA_WORDS: Record<string, MockEntry> = {
+  勉強: jaEntry("勉強", "NOUN", "studying, study", "べんきょう"),
+  食: jaEntry("食", "NOUN", "food; meal", "しょく"),
+  寿司: jaEntry("寿司", "NOUN", "sushi", "すし"),
+  日本語: jaEntry("日本語", "NOUN", "Japanese (language)", "にほんご"),
+  毎日: jaEntry("毎日", "NOUN", "every day", "まいにち"),
+}
+
+const SAMPLE_SENTENCES = ["私は毎日日本語を勉強しています。", "昨日、寿司を食べました。"]
+
+const lookupJapanese = (word: string, context: string | null) => {
+  const cut = CUT_SHORT.find(({ whole }) => whole.includes(word) && context?.includes(whole) === true)
+  if (cut !== undefined) {
+    const [first, ...rest] = cut.entries
+    return json({ entries: [{ ...first, match: [cut.whole] }, ...rest], segments: cut.segments })
+  }
+  const known = JA_WORDS[word]
+  return json({ entries: known === undefined ? [] : [known] })
 }
 
 /** The state each scenario starts in, for the reset control. */
@@ -267,6 +354,9 @@ const lookup = (scenario: Scenario, url: URL) => {
   }
   if (!scenario.languages.includes(lang)) {
     return json({ error: "unsupported_lang" }, { status: 400 })
+  }
+  if (lang === "ja_en") {
+    return lookupJapanese(word, url.searchParams.get("context"))
   }
   if (VOCABULARY[lang]?.includes(word.toLowerCase()) === false) {
     return json({ entries: [] })
@@ -458,6 +548,11 @@ Bun.serve({
         return getMeta(first, scenario, request)
       case "v1/lookup":
         return lookup(scenario, url)
+      case "sample":
+        return new Response(
+          `<!doctype html><html lang="ja"><meta charset="utf-8"><title>Japanese sample</title><body style="font:28px/2 system-ui,sans-serif;max-width:40em;margin:48px auto">${SAMPLE_SENTENCES.map((sentence) => `<p>${sentence}</p>`).join("")}</body></html>`,
+          { headers: { "Content-Type": "text/html; charset=utf-8" } },
+        )
       case "news":
         return new Response(`<h1>${escapeHtml(scenario.name)}: server news</h1><p>Nothing to report.</p>`, {
           headers: { "Content-Type": "text/html; charset=utf-8" },

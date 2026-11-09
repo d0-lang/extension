@@ -71,19 +71,28 @@ export const linkSense = (
 }
 
 /**
- * True if `segments` follow the protocol for `word`: their texts join to it exactly,
- * and every index points at an entry that no other segment claims.
+ * The word `segments` split. It is the first entry's `match` when that is one string containing `word`,
+ * because a tokenizer for a script without spaces can give only a piece of the word. Otherwise it is `word`.
+ */
+export const splitWord = (entries: ReadonlyArray<LookupEntry>, word: string): string => {
+  const match = entries[0]?.match
+  return match?.length === 1 && match[0]!.includes(word) ? match[0]! : word
+}
+
+/**
+ * True if `segments` follow the protocol for `word` and `entries`: their texts join exactly to the
+ * `splitWord`, and every index points at an entry that no other segment claims.
  */
 export const isValidSplit = (
   segments: ReadonlyArray<LookupSegment>,
   word: string,
-  entryCount: number,
+  entries: ReadonlyArray<LookupEntry>,
 ): boolean => {
   const indexes = segments.flatMap(({ entries }) => entries ?? [])
   return (
-    segments.map(({ text }) => text).join("") === word &&
+    segments.map(({ text }) => text).join("") === splitWord(entries, word) &&
     new Set(indexes).size === indexes.length &&
-    indexes.every((index) => index < entryCount)
+    indexes.every((index) => index < entries.length)
   )
 }
 
@@ -104,6 +113,13 @@ export const splitBySegments = (
     })),
   }
 }
+
+/** Indexes of the parts that overlap `[start, end)` of the text they join to. */
+export const partsCovering = (texts: ReadonlyArray<string>, start: number, end: number): Array<number> =>
+  texts.flatMap((text, index) => {
+    const from = texts.slice(0, index).join("").length
+    return from < end && from + text.length > start ? [index] : []
+  })
 
 /** True only for `https` URLs whose host is on the allowlist. */
 export const isAllowedAudioUrl = (value: string): boolean => {

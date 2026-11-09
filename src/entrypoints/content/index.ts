@@ -99,7 +99,10 @@ export default defineContentScript({
         dark: isDark(theme),
         showIpa,
         underline: underlined ? { rect: anchor, dark: isDarkBehind(element) } : undefined,
-        marks: context === undefined ? undefined : { rectsOf: context.rectsOf, dark: isDarkBehind(element) },
+        marks:
+          context === undefined
+            ? undefined
+            : { rectsOf: context.rectsOf, offsetIn: context.offsetIn, dark: isDarkBehind(element) },
         search:
           word === "" || word.length > MAX_WORD_CHARS
             ? undefined
