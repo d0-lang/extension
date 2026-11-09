@@ -57,10 +57,16 @@ export const shownSplit = (
   return { parts: merged, clicked: partsCovering(texts, start, start + word.length) }
 }
 
+/** Why a miss may not be one: the languages it skipped because their server is paused. */
+export const pausedText = (paused: Array<string>): string =>
+  `Not checked in ${paused.join(", ")}, paused until you review ${paused.length === 1 ? "its server" : "their servers"} in DaDict settings.`
+
 export const errorText = (error: DictError): string => {
   switch (error.kind) {
     case "no-server":
       return "No dictionary server is set up. Click the extension icon to add one."
+    case "paused":
+      return "Lookups are paused until you review the dictionary server in DaDict settings."
     case "network":
       return "Could not reach the dictionary server."
     case "http":

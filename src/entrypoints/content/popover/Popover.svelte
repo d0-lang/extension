@@ -8,7 +8,7 @@
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
-  import { errorText, firstTab, shownEntries, shownLanguage, shownSplit } from "./reply"
+  import { errorText, firstTab, pausedText, shownEntries, shownLanguage, shownSplit } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import Underlines from "./Underlines.svelte"
 
@@ -274,6 +274,11 @@
           <p class="text-muted-foreground px-3 py-2 wrap-anywhere">
             No entries for {view.word}{shown === undefined ? "" : ` in ${shown}`}.
           </p>
+          {#if result.paused.length > 0}
+            <p class="text-muted-foreground px-3 pb-2 wrap-anywhere">
+              {pausedText(result.paused)}
+            </p>
+          {/if}
         {:else}
           {#if split !== undefined && shownTab !== undefined}
             <SegmentTabs {split} tab={shownTab} pick={pickTab} />
@@ -289,6 +294,7 @@
                 ? entries
                 : (split.parts[shownTab]?.entries ?? [])}
               language={result.lang}
+              server={result.server}
               {showIpa}
               {audio}
               follow={followLink}

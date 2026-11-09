@@ -1,6 +1,7 @@
 export { getKey, getMeta, lookup } from "./api"
 export type { DictError, HandshakeError, SignatureError } from "./errors"
 export { handshake, type HandshakeOk } from "./handshake"
+export { acceptedLegal, changedDocuments, legalChanged, type LegalDocument } from "./legal"
 export { boundLanguages, lookupWord, type LookupOutcome } from "./lookup"
 export { rankLanguages, type LookupHints } from "./rank"
-export type { LookupEntry, LookupResult, LookupSegment, ServerMeta } from "./types"
+export type { LookupEntry, LookupResult, LookupSegment, ServerLegal, ServerMeta } from "./types"

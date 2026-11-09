@@ -20,12 +20,27 @@
     DropdownMenuTrigger,
   } from "$lib/components/ui/dropdown-menu"
   import { groupByTarget, pairName, sourceName } from "../languages"
-  import type { ContextSending } from "$lib/storage"
+  import type { ContextSending, ServerIssue } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
   import ServerDialog from "./ServerDialog.svelte"
 
   const servers = new ServerSetup()
+
+  const issueText: Record<ServerIssue["kind"], { text: string; action: string }> = {
+    identity: {
+      text: "Its signing key changed. Lookups to it are paused until you review it.",
+      action: "Review",
+    },
+    broken: {
+      text: "Its answer failed the signature check at the last start. Lookups to it are paused.",
+      action: "Check again",
+    },
+    legal: {
+      text: "Its privacy policy or terms are new or changed. Lookups to it are paused until you review them.",
+      action: "Review",
+    },
+  }
 
   const contextText: Record<ContextSending, string> = {
     all: "Gets sentences from all sites",
@@ -129,13 +144,9 @@
                     class="bg-destructive/10 text-destructive flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md px-3 py-2 text-sm"
                   >
                     <ShieldAlertIcon class="size-4 shrink-0" />
-                    <p class="min-w-0 flex-1">
-                      {row.issue === "identity"
-                        ? "Its signing key changed. Review it before you trust it."
-                        : "Its answer failed the signature check at the last start."}
-                    </p>
+                    <p class="min-w-0 flex-1">{issueText[row.issue].text}</p>
                     <Button variant="outline" size="xs" onclick={() => servers.openEdit(row)}>
-                      {row.issue === "identity" ? "Review" : "Check again"}
+                      {issueText[row.issue].action}
                     </Button>
                   </div>
                 {/if}

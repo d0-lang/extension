@@ -19,7 +19,15 @@ export type BoundServer = {
   features?: Array<string>
   /** Whose sentences it gets, if it lists the `context` feature. Missing on records stored before it was asked. */
   context?: ContextSending
+  /**
+   * The policies the user last accepted. `null` is a server without them, accepted for testing.
+   * Missing on records stored before policies were read.
+   */
+  legal?: AcceptedLegal | null
 }
+
+/** Links and hashes of a server's privacy policy and terms of service, as the user accepted them. */
+export type AcceptedLegal = { privacyLink: string; privacyHash: string; tosLink: string; tosHash: string }
 
 /** Which sites a server gets the sentence around the word from. `unblocked` is every site but the blocked ones. */
 export type ContextSending = "all" | "unblocked" | "none"
@@ -32,8 +40,11 @@ export type ServerByLang = Record<LanguagePair, string>
 /** Normalized server URL → bound record. Key matches `BoundServer.url`. */
 export type Servers = Record<string, BoundServer>
 
-/** A check that needs the user: the key changed, or the signature failed. The old key and data stay until then. */
-export type ServerIssue = { kind: "identity" | "broken" }
+/**
+ * A check that needs the user: the key changed, the signature failed, or the policies changed.
+ * The old key and data stay until then, and lookups to the server pause.
+ */
+export type ServerIssue = { kind: "identity" | "broken" | "legal" }
 /** Server URL → its unresolved issue. */
 export type ServerIssues = Record<string, ServerIssue>
 

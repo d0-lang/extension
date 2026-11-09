@@ -28,6 +28,7 @@ export type DictError =
         | "nonce"
         | "invalid-url"
         | "no-server"
+        | "paused"
         | "bad-request"
         | "unsupported-lang"
       readonly message: string
@@ -82,6 +83,11 @@ export const fromUnknown = (cause: unknown): DictError => ({
 export const noServerError = (): DictError => ({
   kind: "no-server",
   message: "No dictionary server is bound",
+})
+
+export const pausedError = (): DictError => ({
+  kind: "paused",
+  message: "Every bound server has an issue the user has not resolved",
 })
 
 export const badRequestError = (): DictError => ({

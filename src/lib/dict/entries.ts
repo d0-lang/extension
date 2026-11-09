@@ -1,5 +1,6 @@
 import type { LookupEntry, LookupSegment } from "./schemas"
 
+/** Audio hosts any server may link, besides its own. */
 const AUDIO_HOSTS: ReadonlyArray<string> = ["upload.wikimedia.org"]
 
 const lemmaKey = (lemma: string): string => lemma.toLowerCase()
@@ -121,8 +122,11 @@ export const partsCovering = (texts: ReadonlyArray<string>, start: number, end: 
     return from < end && from + text.length > start ? [index] : []
   })
 
-/** True only for `https` URLs whose host is on the allowlist. */
-export const isAllowedAudioUrl = (value: string): boolean => {
+/** True only for `https` URLs on the host of `server`, the server that answered, or on the allowlist. */
+export const isAllowedAudioUrl = (value: string, server: string | undefined): boolean => {
   const url = URL.parse(value)
-  return url !== null && url.protocol === "https:" && AUDIO_HOSTS.includes(url.host)
+  if (url === null || url.protocol !== "https:") {
+    return false
+  }
+  return AUDIO_HOSTS.includes(url.host) || url.host === URL.parse(server ?? "")?.host
 }

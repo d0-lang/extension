@@ -46,9 +46,13 @@
   </p>
 {/if}
 <DialogFooter>
-  <Button variant="destructive" disabled={session.identityLocked || session.connecting} onclick={onTrust}>
-    {#if session.identityLocked}
-      Trust new key ({session.lockSeconds})
+  <Button
+    variant="destructive"
+    disabled={session.identityLock.locked || session.connecting}
+    onclick={onTrust}
+  >
+    {#if session.identityLock.locked}
+      Trust new key ({session.identityLock.seconds})
     {:else}
       {session.connecting ? "Connecting…" : "Trust new key"}
     {/if}

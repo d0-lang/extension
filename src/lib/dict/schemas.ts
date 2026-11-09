@@ -13,13 +13,31 @@ export const publicKeySchema = z.object({
   key: z.string().check(z.refine(isEd25519Key)),
 })
 
-// TODO: Read the protocol's `legal` section, and warn when a server sends none. Its shape may change.
+/** The protocol's cap on a change summary. */
+export const LEGAL_CHANGE_MAX = 500
+
+// Lowercase only, so the same hash never compares as a different one.
+const legalHashSchema = z.string().check(z.regex(/^[0-9a-f]{64}$/))
+// A summary over the cap or of the wrong type is dropped, not the policy.
+const legalChangeSchema = z.catch(z.optional(z.string().check(z.maxLength(LEGAL_CHANGE_MAX))), undefined)
+
+const legalSchema = z.object({
+  privacy_link: httpUrlSchema,
+  privacy_hash: legalHashSchema,
+  privacy_change: legalChangeSchema,
+  tos_link: httpUrlSchema,
+  tos_hash: legalHashSchema,
+  tos_change: legalChangeSchema,
+})
+
 export const serverMetaSchema = z.object({
   name: z.string().check(z.minLength(1)),
   nonce: z.string(),
   languages: z._default(z.array(languagePairSchema), []),
   verification_urls: z._default(z.array(httpUrlSchema), []),
   features: z._default(z.array(z.string()), []),
+  // A malformed section counts as none, which warns rather than trusts.
+  legal: z.catch(z.optional(legalSchema), undefined),
 })
 
 /** Domain-move body instead of metadata. Same signature/nonce rules; same signing key. */
@@ -67,6 +85,7 @@ export const lookupErrorSchema = z.object({
 })
 
 export type ServerMeta = z.infer<typeof serverMetaSchema>
+export type ServerLegal = z.infer<typeof legalSchema>
 export type LookupResult = z.infer<typeof lookupResultSchema>
 export type LookupEntry = z.infer<typeof lookupEntrySchema>
 export type LookupSegment = z.infer<typeof lookupSegmentSchema>

@@ -1,6 +1,6 @@
 /** Server check on client start: the protocol fetches metadata again whenever the client starts. */
 import { ResultAsync, ok, safeTry } from "neverthrow"
-import { handshake } from "$lib/dict"
+import { acceptedLegal, handshake, legalChanged } from "$lib/dict"
 import { toError } from "$lib/errors"
 import {
   bindServer,
@@ -28,7 +28,9 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
       return ok<CheckResult>({ kind, name: server.name, url: server.url })
     }
     const { url, key, meta, movedFrom } = result.value
+    const changed = legalChanged(server.legal, meta.legal)
     // Languages the server stopped listing stay mapped, so they come back if it lists them again.
+    // Changed policies stay unaccepted until the user reviews them.
     yield* bindServer(
       {
         url,
@@ -38,10 +40,15 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
         verificationUrls: meta.verification_urls,
         features: meta.features,
         context: server.context,
+        legal: changed ? server.legal : acceptedLegal(meta.legal),
       },
       mapped,
       movedFrom,
     )
+    if (changed) {
+      yield* setServerIssue(url, { kind: "legal" })
+      return ok<CheckResult>({ kind: "legal", name: meta.name, url })
+    }
     return ok<CheckResult>(
       movedFrom === undefined
         ? { kind: "ok", name: meta.name, url }
@@ -51,7 +58,7 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
 
 /**
  * Handshake with every bound server, one at a time so their storage writes do not race.
- * New metadata and a verified move are saved. A changed key or a failed signature is stored as an issue.
+ * New metadata and a verified move are saved. A changed key, a failed signature or changed policies are stored as an issue.
  * `pending` and `results` are used for recursion only.
  */
 export const checkServers = (

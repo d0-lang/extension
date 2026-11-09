@@ -9,14 +9,14 @@ export const answer = async (
   pageUrl: string | undefined,
 ): Promise<LookupReply> => {
   const host = URL.parse(pageUrl ?? "")?.hostname
-  const [languages, siteBlocked] = await Promise.all([
-    boundLanguages().unwrapOr([]),
+  const [{ languages, paused }, siteBlocked] = await Promise.all([
+    boundLanguages().unwrapOr({ languages: [], paused: [] }),
     host === undefined ? true : isSiteBlocked(host),
   ])
   // The order `lookupWord` tries them in, since it ranks the same languages with the same hints.
   const tried = rankLanguages(languages, hints)
   return lookupWord(word, hints, context, siteBlocked).match(
-    (outcome): LookupReply => ({ ok: true, languages, tried, ...outcome }),
-    (error): LookupReply => ({ ok: false, languages, tried, error }),
+    (outcome): LookupReply => ({ ok: true, languages, paused, tried, ...outcome }),
+    (error): LookupReply => ({ ok: false, languages, paused, tried, error }),
   )
 }

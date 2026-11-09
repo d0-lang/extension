@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   entriesForLemma,
+  isAllowedAudioUrl,
   isValidSplit,
   linkSense,
   partsCovering,
@@ -215,5 +216,21 @@ describe("partsCovering", () => {
 
   it("finds every part a piece overlaps", () => {
     expect(partsCovering(texts, 1, 4)).toEqual([0, 1, 2])
+  })
+})
+
+describe("isAllowedAudioUrl", () => {
+  const server = "https://dict.example"
+
+  it("allows the answering server's own host and Wikimedia", () => {
+    expect(isAllowedAudioUrl("https://dict.example/audio/mutter.ogg", server)).toBe(true)
+    expect(isAllowedAudioUrl("https://upload.wikimedia.org/a.ogg", undefined)).toBe(true)
+  })
+
+  it("rejects other hosts, other ports and plain http", () => {
+    expect(isAllowedAudioUrl("https://tracker.example/a.ogg", server)).toBe(false)
+    expect(isAllowedAudioUrl("https://dict.example:8443/a.ogg", server)).toBe(false)
+    expect(isAllowedAudioUrl("http://dict.example/a.ogg", "http://dict.example")).toBe(false)
+    expect(isAllowedAudioUrl("https://dict.example/a.ogg", undefined)).toBe(false)
   })
 })

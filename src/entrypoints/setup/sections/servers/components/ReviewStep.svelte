@@ -6,6 +6,7 @@
   import { Input } from "$lib/components/ui/input"
   import { Label } from "$lib/components/ui/label"
   import { RadioGroup, RadioGroupItem } from "$lib/components/ui/radio-group"
+  import type { LegalDocument } from "$lib/dict"
   import { groupByTarget, pairMatches, pairName, sourceName } from "../languages"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
@@ -19,6 +20,13 @@
 
   const draft = $derived(setup.draft)
   const languages = $derived(draft?.meta.languages ?? [])
+  const legal = $derived(draft?.meta.legal)
+  const takesContext = $derived(draft?.meta.features.includes("context") === true)
+
+  const documentName: Record<LegalDocument, string> = {
+    privacy: "privacy policy",
+    tos: "terms of service",
+  }
   let filter = $state("")
   const groups = $derived(groupByTarget(languages.filter((lang) => pairMatches(lang, filter))))
 
@@ -68,6 +76,36 @@
         <AlertTitle>This server has moved</AlertTitle>
         <AlertDescription>
           From {draft.movedFrom}. Saving updates its address.
+        </AlertDescription>
+      </Alert>
+    {/if}
+    {#if setup.testingOnly}
+      <Alert variant="destructive">
+        <AlertTitle>No privacy policy or terms</AlertTitle>
+        <AlertDescription>
+          Use this server only for testing, and only if you develop or run it. Saving accepts that it gets the
+          words you look up{takesContext ? ", and the sentences around them if you allow it below" : ""}.
+        </AlertDescription>
+      </Alert>
+    {:else if legal !== undefined && setup.changedDocuments.length > 0}
+      <Alert>
+        <AlertTitle>
+          Updated {setup.changedDocuments.map((document) => documentName[document]).join(" and ")}
+        </AlertTitle>
+        <AlertDescription class="flex flex-col gap-2">
+          {#each setup.changedDocuments as document (document)}
+            {@const change = document === "privacy" ? legal.privacy_change : legal.tos_change}
+            {@const href = document === "privacy" ? legal.privacy_link : legal.tos_link}
+            <p class="wrap-anywhere">
+              {#if change !== undefined}
+                <span class="font-medium">The server says:</span> {change}
+              {/if}
+              <a class="underline" {href} target="_blank" rel="noreferrer"
+                >Read the {documentName[document]}</a
+              >
+            </p>
+          {/each}
+          <p>Lookups to this server wait until you save.</p>
         </AlertDescription>
       </Alert>
     {/if}
@@ -150,7 +188,7 @@
       </div>
     {/if}
 
-    {#if draft.meta.features.includes("context")}
+    {#if takesContext}
       <div class="flex flex-col gap-2">
         <div class="flex flex-col gap-1">
           <p class="font-medium" id="context-label">Sentences</p>
@@ -182,6 +220,27 @@
       </div>
     {/if}
 
+    <div class="flex flex-col gap-1">
+      <p class="font-medium">Privacy</p>
+      <p class="text-muted-foreground">
+        This server sees every word you look up, and your IP address.{takesContext
+          ? " If you let it, it also gets the sentence around each word."
+          : ""}
+      </p>
+      {#if legal !== undefined}
+        <p class="text-muted-foreground">
+          Learn more in its
+          <a class="text-foreground underline" href={legal.privacy_link} target="_blank" rel="noreferrer"
+            >privacy policy</a
+          >
+          and
+          <a class="text-foreground underline" href={legal.tos_link} target="_blank" rel="noreferrer"
+            >terms of service</a
+          >.
+        </p>
+      {/if}
+    </div>
+
     {#if setup.genericError}
       <Alert variant="destructive">
         <AlertTitle>Could not save</AlertTitle>
@@ -197,11 +256,14 @@
     {#if !setup.isEditing}
       <Button variant="outline" disabled={setup.saving} onclick={setup.backToConnect}>Back</Button>
     {/if}
-    <Button onclick={() => void setup.save()} disabled={setup.saving || !setup.canSave}>
+    <Button
+      onclick={() => void setup.save()}
+      disabled={setup.saving || !setup.canSave || setup.legalLock.locked}
+    >
       {#if setup.saving}
         Saving…
       {:else}
-        {setup.isNew ? "Add server" : "Save"}
+        {setup.isNew ? "Add server" : "Save"}{setup.legalLock.locked ? ` (${setup.legalLock.seconds})` : ""}
       {/if}
     </Button>
   </DialogFooter>

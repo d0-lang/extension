@@ -17,10 +17,11 @@ export type LookupRequestMessage = {
 }
 
 /**
- * Plain data, because a `Result` does not survive messaging. `languages` are the bound ones.
+ * Plain data, because a `Result` does not survive messaging. `languages` are the bound ones a lookup can ask.
+ * `paused` are bound but skipped until the user resolves their server's issue.
  * `tried` are the languages asked, in order, whether or not one answered.
  */
-export type LookupReply = { languages: Array<string>; tried: Array<string> } & (
+export type LookupReply = { languages: Array<string>; paused: Array<string>; tried: Array<string> } & (
   ({ ok: true } & LookupOutcome) | { ok: false; error: DictError }
 )
 
@@ -59,8 +60,9 @@ export const requestLookup = (
       reply ?? {
         ok: false,
         languages: [],
+        paused: [],
         tried: [],
         error: fromUnknown("The background script did not reply"),
       },
-    (error): LookupReply => ({ ok: false, languages: [], tried: [], error }),
+    (error): LookupReply => ({ ok: false, languages: [], paused: [], tried: [], error }),
   )

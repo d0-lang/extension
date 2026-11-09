@@ -1,4 +1,4 @@
-/** Notifications about servers that moved, changed their key or failed verification at start. */
+/** Notifications about servers that moved, changed their key or policies, or failed verification at start. */
 import type { CheckResult } from "./check"
 
 const NOTIFICATION_PREFIX = "server:"
@@ -13,12 +13,19 @@ const notificationText = (result: CheckResult): { title: string; message: string
     case "identity":
       return {
         title: `${result.name} changed its identity`,
-        message: "Its signing key is different. Review it in DaDict settings before you trust it.",
+        message:
+          "Its signing key is different. Lookups to it are paused until you review it in DaDict settings.",
+      }
+    case "legal":
+      return {
+        title: `${result.name} changed its policies`,
+        message:
+          "Its privacy policy or terms are new or changed. Lookups to it are paused until you review them in DaDict settings.",
       }
     case "broken":
       return {
         title: `Can't verify ${result.name}`,
-        message: "Its answer failed the signature check, so DaDict kept the last verified data.",
+        message: "Its answer failed the signature check. Lookups to it are paused until it verifies again.",
       }
     default:
       return undefined

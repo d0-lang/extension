@@ -2,9 +2,7 @@
  *  `run(url)` is Connect; `continue()` retries the warned URL with its new key.
  *  `cancel()` drops an in-flight attempt when the dialog closes. */
 import { handshake, type DictError, type HandshakeOk } from "$lib/dict"
-
-/** The protocol locks the identity warning for 5 seconds. */
-const IDENTITY_LOCK_SECONDS = 5
+import { Countdown } from "./countdown.svelte"
 
 /** `details` is the technical message, shown only on request. */
 export type ConnectFailure = { text: string; details: string | undefined }
@@ -42,17 +40,15 @@ export class HandshakeSession {
   failure = $state.raw<ConnectFailure | null>(null)
   identityUrls = $state.raw<Array<string> | null>(null)
   brokenUrls = $state.raw<Array<string> | null>(null)
-  lockSeconds = $state(0)
-
-  identityLocked = $derived(this.lockSeconds > 0)
+  /** Holds back trusting a new key. */
+  identityLock = new Countdown()
 
   #attemptUrl = ""
   #pending: { url: string; key: string | undefined } | undefined
-  #lockTimer: ReturnType<typeof setInterval> | undefined
 
   cancel = () => {
     this.connecting = false
-    this.#clearLock()
+    this.identityLock.stop()
   }
 
   /** The warnings describe the URL that was tried, so they end when the input changes. */
@@ -61,7 +57,7 @@ export class HandshakeSession {
     this.identityUrls = null
     this.brokenUrls = null
     this.#pending = undefined
-    this.#clearLock()
+    this.identityLock.stop()
   }
 
   run = async (input: string, newKey?: string): Promise<HandshakeOk | undefined> => {
@@ -85,25 +81,6 @@ export class HandshakeSession {
   continue = async (): Promise<HandshakeOk | undefined> =>
     this.#pending === undefined ? undefined : this.run(this.#pending.url, this.#pending.key)
 
-  #clearLock = () => {
-    if (this.#lockTimer !== undefined) {
-      clearInterval(this.#lockTimer)
-      this.#lockTimer = undefined
-    }
-    this.lockSeconds = 0
-  }
-
-  #startLock = () => {
-    this.#clearLock()
-    this.lockSeconds = IDENTITY_LOCK_SECONDS
-    this.#lockTimer = setInterval(() => {
-      this.lockSeconds -= 1
-      if (this.lockSeconds <= 0) {
-        this.#clearLock()
-      }
-    }, 1000)
-  }
-
   #fail = (cause: DictError) => {
     if (!this.connecting) {
       return
@@ -113,14 +90,14 @@ export class HandshakeSession {
       this.identityUrls = cause.verificationUrls
       this.#pending = { url: this.#attemptUrl, key: cause.newKey }
       this.brokenUrls = null
-      this.#startLock()
+      this.identityLock.start()
       return
     }
     if (cause.kind === "broken") {
       this.brokenUrls = cause.verificationUrls
       this.identityUrls = null
       this.#pending = undefined
-      this.#clearLock()
+      this.identityLock.stop()
       return
     }
     this.clearWarnings()

@@ -4,7 +4,7 @@
  * `openEdit` runs the same steps against a bound server.
  */
 import { ResultAsync } from "neverthrow"
-import type { HandshakeOk } from "$lib/dict"
+import { acceptedLegal, changedDocuments, type HandshakeOk } from "$lib/dict"
 import {
   bindServer,
   contextSending,
@@ -12,10 +12,12 @@ import {
   getServerIssues,
   getServers,
   removeServer,
+  type AcceptedLegal,
   type ContextSending,
   type ServerByLang,
   type Servers,
 } from "$lib/storage"
+import { Countdown } from "./countdown.svelte"
 import type { DialogState, ServerRow } from "./types"
 
 export class ServerSetup {
@@ -33,8 +35,18 @@ export class ServerSetup {
   removeError = $state("")
   /** Set while the add dialog reconnects to a bound server to change its languages. */
   editUrl = $state<string | undefined>(undefined)
+  /** The policies the user last accepted for the draft's server. Unset when it is not bound yet. */
+  accepted = $state.raw<AcceptedLegal | null | undefined>(undefined)
+  /** Holds back saving a server without policies. */
+  legalLock = new Countdown()
 
   saving = $derived(this.dialogState === "saving")
+  /** The draft has no privacy policy or terms, so it is for testing only. */
+  testingOnly = $derived(this.draft !== null && this.draft.meta.legal === undefined)
+  /** Policies the draft changed since the user accepted them. Saving accepts them. */
+  changedDocuments = $derived(
+    this.draft === null ? [] : changedDocuments(this.accepted, this.draft.meta.legal),
+  )
   isEditing = $derived(this.editUrl !== undefined)
   /** Saving binds a server that is not stored yet, rather than updating one. */
   isNew = $derived(
@@ -153,6 +165,8 @@ export class ServerSetup {
   }
 
   resetDialog = () => {
+    this.legalLock.stop()
+    this.accepted = undefined
     this.editUrl = undefined
     this.draft = null
     this.selected = {}
@@ -181,6 +195,13 @@ export class ServerSetup {
     this.draft = result
     const bound = this.servers[result.url] ?? this.servers[result.movedFrom ?? ""]
     this.context = bound === undefined ? "unblocked" : contextSending(bound)
+    this.accepted = bound?.legal
+    // A testing server the user already accepted does not warn again.
+    if (result.meta.legal === undefined && bound?.legal !== null) {
+      this.legalLock.start()
+      // Without policies, sentences go only once the user turns them on in this warning.
+      this.context = "none"
+    }
     this.selected = Object.fromEntries(
       result.meta.languages.map((lang) => {
         const mapped = this.serverByLang[lang]
@@ -193,6 +214,8 @@ export class ServerSetup {
   /** Back from review to the connect step, keeping the typed address. */
   backToConnect = () => {
     if (this.dialogState === "review-open") {
+      this.legalLock.stop()
+      this.accepted = undefined
       this.draft = null
       this.selected = {}
       this.genericError = ""
@@ -207,7 +230,7 @@ export class ServerSetup {
   }
 
   save = async () => {
-    if (this.draft === null || !this.canSave) {
+    if (this.draft === null || !this.canSave || this.legalLock.locked) {
       return
     }
     this.dialogState = "saving"
@@ -221,6 +244,7 @@ export class ServerSetup {
         verificationUrls: this.draft.meta.verification_urls,
         features: this.draft.meta.features,
         context: this.context,
+        legal: acceptedLegal(this.draft.meta.legal),
       },
       this.selectedLanguages,
       this.draft.movedFrom,

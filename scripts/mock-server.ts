@@ -15,6 +15,8 @@ type Scenario = {
   keyGroup?: string
   /** Body sent instead of metadata, pointing here. */
   newSource?: string
+  /** `false` lists no privacy policy or terms. Bumped by the policy control otherwise. */
+  policyVersion?: number | false
   fault?: "wrong-key" | "no-signature" | "bad-nonce" | "http-500" | "slow"
   /** Where the overview page lists it. */
   section: Section
@@ -100,6 +102,32 @@ const scenarios: Record<string, Scenario> = {
     section: "adds",
     summary: `Meta takes ${SLOW_MS / 1000} seconds.`,
     expect: "Connecting… for a few seconds, then the review. Closing the dialog meanwhile drops the attempt.",
+  },
+  testing: {
+    name: "Testing Only",
+    languages: ["sv_en"],
+    verificationUrls: [],
+    features: ["context"],
+    policyVersion: false,
+    section: "adds",
+    summary: "Lists no privacy policy or terms, and takes sentences.",
+    expect:
+      '"No privacy policy or terms", naming sentences. Add server counts down 5 seconds. Edit languages later does not count down again.',
+  },
+  policy: {
+    name: "Changing Policy",
+    languages: ["fi_en"],
+    verificationUrls: [],
+    section: "steps",
+    summary: "The server updates its privacy policy.",
+    steps: [
+      "Add it and tick Finnish.",
+      "Press Update policy below.",
+      "Reload the extension or restart the browser, which runs the startup check.",
+      "Look up a Finnish word, then press Review on the card.",
+    ],
+    expect:
+      'After the reload: a notification, a ! badge, and a red card saying lookups are paused. A Finnish lookup says lookups are paused. Review shows "Updated privacy policy" with the server\'s summary and a link. Saving clears the warning and lookups work again.',
   },
   rotate: {
     name: "Rotating Key",
@@ -320,6 +348,20 @@ const json = (body: unknown, init: ResponseInit = {}) =>
     headers: { "Content-Type": "application/json", ...cors, ...init.headers },
   })
 
+const sha256 = async (text: string): Promise<string> =>
+  Buffer.from(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))).toString("hex")
+
+const policyText = (id: string, document: "privacy" | "tos", version: number) =>
+  `${id} ${document === "privacy" ? "privacy policy" : "terms of service"}, version ${version + 1}.`
+
+const legal = async (id: string, version: number) => ({
+  privacy_link: `${ORIGIN}/${id}/privacy`,
+  privacy_hash: await sha256(policyText(id, "privacy", version)),
+  ...(version > 0 ? { privacy_change: `Version ${version + 1}: lookups are now kept for 30 days.` } : {}),
+  tos_link: `${ORIGIN}/${id}/tos`,
+  tos_hash: await sha256(policyText(id, "tos", 0)),
+})
+
 const getMeta = async (id: string, scenario: Scenario, request: Request) => {
   if (scenario.fault === "slow") {
     await Bun.sleep(SLOW_MS)
@@ -334,6 +376,9 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
           languages: scenario.languages,
           verification_urls: scenario.verificationUrls,
           ...(scenario.features === undefined ? {} : { features: scenario.features }),
+          ...(scenario.policyVersion === false
+            ? {}
+            : { legal: await legal(id, scenario.policyVersion ?? 0) }),
         },
   )
   const { privateKey } =
@@ -392,9 +437,13 @@ const card = (id: string, scenario: Scenario) => {
       : scenario.languages.map((lang) => `<span class="chip">${escapeHtml(lang)}</span>`).join(""),
     generation > 0 ? `<span class="badge">key rotated ×${generation}</span>` : "",
     scenario.newSource !== undefined ? `<span class="badge">moved → moved-target</span>` : "",
+    typeof scenario.policyVersion === "number" && scenario.policyVersion > 0
+      ? `<span class="badge">policy updated ×${scenario.policyVersion}</span>`
+      : "",
   ].join("")
   const controls = [
     id === "rotate" ? `<a class="button" href="/_rotate/${id}">Rotate key</a>` : "",
+    id === "policy" ? `<a class="button" href="/_policy/${id}">Update policy</a>` : "",
     id === "moved"
       ? scenario.newSource === undefined
         ? `<a class="button" href="/_move/${id}">Move to moved-target</a>`
@@ -524,6 +573,8 @@ Bun.serve({
       if (first === "_rotate") {
         const group = scenario.keyGroup ?? second
         keyGeneration[group] = (keyGeneration[group] ?? 0) + 1
+      } else if (first === "_policy") {
+        scenario.policyVersion = (scenario.policyVersion || 0) + 1
       } else if (first === "_move") {
         scenario.newSource = `${ORIGIN}/moved-target`
       } else if (first === "_unmove") {
@@ -559,6 +610,20 @@ Bun.serve({
           `<!doctype html><html lang="ja"><meta charset="utf-8"><title>Japanese sample</title><body style="font:28px/2 system-ui,sans-serif;max-width:40em;margin:48px auto">${SAMPLE_SENTENCES.map((sentence) => `<p>${sentence}</p>`).join("")}</body></html>`,
           { headers: { "Content-Type": "text/html; charset=utf-8" } },
         )
+      case "privacy":
+      case "tos": {
+        const version =
+          scenario.policyVersion === false
+            ? undefined
+            : endpoint === "tos"
+              ? 0
+              : (scenario.policyVersion ?? 0)
+        return version === undefined
+          ? new Response("not found", { status: 404 })
+          : new Response(policyText(first, endpoint, version), {
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            })
+      }
       case "news":
         return new Response(`<h1>${escapeHtml(scenario.name)}: server news</h1><p>Nothing to report.</p>`, {
           headers: { "Content-Type": "text/html; charset=utf-8" },

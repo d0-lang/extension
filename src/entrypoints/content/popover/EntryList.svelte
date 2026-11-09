@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right"
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
   import { isAllowedAudioUrl, linkSense } from "$lib/dict/entries"
@@ -9,6 +10,7 @@
   let {
     entries,
     language,
+    server,
     showIpa,
     audio,
     follow,
@@ -16,6 +18,8 @@
     entries: Array<LookupEntry>
     /** The language `entries` are in, which a `see` link is looked up in. */
     language: string | undefined
+    /** The server that sent `entries`, whose own host may serve their audio. */
+    server: string | undefined
     showIpa: boolean
     audio: AudioPlayer
     follow: (target: string, language: string | undefined) => void
@@ -23,7 +27,7 @@
 </script>
 
 {#each entries as entry, index (index)}
-  {@const url = entry.pron?.audio?.find(isAllowedAudioUrl)}
+  {@const url = entry.pron?.audio?.find((link) => isAllowedAudioUrl(link, server))}
   {@const ipa = entry.pron?.ipa ?? []}
   <section class="flex flex-col gap-1.5" data-audio={url}>
     <div class="flex flex-col">
@@ -97,13 +101,22 @@
 {/snippet}
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}
-  <!-- A button would stay one box, which pushes a long link onto its own line. -->
-  <a
-    href="#see"
-    class="underline underline-offset-2"
-    onclick={(event) => {
-      event.preventDefault()
-      follow(target, language)
-    }}>{text}</a
+  <!-- Not a button, which would stay one box and push a long link onto its own line.
+       Not an anchor, because Zen opens Alt + click on any anchor in its Glance overlay before the page sees the click. -->
+  <span
+    role="link"
+    tabindex="0"
+    class="cursor-pointer underline underline-offset-2"
+    onclick={() => follow(target, language)}
+    onkeydown={(event) => {
+      if (event.key === "Enter") {
+        event.preventDefault()
+        follow(target, language)
+      }
+    }}
+    >{text}<!-- The word joiner keeps the icon on the same line as the last letter. -->&#x2060;<ArrowUpRight
+      class="ml-px inline size-2.5 align-text-top opacity-60"
+      aria-hidden="true"
+    /></span
   >
 {/snippet}
