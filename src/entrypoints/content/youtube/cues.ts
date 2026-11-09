@@ -4,7 +4,15 @@ import type { Json3 } from "./json3"
 /** `text` has its lines apart with `\n`. */
 export type Cue = { startMs: number; endMs: number; text: string }
 
-type Word = { text: string; startMs: number; speakerChange: boolean }
+type Word = {
+  text: string
+  startMs: number
+  speakerChange: boolean
+  /** Whether the word starts inside what the segmenter reads as one word, like `方` after `使い`. No cut goes before it. */
+  inSegment: boolean
+}
+
+const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" })
 
 /** About 42 Latin letters. A wide character, like a kanji, counts as two. */
 export const LINE_WIDTH = 42
@@ -65,21 +73,40 @@ const joinLines = (text: string): string =>
     WIDE.test(before) && WIDE.test(after) ? before + after : `${before} ${after}`,
   )
 
+/** Marks the words that start inside a segment. The track is read whole, because the segmenter needs the words around. */
+const markSegments = (words: ReadonlyArray<Omit<Word, "inSegment">>): Array<Word> => {
+  let text = ""
+  const starts = words.map((word) => {
+    const piece = word.text.trim()
+    const joinsWide = word.text.startsWith("\n") && WIDE.test(text.at(-1) ?? "") && WIDE.test(piece[0] ?? "")
+    if (text !== "" && /^\s/u.test(word.text) && !joinsWide) {
+      text += " "
+    }
+    const start = text.length
+    text += piece
+    return start
+  })
+  const boundaries = new Set(Array.from(SEGMENTER.segment(text), ({ index }) => index))
+  return words.map((word, index) => ({ ...word, inSegment: !boundaries.has(starts[index]!) }))
+}
+
 // A dropped sound leaves a gap, which cuts like a pause.
 const asrWords = (json3: Json3): Array<Word> =>
-  json3.events
-    .flatMap(({ tStartMs, aAppend, segs = [] }) =>
-      aAppend === 1
-        ? []
-        : segs.map(({ utf8, tOffsetMs = 0, isSpeakerChange }, index) => ({
-            // An event's first word has no space before it, so it starts a line like in a creator track.
-            // The speaker marker becomes a cut, so it would only get in the way of picking the word.
-            text: (index === 0 ? "\n" : "") + utf8.replace(/^(\s*)>>\s*/u, "$1").replace(SOUND, ""),
-            startMs: tStartMs + tOffsetMs,
-            speakerChange: isSpeakerChange === 1,
-          })),
-    )
-    .filter(({ text }) => text.trim() !== "")
+  markSegments(
+    json3.events
+      .flatMap(({ tStartMs, aAppend, segs = [] }) =>
+        aAppend === 1
+          ? []
+          : segs.map(({ utf8, tOffsetMs = 0, isSpeakerChange }, index) => ({
+              // An event's first word has no space before it, so it starts a line like in a creator track.
+              // The speaker marker becomes a cut, so it would only get in the way of picking the word.
+              text: (index === 0 ? "\n" : "") + utf8.replace(/^(\s*)>>\s*/u, "$1").replace(SOUND, ""),
+              startMs: tStartMs + tOffsetMs,
+              speakerChange: isSpeakerChange === 1,
+            })),
+      )
+      .filter(({ text }) => text.trim() !== ""),
+  )
 
 /**
  * Whether cutting between `last` and `next` splits what reads as one word in Japanese.
@@ -102,6 +129,7 @@ const breaksBefore = (cue: ReadonlyArray<Word>, word: Word): boolean => {
   }
   return (
     joinedWidth(cue) >= MIN_WIDTH &&
+    !word.inSegment &&
     !glued(last, word) &&
     (SENTENCE_END.test(last.text.trim()) || gap >= PAUSE_MS)
   )
@@ -121,15 +149,22 @@ const linesOf = (words: ReadonlyArray<Word>): Array<ReadonlyArray<Word>> => {
   if (joinedWidth(words) <= LINE_WIDTH) {
     return [words]
   }
-  let best: { index: number; fits: boolean; score: number } | undefined
+  type Cut = { index: number; fits: boolean; whole: boolean; score: number }
+  // Keeping both lines in width comes first, then keeping words whole, then reading well.
+  const better = (a: Cut, b: Cut): boolean =>
+    a.fits !== b.fits ? a.fits : a.whole !== b.whole ? a.whole : a.score > b.score
+  let best: Cut | undefined
   for (let index = 1; index < words.length; index++) {
     const head = joinedWidth(words.slice(0, index))
     const tail = joinedWidth(words.slice(index))
-    const fits = head <= LINE_WIDTH && tail <= LINE_WIDTH
-    const score = cutScore(words.slice(0, index), words[index]!) - Math.abs(head - tail) * UNEVEN_MS
-    // A cut that keeps both lines in width wins over any that does not.
-    if (best === undefined || (fits && !best.fits) || (fits === best.fits && score > best.score)) {
-      best = { index, fits, score }
+    const cut = {
+      index,
+      fits: head <= LINE_WIDTH && tail <= LINE_WIDTH,
+      whole: !words[index]!.inSegment,
+      score: cutScore(words.slice(0, index), words[index]!) - Math.abs(head - tail) * UNEVEN_MS,
+    }
+    if (best === undefined || better(cut, best)) {
+      best = cut
     }
   }
   return best === undefined ? [words] : [words.slice(0, best.index), words.slice(best.index)]
@@ -145,7 +180,7 @@ const cutIndex = (cue: ReadonlyArray<Word>): number => {
   let bestScore = -Infinity
   for (let index = 1; index < cue.length; index++) {
     const head = cue.slice(0, index)
-    if (joinedWidth(head) < MIN_WIDTH || !fitsTwoLines(head)) {
+    if (cue[index]!.inSegment || joinedWidth(head) < MIN_WIDTH || !fitsTwoLines(head)) {
       continue
     }
     const score = cutScore(head, cue[index]!)

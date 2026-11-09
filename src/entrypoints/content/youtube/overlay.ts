@@ -109,12 +109,13 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
       }
       shown = key
       root.lang = lang
-      // A break, not a block per line, so the sentence around a word can run on from the line above.
+      // A line break in the text, which `pre-line` shows. A `<br>` or a block per line would end the text
+      // a word's sentence is read from, and the server should get the whole cue.
       root.replaceChildren(
         ...text
           .split("\n")
-          .flatMap((line, index) => [
-            ...(index === 0 ? [] : [document.createElement("br")]),
+          .flatMap((line, index): Array<string | Node> => [
+            ...(index === 0 ? [] : ["\n"]),
             lineOf(line, lang),
           ]),
       )

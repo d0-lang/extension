@@ -12,6 +12,8 @@
   /* Only the text takes clicks, so the gaps around it still reach the video. */
   pointer-events: none;
   text-align: center;
+  /* Shows the line break between a cue's two lines. */
+  white-space: pre-line;
   text-wrap: balance;
   word-break: auto-phrase;
   color: #fff;

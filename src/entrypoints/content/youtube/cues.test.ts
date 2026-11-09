@@ -124,6 +124,16 @@ describe("cuesOf for auto captions", () => {
     expect(texts(cuesOf(json3, true))).toEqual(["輸入消費税とかの経理関係"])
   })
 
+  it("keeps a word whole that auto captions cut in two", () => {
+    const json3 = asr([
+      ["今回の動画ではリレーの仕組みとその", 0],
+      ["使い", 300],
+      ["方", 2000],
+      ["を", 2300],
+    ])
+    expect(texts(cuesOf(json3, true))).toEqual(["今回の動画ではリレーの仕組みとその使い方を"])
+  })
+
   it("ends a polite Japanese sentence", () => {
     const json3 = asr([
       ["今日はリレーの仕組みについての動画", 0],
