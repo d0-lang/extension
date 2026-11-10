@@ -19,7 +19,8 @@
     "postinstall": "wxt prepare",
     "mock-server": "bun scripts/mock-server.ts",
     "youtube": "bun scripts/youtube.ts",
-    "youtube:perf": "bun scripts/youtube-perf.ts"
+    "youtube:perf": "bun scripts/youtube-perf.ts",
+    "youtube:firefox": "bun scripts/youtube-firefox.ts"
   },
   "dependencies": {
     "neverthrow": "^8.2.0",

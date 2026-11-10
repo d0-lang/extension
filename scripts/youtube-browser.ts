@@ -6,9 +6,9 @@ export const EXTENSION = new URL("../.output/chrome-mv3", import.meta.url).pathn
 
 const AD_WAIT_MS = 90_000
 
-/** Builds the extension into `EXTENSION`. Exits when the build fails. */
-export const buildExtension = () => {
-  const build = Bun.spawnSync(["bun", "run", "build"], { stdout: "ignore", stderr: "inherit" })
+/** Builds the extension, into `EXTENSION` unless `script` is the build for another browser. Exits when the build fails. */
+export const buildExtension = (script = "build") => {
+  const build = Bun.spawnSync(["bun", "run", script], { stdout: "ignore", stderr: "inherit" })
   if (build.exitCode !== 0) {
     process.exit(1)
   }
