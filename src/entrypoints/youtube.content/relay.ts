@@ -3,25 +3,23 @@ import { TIMEDTEXT_EVENT, TIMEDTEXT_READY_EVENT, timedtextDetail } from "$lib/ca
 
 type Relay = Pick<Window, "addEventListener" | "dispatchEvent">
 
+/** Enough for the video on the page and a few played before it or on hover. */
+const MAX_KEPT = 5
+
 /**
- * Returns what dispatches a track on `win`. The tracks from before the content script says it listens
- * are kept, and dispatched again once it does.
+ * Returns what dispatches a track on `win`. The latest tracks are kept, and dispatched again whenever a content script
+ * says it listens. That is once on a page load, and again when the extension reloads under an open page.
  */
 export const relayTimedtext = (win: Relay): ((url: string, body: string) => void) => {
   const dispatch = (detail: string) => win.dispatchEvent(new CustomEvent(TIMEDTEXT_EVENT, { detail }))
-  let early: Array<string> | undefined = []
-  win.addEventListener(
-    TIMEDTEXT_READY_EVENT,
-    () => {
-      const missed = early ?? []
-      early = undefined
-      missed.forEach(dispatch)
-    },
-    { once: true },
-  )
+  const kept: Array<string> = []
+  win.addEventListener(TIMEDTEXT_READY_EVENT, () => kept.forEach(dispatch))
   return (url, body) => {
     const detail = timedtextDetail({ url, body })
-    early?.push(detail)
+    kept.push(detail)
+    if (kept.length > MAX_KEPT) {
+      kept.shift()
+    }
     dispatch(detail)
   }
 }

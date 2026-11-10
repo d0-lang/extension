@@ -33,12 +33,19 @@ describe("relayTimedtext", () => {
     expect(listen(win)).toEqual([URL_JA, URL_EN])
   })
 
-  it("sends a track once to a content script that was listening", () => {
+  it("sends them again to a content script that starts later, as after the extension reloads", () => {
     const win = new EventTarget()
     const send = relayTimedtext(win)
-    const heard = listen(win)
+    listen(win)
     send(URL_JA, "{}")
-    win.dispatchEvent(new CustomEvent(TIMEDTEXT_READY_EVENT))
-    expect(heard).toEqual([URL_JA])
+    expect(listen(win)).toEqual([URL_JA])
+  })
+
+  it("keeps only the latest tracks", () => {
+    const win = new EventTarget()
+    const send = relayTimedtext(win)
+    const urls = Array.from({ length: 8 }, (_, index) => `${URL_JA}&n=${index}`)
+    urls.forEach((url) => send(url, "{}"))
+    expect(listen(win)).toEqual(urls.slice(-5))
   })
 })
