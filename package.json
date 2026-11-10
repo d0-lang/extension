@@ -18,7 +18,8 @@
     "test": "vitest run",
     "postinstall": "wxt prepare",
     "mock-server": "bun scripts/mock-server.ts",
-    "youtube": "bun scripts/youtube.ts"
+    "youtube": "bun scripts/youtube.ts",
+    "youtube:perf": "bun scripts/youtube-perf.ts"
   },
   "dependencies": {
     "neverthrow": "^8.2.0",

@@ -6,8 +6,9 @@
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { chromium, type Page, type Response } from "playwright"
+import type { Page, Response } from "playwright"
 import { TIMEDTEXT_EVENT } from "../src/lib/captions"
+import { buildExtension, EXTENSION, openYouTube, viewerUserAgent, waitForAds } from "./youtube-browser"
 
 type Track = { lang: string; kind: "manual" | "asr" }
 type Video = {
@@ -17,8 +18,6 @@ type Video = {
   note: string
   tracks: Array<Track>
 }
-
-const EXTENSION = new URL("../.output/chrome-mv3", import.meta.url).pathname
 
 const FIXTURES = new URL("../src/entrypoints/content/youtube/fixtures/", import.meta.url)
 
@@ -71,7 +70,6 @@ const videos: Array<Video> = [
   { id: "IEkZoYo2BVQ", lang: "uk", note: "no caption tracks", tracks: [] },
 ]
 
-const AD_WAIT_MS = 90_000
 const TRACK_WAIT_MS = 10_000
 const TRACK_ATTEMPTS = 3
 
@@ -98,25 +96,6 @@ const trimmed = (json3: Json3) => {
         : { ...event, segs: event.segs.map(({ acAsrConf: _, ...seg }) => seg) },
     )
   return `{"events":[\n${events.map((event) => JSON.stringify(event)).join(",\n")}\n]}\n`
-}
-
-/** Waits out ads, skipping them when YouTube offers it. */
-const waitForAds = async (page: Page) => {
-  const deadline = Date.now() + AD_WAIT_MS
-  while (Date.now() < deadline) {
-    const showing = await page.evaluate(() =>
-      document.querySelector("#movie_player")?.classList.contains("ad-showing"),
-    )
-    if (!showing) {
-      return
-    }
-    await page
-      .locator(".ytp-skip-ad-button, .ytp-ad-skip-button-modern")
-      .click({ timeout: 1000 })
-      .catch(() => {})
-    await page.waitForTimeout(1000)
-  }
-  throw new Error("an ad was still showing")
 }
 
 /** Turns captions off and on with the track, so the player asks for it again. Resolves to the language code it picked. */
@@ -253,33 +232,11 @@ const checkVideo = async (page: Page, video: Video): Promise<Array<string>> => {
   return problems
 }
 
-const build = Bun.spawnSync(["bun", "run", "build"], { stdout: "ignore", stderr: "inherit" })
-if (build.exitCode !== 0) {
-  process.exit(1)
-}
+buildExtension()
+const userAgent = await viewerUserAgent()
 
-// YouTube sends empty captions to a user agent that says HeadlessChrome.
-const probe = await chromium.launch({ channel: "chromium" })
-const userAgent = `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${probe.version().split(".")[0]}.0.0.0 Safari/537.36`
-await probe.close()
-
-/** A fresh browser session per video, because the player carries caption and translation choices from one video to the next. */
 const openPage = async (video: Video, profile: string): Promise<Page> => {
-  const context = await chromium.launchPersistentContext(profile, {
-    // The new headless mode, which loads extensions.
-    channel: "chromium",
-    headless: true,
-    userAgent,
-    locale: video.lang,
-    // Like the user agent, `navigator.webdriver` gets empty captions.
-    args: [
-      "--disable-blink-features=AutomationControlled",
-      `--disable-extensions-except=${EXTENSION}`,
-      `--load-extension=${EXTENSION}`,
-    ],
-  })
-  // Skips the EU consent page.
-  await context.addCookies([{ name: "SOCS", value: "CAI", domain: ".youtube.com", path: "/" }])
+  const context = await openYouTube({ profile, userAgent, locale: video.lang, extension: EXTENSION })
   // Collects the tracks our hook passes on, the way `trackKey` names them.
   await context.addInitScript((event) => {
     const page = window as unknown as { hooked: Array<string> }
