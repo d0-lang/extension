@@ -17,10 +17,11 @@ export type HandshakeOk = {
 }
 
 /**
- * Load any stored bind, pin `/v1/get-key`, then signed meta.
+ * Fetches signed metadata, verified with the stored key when `baseUrl` is bound, else with the one `/v1/get-key` serves.
  *
- * Omit `newKey` for a normal connect (advertised key ≠ stored pin → `kind: "identity"`).
- * Pass `newKey` after the user accepts a rotation; signature failure then is `kind: "broken"`.
+ * A signature the stored key does not verify makes it ask for the key again: a different one is `kind: "identity"`,
+ * the same one or none is `kind: "broken"`. Pass `newKey` after the user accepts a new key. It is then the only key
+ * tried, and a failed signature is `kind: "broken"`.
  * Domain move is not an identity change: `getMeta` follows `new_source` with this same key.
  */
 export const handshake = (
@@ -30,15 +31,23 @@ export const handshake = (
   safeTry(async function* () {
     const requested = yield* normalizeServerUrl(baseUrl)
     const stored = yield* ResultAsync.fromPromise(getStoredServer(requested), fromUnknown)
-    const key = newKey ?? (yield* getKey(requested))
-    if (newKey === undefined && stored !== undefined && stored.key !== key) {
-      return err(handshakeError("identity", stored.verificationUrls, key))
+    const key = newKey ?? stored?.key ?? (yield* getKey(requested))
+    const fetched = await getMeta(requested, key)
+    if (fetched.isErr()) {
+      const { kind } = fetched.error
+      if (kind !== "signature" && kind !== "missing-signature") {
+        return err(fetched.error)
+      }
+      // Only the stored key can be out of date. One just fetched or accepted is the server's own.
+      if (newKey === undefined && stored !== undefined) {
+        const served = await getKey(requested)
+        if (served.isOk() && served.value !== stored.key) {
+          return err(handshakeError("identity", stored.verificationUrls, served.value))
+        }
+      }
+      return err(handshakeError("broken", stored?.verificationUrls ?? []))
     }
-    const { url, meta } = yield* getMeta(requested, key).mapErr((cause) =>
-      cause.kind === "signature" || cause.kind === "missing-signature"
-        ? handshakeError("broken", stored?.verificationUrls ?? [])
-        : cause,
-    )
+    const { url, meta } = fetched.value
     return ok({
       url,
       key,

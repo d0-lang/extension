@@ -15,6 +15,8 @@ type Scenario = {
   keyGroup?: string
   /** Body sent instead of metadata, pointing here. */
   newSource?: string
+  /** Whether `/v1/get-key` is a 404 once the scenario has moved, as on an address kept only to announce the move. */
+  keylessOnceMoved?: boolean
   /** `false` lists no privacy policy or terms. Bumped by the policy control otherwise. */
   policyVersion?: number | false
   fault?: "wrong-key" | "no-signature" | "bad-nonce" | "http-500" | "slow"
@@ -158,6 +160,22 @@ const scenarios: Record<string, Scenario> = {
     ],
     expect:
       'After the reload: a notification that Old Host moved, and the card is now New Host at /moved-target with French kept. No identity warning. Through Edit languages: a review with "This server has moved".',
+  },
+  "moved-keyless": {
+    name: "Old Host Without Key",
+    languages: ["fr_en"],
+    verificationUrls: [],
+    keyGroup: "moved",
+    keylessOnceMoved: true,
+    section: "steps",
+    summary: "The server moves, and its old address then serves only the move: /v1/get-key is a 404.",
+    steps: [
+      "Add it and tick French.",
+      "Press Move to moved-target below.",
+      "Reload the extension or restart the browser. Or, without reloading, open ⋯ → Edit languages on it.",
+    ],
+    expect:
+      "The same as for moved: a notification that it moved, and the card is now New Host at /moved-target. The stored key verifies the move, so the missing key does not matter.",
   },
   "moved-target": {
     name: "New Host",
@@ -444,7 +462,7 @@ const card = (id: string, scenario: Scenario) => {
   const controls = [
     id === "rotate" ? `<a class="button" href="/_rotate/${id}">Rotate key</a>` : "",
     id === "policy" ? `<a class="button" href="/_policy/${id}">Update policy</a>` : "",
-    id === "moved"
+    id === "moved" || id === "moved-keyless"
       ? scenario.newSource === undefined
         ? `<a class="button" href="/_move/${id}">Move to moved-target</a>`
         : `<a class="button" href="/_unmove/${id}">Undo move</a>`
@@ -600,7 +618,9 @@ Bun.serve({
     }
     switch (endpoint) {
       case "v1/get-key":
-        return json({ key: (await scenarioKey(first, scenario)).publicKey })
+        return scenario.keylessOnceMoved === true && scenario.newSource !== undefined
+          ? json({ error: "not_found" }, { status: 404 })
+          : json({ key: (await scenarioKey(first, scenario)).publicKey })
       case "v1/get-meta":
         return getMeta(first, scenario, request)
       case "v1/lookup":
