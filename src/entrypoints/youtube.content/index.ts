@@ -1,6 +1,7 @@
-import { ORIGINAL_ATTRIBUTE, TIMEDTEXT_EVENT, timedtextDetail } from "$lib/captions"
+import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
 import { hookTimedtext } from "./hook"
 import { keepOriginal } from "./original"
+import { relayTimedtext } from "./relay"
 
 export default defineContentScript({
   matches: ["*://www.youtube.com/*", "*://m.youtube.com/*", "*://www.youtube-nocookie.com/*"],
@@ -10,9 +11,9 @@ export default defineContentScript({
   // Before the player loads, so its first request is seen.
   runAt: "document_start",
   main() {
-    hookTimedtext(window, (url, body) =>
-      window.dispatchEvent(new CustomEvent(TIMEDTEXT_EVENT, { detail: timedtextDetail({ url, body }) })),
-    )
-    keepOriginal(() => document.documentElement.hasAttribute(ORIGINAL_ATTRIBUTE))
+    hookTimedtext(window, relayTimedtext(window))
+    const check = keepOriginal(() => document.documentElement.hasAttribute(ORIGINAL_ATTRIBUTE))
+    // The content script sets it once the page has loaded, when the video may already have its metadata.
+    new MutationObserver(check).observe(document.documentElement, { attributeFilter: [ORIGINAL_ATTRIBUTE] })
   },
 })

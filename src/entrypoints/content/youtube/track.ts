@@ -1,5 +1,5 @@
 /** The caption tracks the YouTube player downloads, as the page's hook passes them on. */
-import { TIMEDTEXT_EVENT, type Timedtext } from "$lib/captions"
+import { TIMEDTEXT_EVENT, TIMEDTEXT_READY_EVENT, type Timedtext } from "$lib/captions"
 import { fromThrowable } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { cuesOf, type Cue } from "./cues"
@@ -47,7 +47,7 @@ export const trackOf = ({ url, body }: Timedtext): Track | undefined => {
   }
 }
 
-/** Calls `onTrack` with each caption track the player downloads. */
+/** Calls `onTrack` with each caption track the player downloads, starting with the ones from before this was called. */
 export const watchTracks = (ctx: ContentScriptContext, onTrack: (track: Track) => void) => {
   window.addEventListener(
     TIMEDTEXT_EVENT,
@@ -62,4 +62,5 @@ export const watchTracks = (ctx: ContentScriptContext, onTrack: (track: Track) =
     },
     { signal: ctx.signal },
   )
+  window.dispatchEvent(new CustomEvent(TIMEDTEXT_READY_EVENT))
 }

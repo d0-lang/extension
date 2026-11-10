@@ -16,7 +16,7 @@ type Player = HTMLElement & {
   setOption?: (module: string, option: string, value: unknown) => void
 }
 
-/** Often enough to act before much of the video plays, and cheap enough to run on every YouTube page. */
+/** For what no event tells of, like captions coming on. Cheap enough to run on every YouTube page. */
 const CHECK_MS = 1000
 
 const baseLanguage = (code: string): string => code.split(/[-_.]/u)[0]!.toLowerCase()
@@ -78,26 +78,28 @@ export const captionsFor = (
 /**
  * Once per video, while `isOn`: plays the original audio over an auto-dub, and turns captions in another language
  * to the spoken one. Only YouTube's own pick is undone, so a choice the viewer makes afterwards stays.
+ * Returns the check it runs, for when `isOn` changes.
  */
-export const keepOriginal = (isOn: () => boolean) => {
+export const keepOriginal = (isOn: () => boolean): (() => void) => {
   let audioDone: string | undefined
   let captionsDone: string | undefined
-  window.setInterval(() => {
+  const check = () => {
     const player = document.querySelector<Player>("#movie_player")
     // An ad has video data of its own.
     if (!isOn() || player === null || player.classList.contains("ad-showing")) {
       return
     }
     const videoId = player.getVideoData?.()?.video_id
-    if (videoId === undefined || videoId === "") {
+    if (videoId === undefined || videoId === "" || (audioDone === videoId && captionsDone === videoId)) {
       return
     }
     const audio = player.getAvailableAudioTracks?.() ?? []
-    if (audioDone !== videoId && audio.length > 0) {
+    const playing = player.getAudioTrack?.()
+    // Until the player picks, its track is a stand-in that is not among the tracks, and a switch then does not hold.
+    if (audioDone !== videoId && playing !== undefined && audio.some(({ id }) => id === playing.id)) {
       audioDone = videoId
-      const current = player.getAudioTrack?.()
       const original = originalAudio(audio)
-      if (current !== undefined && detailsOf(current)?.isAutoDubbed === true && original !== undefined) {
+      if (detailsOf(playing)?.isAutoDubbed === true && original !== undefined) {
         player.setAudioTrack?.(original)
       }
     }
@@ -118,5 +120,9 @@ export const keepOriginal = (isOn: () => boolean) => {
         player.setOption?.("captions", "track", next)
       }
     }
-  }, CHECK_MS)
+  }
+  window.setInterval(check, CHECK_MS)
+  // The player has picked its audio once the video has its metadata, which is before any of it plays.
+  document.addEventListener("loadedmetadata", check, { capture: true })
+  return check
 }

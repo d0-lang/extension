@@ -20,7 +20,8 @@ type CaptionsOptions = {
 
 /**
  * Shows the track the player last downloaded for the video on the page, in place of YouTube's captions.
- * It follows the CC button, hides during ads, and leaves YouTube's captions alone for tracks the hook never saw.
+ * It follows the CC button, hides during ads, and leaves YouTube's captions alone for tracks the hook never saw
+ * and in players without the button, like the one for Shorts.
  * While on, it also has the page's world undo the audio and captions YouTube picks from the viewer's language.
  */
 export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, lookUp }: CaptionsOptions) => {
@@ -55,6 +56,8 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
     overlay?.remove()
     overlay = undefined
   }
+  // An overlay left behind by a reloaded extension would keep YouTube's own captions hidden.
+  ctx.onInvalidated(removeOverlay)
 
   const onWord = (hit: WordHit) => {
     if (track === undefined || overlay === undefined) {
@@ -78,7 +81,15 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
     const player = findPlayer()
     const video = player === null ? null : videoIn(player)
     track = videoId === undefined ? undefined : tracks.get(videoId)
-    if (!showing || !isEnabled() || player === null || video === null || track === undefined) {
+    // The overlay hides YouTube's captions while it is there, so it goes when ours are not to show.
+    if (
+      !showing ||
+      !isEnabled() ||
+      player === null ||
+      video === null ||
+      track === undefined ||
+      !captionsOn(player)
+    ) {
       removeOverlay()
       return
     }
@@ -86,8 +97,7 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
       removeOverlay()
       overlay = createOverlay(player, onWord)
     }
-    const cue =
-      captionsOn(player) && !adShowing(player) ? cueAt(track.cues, video.currentTime * 1000) : undefined
+    const cue = adShowing(player) ? undefined : cueAt(track.cues, video.currentTime * 1000)
     overlay.show(cue?.text, track.lang)
   }
 

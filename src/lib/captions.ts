@@ -5,6 +5,9 @@ export const TIMEDTEXT_EVENT = "dadict:timedtext"
 
 export type Timedtext = { url: string; body: string }
 
+/** Dispatched on `window` by the content script once it listens, since the player can download a track before that. */
+export const TIMEDTEXT_READY_EVENT = "dadict:timedtext-ready"
+
 /** On `<html>` while the extension shows YouTube's subtitles, so the page's world also undoes YouTube's language picks. */
 export const ORIGINAL_ATTRIBUTE = "data-dadict-original"
 
