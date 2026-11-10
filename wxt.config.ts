@@ -14,7 +14,7 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: "DaDict",
     description: "Look up words on any page using dictionary servers you choose.",
-    permissions: ["storage", "contextMenus", "notifications"],
+    permissions: ["storage", "contextMenus", "notifications", "alarms"],
     host_permissions: ["<all_urls>"],
     ...(browser === "firefox" && {
       browser_specific_settings: {

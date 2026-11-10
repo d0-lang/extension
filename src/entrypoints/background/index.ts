@@ -1,6 +1,6 @@
 import { isLookupRequestMessage } from "$lib/messages"
 import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./action"
-import { checkServers } from "./check"
+import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
 import { answer } from "./lookup"
 import { createMenuItem, openFromMenu, showMenuItem } from "./menu"
 import { isServerNotification, notify } from "./notifications"
@@ -29,6 +29,14 @@ export default defineBackground(() => {
     setUp()
     void openSetupIfUnbound()
     void check()
+  })
+
+  // Not every browser keeps alarms across a restart, and the background starts for other reasons too.
+  void scheduleDailyCheck()
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (isDailyCheck(alarm)) {
+      void check()
+    }
   })
 
   browser.notifications.onClicked.addListener((notificationId) => {
