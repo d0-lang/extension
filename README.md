@@ -33,7 +33,8 @@ Servers sign what they send with an Ed25519 key. DaDict keeps the key from when 
 | `<all_urls>`    | Find the word under the cursor on any page, and reach your servers. |
 | `storage`       | Keep your servers, languages and settings.                          |
 | `contextMenus`  | The **Look up** item in the right-click menu.                       |
-| `notifications` | Tell you when a server moved or its key changed at browser start.   |
+| `notifications` | Tell you when a server moved or its key changed.                    |
+| `alarms`        | Check your servers once a day while the browser stays open.         |
 
 ## Development
 

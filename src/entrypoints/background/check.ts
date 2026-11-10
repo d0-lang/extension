@@ -1,4 +1,4 @@
-/** Server check on client start: the protocol fetches metadata again whenever the client starts. */
+/** Server check: the protocol fetches metadata again whenever the client starts, and at least once a day while it runs. */
 import { ResultAsync, ok, safeTry } from "neverthrow"
 import { acceptedLegal, handshake, legalChanged } from "$lib/dict"
 import { toError } from "$lib/errors"
@@ -10,6 +10,21 @@ import {
   type BoundServer,
   type ServerIssue,
 } from "$lib/storage"
+
+const DAILY_ALARM = "check-servers"
+const DAY_MINUTES = 24 * 60
+
+/**
+ * Has the browser wake the background once a day, since it does not stay alive for a timer.
+ * An alarm already set is left alone, because setting it again would start its day over.
+ */
+export const scheduleDailyCheck = async (): Promise<void> => {
+  if ((await browser.alarms.get(DAILY_ALARM)) === undefined) {
+    await browser.alarms.create(DAILY_ALARM, { periodInMinutes: DAY_MINUTES })
+  }
+}
+
+export const isDailyCheck = (alarm: { name: string }): boolean => alarm.name === DAILY_ALARM
 
 /** `name` and `url` are the ones now stored. `failed` changes nothing, since a server can be down for a moment. */
 export type CheckResult = { name: string; url: string } & (
