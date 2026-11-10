@@ -1,10 +1,10 @@
 /**
  * Measures what the extension costs a YouTube video's start, against real YouTube.
- * Each video loads several times with the extension and without, in turns, with captions on so the player downloads a track.
- * `bun run youtube:perf` measures every video. Pass video ids to measure only those, and `--rounds=8` for more loads of each.
+ * A round loads the video without the extension and with it, back to back and with captions on, so the player downloads a track.
+ * Each round is compared on its own, because YouTube's loads differ from one minute to the next and a slow spell then hits both.
+ * `bun run youtube:perf` measures every video. Pass video ids to measure only those, and `--rounds=8` for more rounds of each.
  * `--against=<folder>` compares with another build of the extension rather than with none, to see what a change costs.
- * It fails when our caption handler holds the page up for too long, or never got a track. The rest is for reading,
- * because YouTube's own loads differ too much from one to the next to pass or fail on.
+ * It fails when the extension slows a video's start by more than `--limit=<percent>` in the middle round, or never got a track.
  */
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -25,7 +25,8 @@ type Load = {
   adSeen: boolean
 }
 
-type Side = { name: string; playing: Array<number>; longTasks: Array<number>; handler: Array<number> }
+/** One round: a load of what the build is measured against, and one of the build. */
+type Round = { base: Load; built: Load }
 
 const videos: Array<Video> = [
   { id: "uN1Zx-Ia-SE", lang: "de", note: "de, creator track" },
@@ -35,13 +36,14 @@ const videos: Array<Video> = [
 /** Long tasks count up to here, which takes in the video's start and the track's download. */
 const WINDOW_MS = 6000
 const PLAYING_WAIT_MS = 30_000
-/** A frame is 16 ms, so past this the handler shows as a stutter. */
-const HANDLER_BUDGET_MS = 50
+/** How much slower the build may be, in percent. Rounds of the same build differ by about this much. */
+const LIMIT_PERCENT = 50
 
 const args = process.argv.slice(2)
 const option = (name: string): string | undefined =>
   args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3)
 const rounds = Number(option("rounds") ?? 5)
+const limit = Number(option("limit") ?? LIMIT_PERCENT)
 const against = option("against")
 /** What the build is measured against, and the build itself. */
 const sides = [
@@ -129,16 +131,16 @@ const median = (values: ReadonlyArray<number>): number => {
   return sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2
 }
 
-const spread = (values: ReadonlyArray<number>): string =>
-  values.length === 0
-    ? "no loads"
-    : `${Math.round(median(values))} ms (${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))})`
+const spread = (values: ReadonlyArray<number>, unit = " ms"): string =>
+  `${Math.round(median(values))}${unit} (${Math.round(Math.min(...values))} to ${Math.round(Math.max(...values))})`
 
-const signed = (ms: number): string => `${ms >= 0 ? "+" : ""}${Math.round(ms)} ms`
+/** How much more the build took than what it is measured against, in percent, for each round. */
+const slowdown = (rounds: ReadonlyArray<Round>, of: (load: Load) => number): Array<number> =>
+  rounds.map(({ base, built }) => ((of(built) - of(base)) / of(base)) * 100)
 
 const measureVideo = async (video: Video, userAgent: string): Promise<Array<string>> => {
-  const sessions: Array<{ name: string; profile: string; context: BrowserContext; page: Page }> = []
-  for (const { name, extension } of sides) {
+  const sessions: Array<{ profile: string; context: BrowserContext; page: Page }> = []
+  for (const { extension } of sides) {
     const profile = mkdtempSync(join(tmpdir(), "dadict-youtube-perf-"))
     const context = await openYouTube({
       profile,
@@ -150,21 +152,23 @@ const measureVideo = async (video: Video, userAgent: string): Promise<Array<stri
     await context.addInitScript(measure, { event: TIMEDTEXT_EVENT, windowMs: WINDOW_MS })
     const page = await context.newPage()
     await turnCaptionsOn(page, video)
-    sessions.push({ name, profile, context, page })
+    sessions.push({ profile, context, page })
   }
+  const [base, built] = sessions as [(typeof sessions)[number], (typeof sessions)[number]]
 
-  const loads = new Map(sides.map(({ name }) => [name, new Array<Load>()]))
+  const kept: Array<Round> = []
   let ads = 0
-  for (let round = 0; round < rounds; round++) {
+  for (let tried = 0; kept.length < rounds && tried < rounds * 2; tried++) {
     // Each goes first in turn, so neither always loads into the warmer network.
-    for (const { name, page } of round % 2 === 0 ? sessions : sessions.toReversed()) {
-      const load = await loadOnce(page, video)
-      // An ad plays first and loads the video behind it, so the load says nothing about ours.
-      if (load.adSeen) {
-        ads++
-      } else {
-        loads.get(name)!.push(load)
-      }
+    const builtFirst = tried % 2 === 1
+    const first = await loadOnce(builtFirst ? built.page : base.page, video)
+    const second = await loadOnce(builtFirst ? base.page : built.page, video)
+    const round = builtFirst ? { base: second, built: first } : { base: first, built: second }
+    // An ad plays first and loads the video behind it, so the round says nothing about ours.
+    if (round.base.adSeen || round.built.adSeen) {
+      ads++
+    } else {
+      kept.push(round)
     }
   }
   for (const { profile, context } of sessions) {
@@ -172,45 +176,35 @@ const measureVideo = async (video: Video, userAgent: string): Promise<Array<stri
     rmSync(profile, { recursive: true, force: true })
   }
 
-  const [base, built] = sides.map(({ name }) => {
-    const side = loads.get(name)!
-    return {
-      name: name.padEnd(7),
-      playing: side.flatMap(({ playingMs }) => (playingMs === undefined ? [] : [playingMs])),
-      longTasks: side.map(({ longTaskMs }) => longTaskMs),
-      handler: side.flatMap(({ handlerMs }) => handlerMs),
-    }
-  }) as [Side, Side]
-  const { handler } = built
-
-  console.log(`${video.id}  ${video.note}`)
-  console.log(`  to playing   ${base.name} ${spread(base.playing)}`)
-  console.log(`               ${built.name} ${spread(built.playing)}`)
-  if (base.playing.length > 0 && built.playing.length > 0) {
-    console.log(`               change  ${signed(median(built.playing) - median(base.playing))}`)
-  }
-  console.log(`  long tasks   ${base.name} ${spread(base.longTasks)}`)
-  console.log(`               ${built.name} ${spread(built.longTasks)}`)
-  if (base.longTasks.length > 0 && built.longTasks.length > 0) {
-    console.log(`               change  ${signed(median(built.longTasks) - median(base.longTasks))}`)
-  }
-  if (base.handler.length > 0) {
-    console.log(`  its handler  ${spread(base.handler)} over ${base.handler.length} tracks`)
-  }
-  console.log(
-    `  our handler  ${handler.length === 0 ? "no track" : `${spread(handler)} over ${handler.length} tracks`}`,
+  const played = kept.filter(
+    ({ base, built }) => base.playingMs !== undefined && built.playingMs !== undefined,
   )
-  if (ads > 0) {
-    console.log(`  ${ads} loads left out for an ad`)
-  }
-
+  const handler = kept.flatMap(({ built }) => built.handlerMs)
+  const [baseName, builtName] = sides.map(({ name }) => name.padEnd(7)) as [string, string]
   const problems: Array<string> = []
+
+  console.log(
+    `${video.id}  ${video.note}, ${kept.length} rounds${ads === 0 ? "" : `, ${ads} more left out for an ad`}`,
+  )
+  const report = (name: string, rounds: ReadonlyArray<Round>, of: (load: Load) => number) => {
+    if (rounds.length === 0) {
+      problems.push(`no round to compare ${name} in`)
+      return
+    }
+    const slower = slowdown(rounds, of)
+    console.log(`  ${name.padEnd(12)} ${baseName} ${spread(rounds.map(({ base }) => of(base)))}`)
+    console.log(`  ${"".padEnd(12)} ${builtName} ${spread(rounds.map(({ built }) => of(built)))}`)
+    console.log(`  ${"".padEnd(12)} slower  ${spread(slower, "%")} round by round`)
+    if (median(slower) > limit) {
+      problems.push(`${name} took ${Math.round(median(slower))}% longer, over ${limit}%`)
+    }
+  }
+  report("to playing", played, ({ playingMs }) => playingMs!)
+  report("long tasks", kept, ({ longTaskMs }) => longTaskMs)
   if (handler.length === 0) {
-    problems.push("our hook passed on no track, so the handler was not measured")
-  } else if (Math.max(...handler) > HANDLER_BUDGET_MS) {
-    problems.push(
-      `our handler held the page for ${Math.round(Math.max(...handler))} ms, over ${HANDLER_BUDGET_MS} ms`,
-    )
+    problems.push("our hook passed on no track")
+  } else {
+    console.log(`  our handler  ${spread(handler)} over ${handler.length} tracks`)
   }
   return problems
 }

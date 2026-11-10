@@ -49,6 +49,8 @@ export const openYouTube = async ({
     args: [
       // Like the user agent, `navigator.webdriver` gets empty captions.
       "--disable-blink-features=AutomationControlled",
+      // The videos play, and nobody asked to hear them.
+      "--mute-audio",
       ...(extension === undefined
         ? []
         : [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]),
