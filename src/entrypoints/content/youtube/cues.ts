@@ -4,12 +4,19 @@ import type { Json3 } from "./json3"
 /** `text` has its lines apart with `\n`. */
 export type Cue = { startMs: number; endMs: number; text: string }
 
-type Word = {
-  text: string
-  startMs: number
-  speakerChange: boolean
+type Spoken = { text: string; startMs: number; speakerChange: boolean }
+
+type Word = Spoken & {
+  /** The word as it shows, and whether a space shows before it when it follows the word before. */
+  shown: string
+  spaced: boolean
+  /** Where the word starts and ends with the whole track on one line, in `width` units. */
+  left: number
+  right: number
   /** Whether the word starts inside what the segmenter reads as one word, like `方` after `使い`. No cut goes before it. */
   inSegment: boolean
+  /** How good a place it is to cut before the word, in milliseconds of silence it is worth. */
+  cutWorth: number
 }
 
 const SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" })
@@ -60,9 +67,12 @@ const WIDE =
 export const width = (text: string): number =>
   [...text].reduce((sum, char) => sum + (WIDE.test(char) ? 2 : 1), 0)
 
-const joinedWidth = (words: ReadonlyArray<Word>): number => width(joined(words))
+/** Read off where the words lie. Every cut tried asks for a width, and measuring the text each time is slow on a long track. */
+const joinedWidth = (words: ReadonlyArray<Word>): number =>
+  words.length === 0 ? 0 : words.at(-1)!.right - words[0]!.left
 
-const joined = (words: ReadonlyArray<Word>): string => tidy(joinLines(words.map(({ text }) => text).join("")))
+const joined = (words: ReadonlyArray<Pick<Word, "shown" | "spaced">>): string =>
+  words.map(({ shown, spaced }, index) => (index > 0 && spaced ? " " : "") + shown).join("")
 
 /** One space between words, none at the ends. `\s` takes in no-break spaces, which creator tracks use for padding. */
 const tidy = (text: string): string => text.replace(/\s+/gu, " ").trim()
@@ -73,26 +83,34 @@ const joinLines = (text: string): string =>
     WIDE.test(before) && WIDE.test(after) ? before + after : `${before} ${after}`,
   )
 
-/** Marks the words that start inside a segment. The track is read whole, because the segmenter needs the words around. */
-const markSegments = (words: ReadonlyArray<Omit<Word, "inSegment">>): Array<Word> => {
-  let text = ""
-  const starts = words.map((word) => {
-    const piece = word.text.trim()
-    const joinsWide = word.text.startsWith("\n") && WIDE.test(text.at(-1) ?? "") && WIDE.test(piece[0] ?? "")
-    if (text !== "" && /^\s/u.test(word.text) && !joinsWide) {
-      text += " "
-    }
-    const start = text.length
-    text += piece
-    return start
+/** Lays the track out on one line: a space between words, or nothing between two wide characters a line break parts. */
+const layOut = (words: ReadonlyArray<Spoken>): Array<Omit<Word, "inSegment" | "cutWorth">> => {
+  let before: { text: string; shown: string; right: number } | undefined
+  return words.map((word) => {
+    const shown = tidy(joinLines(word.text))
+    const gap = before === undefined ? "" : /\s*$/u.exec(before.text)![0] + /^\s*/u.exec(word.text)![0]
+    const joinsWide = gap.includes("\n") && WIDE.test(before?.shown.at(-1) ?? "") && WIDE.test(shown[0] ?? "")
+    const spaced = gap !== "" && !joinsWide
+    const left = (before?.right ?? 0) + (spaced ? 1 : 0)
+    before = { text: word.text, shown, right: left + width(shown) }
+    return { ...word, shown, spaced, left, right: before.right }
   })
-  const boundaries = new Set(Array.from(SEGMENTER.segment(text), ({ index }) => index))
-  return words.map((word, index) => ({ ...word, inSegment: !boundaries.has(starts[index]!) }))
+}
+
+/** Whether each word starts inside a segment. The track is read whole, because the segmenter needs the words around. */
+const startsInSegment = (words: ReadonlyArray<Pick<Word, "shown" | "spaced">>): Array<boolean> => {
+  const boundaries = new Set(Array.from(SEGMENTER.segment(joined(words)), ({ index }) => index))
+  let end = 0
+  return words.map(({ shown, spaced }, index) => {
+    const start = end + (index > 0 && spaced ? 1 : 0)
+    end = start + shown.length
+    return !boundaries.has(start)
+  })
 }
 
 // A dropped sound leaves a gap, which cuts like a pause.
-const asrWords = (json3: Json3): Array<Word> =>
-  markSegments(
+const asrWords = (json3: Json3): Array<Word> => {
+  const words = layOut(
     json3.events
       .flatMap(({ tStartMs, aAppend, segs = [] }) =>
         aAppend === 1
@@ -107,12 +125,19 @@ const asrWords = (json3: Json3): Array<Word> =>
       )
       .filter(({ text }) => text.trim() !== ""),
   )
+  const inSegment = startsInSegment(words)
+  return words.map((word, index) => ({
+    ...word,
+    inSegment: inSegment[index]!,
+    cutWorth: index === 0 ? 0 : cutScore(words[index - 1]!, word),
+  }))
+}
 
 /**
  * Whether cutting between `last` and `next` splits what reads as one word in Japanese.
  * That is a particle or ending taken from its word, or a compound like `請求書`, which auto captions cut into pieces with gaps between them.
  */
-const glued = (last: Word, next: Word): boolean => {
+const glued = (last: Spoken, next: Spoken): boolean => {
   const before = last.text.trim()
   const after = next.text.trim()
   return PARTICLE.test(after) || (ENDS_IN_KANJI.test(before) && STARTS_WITH_KANJI.test(after))
@@ -135,9 +160,8 @@ const breaksBefore = (cue: ReadonlyArray<Word>, word: Word): boolean => {
   )
 }
 
-/** How good a place it is to cut `head` from `next`, in milliseconds of silence it is worth. */
-const cutScore = (head: ReadonlyArray<Word>, next: Word): number => {
-  const last = head.at(-1)!
+/** How good a place it is to cut between `last` and `next`, in milliseconds of silence it is worth. */
+const cutScore = (last: Spoken, next: Spoken): number => {
   const text = last.text.trim()
   const gap = next.startMs - last.startMs
   const ending = SENTENCE_END.test(text) ? SENTENCE_END_MS : CLAUSE_END.test(text) ? CLAUSE_END_MS : 0
@@ -161,7 +185,7 @@ const linesOf = (words: ReadonlyArray<Word>): Array<ReadonlyArray<Word>> => {
       index,
       fits: head <= LINE_WIDTH && tail <= LINE_WIDTH,
       whole: !words[index]!.inSegment,
-      score: cutScore(words.slice(0, index), words[index]!) - Math.abs(head - tail) * UNEVEN_MS,
+      score: words[index]!.cutWorth - Math.abs(head - tail) * UNEVEN_MS,
     }
     if (best === undefined || better(cut, best)) {
       best = cut
@@ -183,7 +207,7 @@ const cutIndex = (cue: ReadonlyArray<Word>): number => {
     if (cue[index]!.inSegment || joinedWidth(head) < MIN_WIDTH || !fitsTwoLines(head)) {
       continue
     }
-    const score = cutScore(head, cue[index]!)
+    const score = cue[index]!.cutWorth
     // On a tie the later cut wins, so the cue comes out fuller.
     if (score >= bestScore) {
       best = index

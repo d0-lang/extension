@@ -92,6 +92,10 @@ describe("cuesOf for auto captions", () => {
     expect(texts(cuesOf(japanese, true))).toEqual(["今日はリレー"])
   })
 
+  it("puts no space after a Japanese line of one character", () => {
+    expect(texts(cuesOf(asr([["今日", 0]], [["は", 300]], [["晴れ", 600]]), true))).toEqual(["今日は晴れ"])
+  })
+
   it("cuts a cue that grows too wide after its clause", () => {
     const json3 = asr(
       spoken(
@@ -246,6 +250,39 @@ describe("cuesOf on recorded tracks", () => {
         expect(width(line), text).toBeLessThanOrEqual(LINE_WIDTH)
       }
     }
+  })
+})
+
+describe("cuesOf on a long track", () => {
+  /** Tracks are cut while the player loads the video, on the page's own thread. */
+  const BUDGET_MS = 100
+  const MINUTES = 60
+  const FIXTURE_MINUTES = 5
+
+  const directory = new URL("./fixtures/", import.meta.url)
+  const names = readdirSync(directory).filter((name) => name.includes(".asr."))
+
+  /** The recorded start of a track over and over, each copy later in time, since fixtures keep only five minutes. */
+  const long = (name: string): Json3 => {
+    const { events } = parseJson3(JSON.parse(readFileSync(new URL(name, directory), "utf8")))!
+    return {
+      events: Array.from({ length: MINUTES / FIXTURE_MINUTES }, (_, copy) =>
+        events.map((event) => ({ ...event, tStartMs: event.tStartMs + copy * FIXTURE_MINUTES * 60_000 })),
+      ).flat(),
+    }
+  }
+
+  it.each(names)("cuts an hour of %s in time", (name) => {
+    const json3 = long(name)
+    // The fastest of a few runs, so a pause in the test runner does not fail it.
+    const fastest = Math.min(
+      ...Array.from({ length: 5 }, () => {
+        const start = performance.now()
+        cuesOf(json3, true)
+        return performance.now() - start
+      }),
+    )
+    expect(fastest).toBeLessThan(BUDGET_MS)
   })
 })
 
