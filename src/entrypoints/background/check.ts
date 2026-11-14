@@ -1,6 +1,6 @@
 /** Server check: the protocol fetches metadata again whenever the client starts, and at least once a day while it runs. */
 import { ResultAsync, ok, safeTry } from "neverthrow"
-import { acceptedLegal, creditSources, handshake, legalChanged } from "$lib/dict"
+import { acceptedLegal, creditSources, handshake, legalChanged, refreshLabels } from "$lib/dict"
 import { toError } from "$lib/errors"
 import {
   bindServer,
@@ -65,6 +65,11 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
     if (changed) {
       yield* setServerIssue(url, { kind: "legal" })
       return ok<CheckResult>({ kind: "legal", name: meta.name, url })
+    }
+    // Explanations are a display extra, so a failed fetch keeps the last copy and the check goes on.
+    const labels = await refreshLabels(url)
+    if (labels.isErr()) {
+      console.warn("Could not fetch label explanations", url, labels.error)
     }
     return ok<CheckResult>(
       movedFrom === undefined

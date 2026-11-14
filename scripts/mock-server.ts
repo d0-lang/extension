@@ -121,6 +121,7 @@ const scenarios: Record<string, Scenario> = {
     name: "Test Wiktionary",
     languages: ["de_en", "ru_en"],
     verificationUrls: [],
+    features: ["labels"],
     sources: [
       {
         name: "Wiktionary",
@@ -133,14 +134,14 @@ const scenarios: Record<string, Scenario> = {
     ],
     section: "adds",
     summary:
-      "Credits Wiktionary and Wikimedia Commons, and links each entry and recording. A third source has a name over 40 characters.",
+      "Credits Wiktionary and Wikimedia Commons, links each entry and recording, and explains its Russian labels. A third source has a name over 40 characters.",
     steps: [
       "Add it and tick both languages.",
-      "Look up Mutter or Haus on a German page, or собака on a Russian one.",
-      "Press Sources below the entries.",
+      "Look up Mutter or Haus on a German page, or собака or написать on a Russian one.",
+      "Press Sources below the entries. Hover a label, or Tab to it.",
     ],
     expect:
-      'The review and the card list "Derived from Wiktionary, under CC-BY-SA-4.0." and "Derived from Wikimedia Commons.", not the third source. The popover plays the recording and its Sources list has one row per page and per recording, each named Wiktionary or Wikimedia Commons, with no row for the tracker.example link. Other words show no Sources button.',
+      'The review and the card list "Derived from Wiktionary, under CC-BY-SA-4.0." and "Derived from Wikimedia Commons.", not the third source. The popover plays the recording and its Sources list has one row per page and per recording, each named Wiktionary or Wikimedia Commons, with no row for the tracker.example link. Other words show no Sources button. pos reads noun or verb. f, anim and pf show their name, pf also its text; inan has no explanation and stays a plain tag.',
   },
   testing: {
     name: "Testing Only",
@@ -366,7 +367,57 @@ const CREDITED_WORDS: Record<string, Record<string, Array<MockEntry>>> = {
         sources: [wiktionaryPage("собака", "Russian")],
       },
     ],
+    написать: [
+      {
+        lemma: "написа́ть",
+        pos: "VERB",
+        labels: ["pf"],
+        senses: [{ glosses: ["to write (down)"] }],
+        sources: [wiktionaryPage("написать", "Russian")],
+      },
+    ],
+    стол: [
+      {
+        lemma: "стол",
+        pos: "NOUN",
+        labels: ["m", "inan"],
+        senses: [{ glosses: ["table"] }, { glosses: ["desk"] }],
+        sources: [wiktionaryPage("стол", "Russian")],
+      },
+    ],
   },
+}
+
+// The test page has it in the instrumental.
+CREDITED_WORDS.ru_en!.столом = CREDITED_WORDS.ru_en!.стол!
+
+/** What the credits scenario's `/v1/get-labels` explains. `inan` is left out, so it shows without an explanation. */
+const LABELS: Record<string, Record<string, { name: string; text?: string }>> = {
+  ru_en: {
+    f: { name: "feminine" },
+    m: { name: "masculine" },
+    anim: {
+      name: "animate",
+      text: "Names a person or an animal. Its accusative takes the genitive's form: вижу собаку, but вижу кота.",
+    },
+    pf: {
+      name: "perfective",
+      text: "The action is seen as a whole, usually completed. Most verbs come in pairs: писать (impf) and написать (pf).",
+    },
+  },
+  de_en: {},
+}
+
+const getLabels = (scenario: Scenario, url: URL) => {
+  const pairs = (url.searchParams.get("lang") ?? "").split(",").filter(Boolean)
+  if (pairs.length === 0) {
+    return json({ error: "bad_request" }, { status: 400 })
+  }
+  return json({
+    labels: Object.fromEntries(
+      pairs.filter((pair) => scenario.languages.includes(pair)).map((pair) => [pair, LABELS[pair] ?? {}]),
+    ),
+  })
 }
 
 const jaEntry = (lemma: string, pos: string, gloss: string, reading?: string): MockEntry => ({
@@ -742,6 +793,10 @@ Bun.serve({
         return getMeta(first, scenario, request)
       case "v1/lookup":
         return lookup(first, scenario, url)
+      case "v1/get-labels":
+        return scenario.features?.includes("labels") === true
+          ? getLabels(scenario, url)
+          : new Response("not found", { status: 404 })
       case "sample":
         return new Response(
           `<!doctype html><html lang="ja"><meta charset="utf-8"><title>Japanese sample</title><body style="font:28px/2 system-ui,sans-serif;max-width:40em;margin:48px auto">${SAMPLE_SENTENCES.map((sentence) => `<p>${sentence}</p>`).join("")}</body></html>`,

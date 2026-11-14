@@ -4,7 +4,7 @@
  * `openEdit` runs the same steps against a bound server.
  */
 import { ResultAsync } from "neverthrow"
-import { acceptedLegal, changedDocuments, creditSources, type HandshakeOk } from "$lib/dict"
+import { acceptedLegal, changedDocuments, creditSources, refreshLabels, type HandshakeOk } from "$lib/dict"
 import {
   bindServer,
   contextSending,
@@ -263,6 +263,9 @@ export class ServerSetup {
       this.genericError = result.error.message
       return
     }
+    // Saving can start a new pair, which needs its explanations. Lookups do not wait for them.
+    const url = this.draft.url
+    void refreshLabels(url).mapErr((error) => console.warn("Could not fetch label explanations", url, error))
     this.resetDialog()
   }
 }

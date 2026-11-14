@@ -118,6 +118,56 @@ export const lookupResultSchema = z.object({
   segments: z.catch(z.optional(z.array(lookupSegmentSchema)), undefined),
 })
 
+/** The protocol's caps on a label explanation. */
+export const LABEL_NAME_MAX = 60
+export const LABEL_TEXT_MAX = 1000
+
+const labelExplanationSchema = z.object({
+  name: z.string().check(z.minLength(1), z.maxLength(LABEL_NAME_MAX)),
+  // An overlong text is dropped, not the name.
+  text: z.catch(z.optional(z.string().check(z.minLength(1), z.maxLength(LABEL_TEXT_MAX))), undefined),
+})
+
+const objectSchema = z.record(z.string(), z.unknown())
+
+/** Keeps only what parses, one key at a time, so one bad item does not cost the rest. Unset when `value` is no object. */
+const keepParsed = <T>(
+  value: unknown,
+  keepKey: (key: string) => boolean,
+  parse: (item: unknown) => T | undefined,
+): Record<string, T> | undefined => {
+  const parsed = objectSchema.safeParse(value)
+  if (!parsed.success) {
+    return undefined
+  }
+  return Object.fromEntries(
+    Object.entries(parsed.data).flatMap(([key, item]) => {
+      const kept = keepKey(key) ? parse(item) : undefined
+      return kept === undefined ? [] : [[key, kept] as const]
+    }),
+  )
+}
+
+const parseExplanation = (explanation: unknown) => {
+  const parsed = labelExplanationSchema.safeParse(explanation)
+  return parsed.success ? parsed.data : undefined
+}
+
+/** Body of `/v1/get-labels`: label explanations by language pair. */
+export const labelsResultSchema = z.pipe(
+  z.object({ labels: objectSchema }),
+  z.transform(
+    ({ labels }) =>
+      keepParsed(
+        labels,
+        (pair) => languagePairSchema.safeParse(pair).success,
+        (byLabel) =>
+          // Kept as an object key, where `__proto__` would not stay a plain entry.
+          keepParsed(byLabel, (label) => label !== "__proto__", parseExplanation),
+      ) ?? {},
+  ),
+)
+
 /** Body of a `400` from `/v1/lookup`. */
 export const lookupErrorSchema = z.object({
   error: z.enum(["bad_request", "unsupported_lang"]),
@@ -129,6 +179,7 @@ export type ServerSource = z.infer<typeof sourceSchema>
 export type LookupResult = z.infer<typeof lookupResultSchema>
 export type LookupEntry = z.infer<typeof lookupEntrySchema>
 export type LookupSegment = z.infer<typeof lookupSegmentSchema>
+export type LabelsResult = z.infer<typeof labelsResultSchema>
 
 export const parseBody = <S extends z.ZodMiniType>(
   schema: S,

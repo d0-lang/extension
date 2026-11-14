@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { LEGAL_CHANGE_MAX, SOURCE_TEXT_MAX, lookupResultSchema, serverMetaSchema } from "./schemas"
+import {
+  LABEL_NAME_MAX,
+  LABEL_TEXT_MAX,
+  LEGAL_CHANGE_MAX,
+  SOURCE_TEXT_MAX,
+  labelsResultSchema,
+  lookupResultSchema,
+  serverMetaSchema,
+} from "./schemas"
 
 const body = (sense: object) => ({ entries: [{ lemma: "mata", pos: "NOUN", senses: [sense] }] })
 
@@ -174,5 +182,29 @@ describe("serverMetaSchema sources", () => {
 
   it("treats a list that is not one as none", () => {
     expect(serverMetaSchema.parse({ ...meta, sources: "Wiktionary" }).sources).toBeUndefined()
+  })
+})
+
+describe("labelsResultSchema", () => {
+  it("keeps names at the caps, and plain-text explanations as sent", () => {
+    const labels = {
+      ru_en: {
+        pf: { name: "n".repeat(LABEL_NAME_MAX), text: "<b>t</b>".padEnd(LABEL_TEXT_MAX, ".") },
+      },
+    }
+    expect(labelsResultSchema.parse({ labels })).toEqual(labels)
+  })
+
+  it("keeps a label named like an object key as a plain entry, and drops __proto__", () => {
+    const parsed = labelsResultSchema.parse(
+      JSON.parse('{"labels":{"ru_en":{"constructor":{"name":"c"},"__proto__":{"name":"p"}}}}'),
+    )
+    expect(Object.keys(parsed.ru_en ?? {})).toEqual(["constructor"])
+    expect(Object.getPrototypeOf(parsed.ru_en)).toBe(Object.prototype)
+  })
+
+  it("rejects a body without labels", () => {
+    expect(labelsResultSchema.safeParse({}).success).toBe(false)
+    expect(labelsResultSchema.safeParse({ labels: [] }).success).toBe(false)
   })
 })

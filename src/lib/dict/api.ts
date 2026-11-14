@@ -13,12 +13,14 @@ import {
   type DictError,
 } from "./errors"
 import {
+  labelsResultSchema,
   lookupErrorSchema,
   lookupResultSchema,
   newSourceSchema,
   parseBody,
   publicKeySchema,
   serverMetaSchema,
+  type LabelsResult,
   type LookupResult,
   type ServerMeta,
 } from "./schemas"
@@ -159,5 +161,25 @@ export const lookup = (
     )
     return ok(
       segments !== undefined && isValidSplit(segments, word, entries) ? { entries, segments } : { entries },
+    )
+  })
+
+/**
+ * Unsigned `/v1/get-labels` for `langs`, the pairs the user has in use on the server.
+ * Pairs that were not asked for are dropped, and so is each explanation over the protocol's caps.
+ */
+export const getLabels = (
+  baseUrl: string,
+  langs: ReadonlyArray<string>,
+): ResultAsync<LabelsResult, DictError> =>
+  // Pair codes are lowercase letters and `_`, so the commas go unencoded, as the protocol writes them.
+  request(`${baseUrl}/v1/get-labels?lang=${langs.join(",")}`).andThen((response) => {
+    if (!response.ok) {
+      return errAsync(httpError("get-labels", response.status))
+    }
+    return readJson(response).andThen((body) =>
+      parseBody(labelsResultSchema, body, "get-labels").map((labels) =>
+        Object.fromEntries(Object.entries(labels).filter(([pair]) => langs.includes(pair))),
+      ),
     )
   })

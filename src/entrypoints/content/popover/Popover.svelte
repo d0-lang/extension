@@ -298,6 +298,7 @@
               entries={tabEntries}
               language={result.lang}
               server={result.server}
+              labels={result.labels}
               {showIpa}
               {audio}
               follow={followLink}

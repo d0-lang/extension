@@ -4,13 +4,17 @@
   import VolumeX from "@lucide/svelte/icons/volume-x"
   import { linkSense, playableAudio } from "$lib/dict/entries"
   import type { LookupEntry } from "$lib/dict/types"
+  import type { PairLabels } from "$lib/storage"
   import type { AudioPlayer } from "./audio.svelte"
+  import LabelTag from "./LabelTag.svelte"
+  import { explanationOf, posName } from "./labels"
   import { splitStress, stressedLetter } from "./stress"
 
   let {
     entries,
     language,
     server,
+    labels,
     showIpa,
     audio,
     follow,
@@ -20,6 +24,8 @@
     language: string | undefined
     /** The server that sent `entries`, whose own host may serve their audio. */
     server: string | undefined
+    /** The server's explanations of the labels it sends for `language`. */
+    labels: PairLabels
     showIpa: boolean
     audio: AudioPlayer
     follow: (target: string, language: string | undefined) => void
@@ -37,11 +43,12 @@
           <h2 class="inline text-base font-semibold">
             {@render stressed(entry.lemma)}
           </h2>
-          {" "}<span class="text-muted-foreground text-xs">{entry.pos}</span
-          >{#each entry.labels ?? [] as label (label)}{" "}<span
-              class="bg-muted text-muted-foreground rounded px-1 text-xs whitespace-nowrap"
-              data-label>{label}</span
-            >{/each}
+          {#if posName(entry.pos) !== ""}{" "}<span class="text-muted-foreground text-xs"
+              >{posName(entry.pos)}</span
+            >{/if}{#each entry.labels ?? [] as label (label)}{" "}<LabelTag
+              {label}
+              explanation={explanationOf(labels, label)}
+            />{/each}
         </div>
         {#if url !== undefined}
           {@const going = audio.playing === url}
