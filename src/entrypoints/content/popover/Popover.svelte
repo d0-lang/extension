@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte"
   import ArrowLeft from "@lucide/svelte/icons/arrow-left"
-  import { sourceLinks } from "$lib/dict/sources"
+  import { sourceLinks, type SourceLink } from "$lib/dict/sources"
   import type { LookupReply } from "$lib/messages"
   import type { AnchorRect } from "../page/pick"
   import { AudioPlayer } from "./audio.svelte"
@@ -11,7 +11,8 @@
   import { placePopover, type Side } from "./position"
   import { errorText, firstTab, pausedText, shownEntries, shownLanguage, shownSplit } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
-  import Sources from "./Sources.svelte"
+  import SourceList from "./SourceList.svelte"
+  import SourcesButton from "./SourcesButton.svelte"
   import Underlines from "./Underlines.svelte"
 
   let {
@@ -45,13 +46,17 @@
     follow: (target: string, language: string | undefined) => Promise<LookupReply>
   } = $props()
 
-  /** `followed` shows only the entries whose lemma is `word`. `scrollTop` and `tab` are where Back left it. */
+  /**
+   * `followed` shows only the entries whose lemma is `word`. `scrollTop` and `tab` are where Back left it.
+   * `sources` shows those links instead of the entries.
+   */
   type View = {
     word: string
     followed: boolean
     reply: Promise<LookupReply> | undefined
     scrollTop?: number
     tab?: number
+    sources?: Array<SourceLink>
   }
 
   let view = $state.raw<View>(untrack(() => ({ word, followed: false, reply: search?.() })))
@@ -161,6 +166,12 @@
     tab = undefined
   }
 
+  const openSources = (links: Array<SourceLink>) => {
+    lockPlace()
+    history = [...history, { ...view, scrollTop: scroller?.scrollTop, tab }]
+    view = { ...view, scrollTop: undefined, sources: links }
+  }
+
   const pickTab = (next: number) => {
     lockPlace()
     tab = next
@@ -199,7 +210,8 @@
 
   /** Wraps around. Without a current language, D starts at the first and A at the last. */
   const stepLanguage = (step: 1 | -1): boolean => {
-    if (search === undefined || languages.length < 2) {
+    // The sources belong to the answer they were opened from.
+    if (search === undefined || languages.length < 2 || view.sources !== undefined) {
       return false
     }
     const index = language === undefined ? -1 : languages.indexOf(language)
@@ -268,7 +280,15 @@
         {@const shown = shownLanguage(result)}
         {@const split = shownSplit(result, view.word, view.followed, marks?.offsetIn)}
         {@const shownTab = split === undefined ? undefined : (tab ?? firstTab(split))}
-        {#if !result.ok}
+        {#if view.sources !== undefined}
+          <div
+            {@attach restoreScroll}
+            data-popover-scroll
+            class="flex min-h-0 flex-col overflow-y-auto overscroll-contain px-3 py-2"
+          >
+            <SourceList links={view.sources} />
+          </div>
+        {:else if !result.ok}
           <p class="text-destructive px-3 py-2 wrap-anywhere" role="alert">
             {errorText(result.error)}
           </p>
@@ -304,11 +324,11 @@
               follow={followLink}
             />
             {#if links.length > 0}
-              <Sources {links} />
+              <SourcesButton open={() => openSources(links)} />
             {/if}
           </div>
         {/if}
-        {#if result.languages.length > 1}
+        {#if result.languages.length > 1 && view.sources === undefined}
           <LanguageBar languages={result.languages} {shown} pick={switchLanguage} />
         {/if}
       {/await}

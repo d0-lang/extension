@@ -77,10 +77,26 @@ const scenarios: Record<string, Scenario> = {
     ],
     verificationUrls: [`${ORIGIN}/huge/news`],
     features: ["context", "context-match"],
+    sources: [
+      ...["Wiktionary", "Wikimedia Commons", "Forvo", "Tatoeba", "OpenRussian", "JMdict", "CC-CEDICT"].map(
+        (name, index) => ({
+          name,
+          url: `https://source${index}.example/`,
+          ...(index % 2 === 0 ? { license: "CC-BY-SA-4.0" } : {}),
+        }),
+      ),
+      ...["de_en", "fr_en", "es_en", "it_en", "ja_en"].map((pair) => ({
+        name: `Corpus ${pair}`,
+        url: `https://corpus-${pair.replace("_", "-")}.example/`,
+        license: "CC-BY-4.0",
+        languages: [pair],
+      })),
+    ],
     section: "adds",
-    summary: "Fifty languages into English, eleven into other languages, and it takes sentences.",
+    summary:
+      "Fifty languages into English, eleven into other languages, twelve sources, and it takes sentences.",
     expect:
-      "Languages are grouped by the language they translate into. The list scrolls, Select all shows, and Sentences sits below it with All sites except blocked ones picked. Edit shows the choice that was saved.",
+      "Languages are grouped by the language they translate into. The list scrolls, Select all shows, and Sentences sits below it with All sites except blocked ones picked. Edit shows the choice that was saved. Sources show three, then 9 more sources.",
   },
   overlap: {
     name: "German and Polish",
