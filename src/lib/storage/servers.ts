@@ -4,6 +4,7 @@
  */
 import { ResultAsync } from "neverthrow"
 import { toError } from "../errors"
+import { getServerLabels, type ServerLabels } from "./labels"
 
 /** Language pair advertised by a dictionary server, e.g. `de_en`. */
 export type LanguagePair = string
@@ -24,6 +25,17 @@ export type BoundServer = {
    * Missing on records stored before policies were read.
    */
   legal?: AcceptedLegal | null
+  /** Whose material the answers are built from, from the last verified meta. Missing on records stored before sources were read. */
+  sources?: Array<CreditSource>
+}
+
+/** A source the server credits. `languages` unset means every pair. */
+export type CreditSource = {
+  name: string
+  url: string
+  license?: string
+  licenseUrl?: string
+  languages?: Array<LanguagePair>
 }
 
 /** Links and hashes of a server's privacy policy and terms of service, as the user accepted them. */
@@ -84,29 +96,33 @@ export const setServerIssue = (url: string, issue: ServerIssue): ResultAsync<voi
     toError,
   )
 
-const withoutIssues = (serverIssues: ServerIssues, urls: ReadonlyArray<string | undefined>): ServerIssues =>
-  Object.fromEntries(Object.entries(serverIssues).filter(([url]) => !urls.includes(url)))
+const withoutUrls = <T extends ServerIssues | ServerLabels>(
+  byUrl: T,
+  urls: ReadonlyArray<string | undefined>,
+): T => Object.fromEntries(Object.entries(byUrl).filter(([url]) => !urls.includes(url))) as T
 
 export const getStoredServer = async (url: string): Promise<BoundServer | undefined> => {
   const servers = await getServers()
   return servers[url]
 }
 
-/** Delete the record, with its pinned key, its issue, and every language mapped to it. */
+/** Delete the record, with its pinned key, its issue, its label explanations, and every language mapped to it. */
 export const removeServer = (url: string): ResultAsync<void, Error> =>
   ResultAsync.fromPromise(
     (async () => {
-      const [servers, serverByLang, serverIssues] = await Promise.all([
+      const [servers, serverByLang, serverIssues, serverLabels] = await Promise.all([
         getServers(),
         getServerByLang(),
         getServerIssues(),
+        getServerLabels(),
       ])
       const { [url]: _removed, ...nextServers } = servers
 
       await browser.storage.local.set({
         servers: nextServers,
         serverByLang: Object.fromEntries(Object.entries(serverByLang).filter(([, mapped]) => mapped !== url)),
-        serverIssues: withoutIssues(serverIssues, [url]),
+        serverIssues: withoutUrls(serverIssues, [url]),
+        serverLabels: withoutUrls(serverLabels, [url]),
       })
     })(),
     toError,
@@ -114,7 +130,7 @@ export const removeServer = (url: string): ResultAsync<void, Error> =>
 
 /**
  * Make `selectedLanguages` the only languages mapped to `server`, and clear its issue.
- * `movedFrom` is purged: its record, its issue, and every language mapped to it.
+ * `movedFrom` is purged: its record, its issue, its label explanations, and every language mapped to it.
  */
 export const bindServer = (
   server: BoundServer,
@@ -123,10 +139,11 @@ export const bindServer = (
 ): ResultAsync<void, Error> =>
   ResultAsync.fromPromise(
     (async () => {
-      const [servers, serverByLang, serverIssues] = await Promise.all([
+      const [servers, serverByLang, serverIssues, serverLabels] = await Promise.all([
         getServers(),
         getServerByLang(),
         getServerIssues(),
+        getServerLabels(),
       ])
 
       const nextServerByLang = Object.fromEntries(
@@ -144,7 +161,8 @@ export const bindServer = (
       await browser.storage.local.set({
         servers: nextServers,
         serverByLang: nextServerByLang,
-        serverIssues: withoutIssues(serverIssues, [server.url, movedFrom]),
+        serverIssues: withoutUrls(serverIssues, [server.url, movedFrom]),
+        serverLabels: withoutUrls(serverLabels, [movedFrom]),
       })
     })(),
     toError,

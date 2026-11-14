@@ -5,13 +5,14 @@ import {
   isValidSplit,
   linkSense,
   partsCovering,
+  playableAudio,
   splitBySegments,
   splitWord,
 } from "./entries"
 
 const entry = (
   lemma: string,
-  senses: Array<{ translations: Array<string>; see?: Array<string> }>,
+  senses: Array<{ glosses: Array<string>; see?: Array<string> }>,
   pos = "NOUN",
 ) => ({
   lemma,
@@ -232,5 +233,29 @@ describe("isAllowedAudioUrl", () => {
     expect(isAllowedAudioUrl("https://dict.example:8443/a.ogg", server)).toBe(false)
     expect(isAllowedAudioUrl("http://dict.example/a.ogg", "http://dict.example")).toBe(false)
     expect(isAllowedAudioUrl("https://dict.example/a.ogg", undefined)).toBe(false)
+  })
+})
+
+describe("playableAudio", () => {
+  const withAudio = (audio: Array<{ url: string; source?: string }>) => ({
+    ...entry("die Mutter", [{ glosses: ["mother"] }]),
+    pron: { audio },
+  })
+
+  it("plays the first recording the host rule allows", () => {
+    const played = {
+      url: "https://upload.wikimedia.org/b.ogg",
+      source: "https://commons.wikimedia.org/wiki/File:B.ogg",
+    }
+    expect(playableAudio(withAudio([{ url: "https://tracker.example/a.ogg" }, played]), undefined)).toEqual(
+      played,
+    )
+  })
+
+  it("plays nothing without an allowed recording", () => {
+    expect(
+      playableAudio(withAudio([{ url: "http://upload.wikimedia.org/a.ogg" }]), undefined),
+    ).toBeUndefined()
+    expect(playableAudio(entry("die Mutter", []), undefined)).toBeUndefined()
   })
 })

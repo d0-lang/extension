@@ -6,10 +6,11 @@
   import { Input } from "$lib/components/ui/input"
   import { Label } from "$lib/components/ui/label"
   import { RadioGroup, RadioGroupItem } from "$lib/components/ui/radio-group"
-  import type { LegalDocument } from "$lib/dict"
+  import { creditSources, type LegalDocument } from "$lib/dict"
   import { groupByTarget, pairMatches, pairName, sourceName } from "../languages"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
+  import SourceCredits from "./SourceCredits.svelte"
 
   /** Past this many languages, ticking them one by one gets tedious. */
   const SELECT_ALL_FROM = 6
@@ -22,6 +23,7 @@
   const languages = $derived(draft?.meta.languages ?? [])
   const legal = $derived(draft?.meta.legal)
   const takesContext = $derived(draft?.meta.features.includes("context") === true)
+  const sources = $derived(creditSources(draft?.meta.sources))
 
   const documentName: Record<LegalDocument, string> = {
     privacy: "privacy policy",
@@ -240,6 +242,13 @@
         </p>
       {/if}
     </div>
+
+    {#if sources.length > 0}
+      <div class="flex flex-col gap-1">
+        <p class="font-medium">Sources</p>
+        <SourceCredits {sources} />
+      </div>
+    {/if}
 
     {#if setup.genericError}
       <Alert variant="destructive">

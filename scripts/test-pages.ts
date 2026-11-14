@@ -14,6 +14,22 @@ a{color:var(--accent)}
 `
 
 const pages: Record<string, TestPage> = {
+  credits: {
+    title: "Sources, labels and definitions",
+    summary:
+      "Words the credits and definitions servers answer with links, recordings, labels and long glosses.",
+    body: `
+<section lang="de">
+  <h2>German</h2>
+  <p>Die Mutter wohnt in einem kleinen Haus am See.</p>
+  <p class="expect">With credits bound for de_en: Mutter plays its recording, and Sources lists its Wiktionary page and its Commons file page once each, without the tracker.example link of the second entry. Haus lists two Wiktionary pages and one recording. See and wohnt show no Sources button. With definitions bound for de_de instead, each sense is a whole sentence that wraps between words.</p>
+</section>
+<section lang="ru">
+  <h2>Russian</h2>
+  <p>Собака спит под столом, а я хочу написать письмо.</p>
+  <p class="expect">собака shows noun, f and anim, and стол shows m and inan. Hovering or tabbing to f, m, anim or pf shows its name, and anim and pf their text too. inan has no explanation and takes no focus.</p>
+</section>`,
+  },
   moving: {
     title: "Text that moves",
     summary: "The underline stays on the word while the text moves without the page scrolling.",

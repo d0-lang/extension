@@ -1,4 +1,4 @@
-import type { ContextSending, ServerIssue } from "$lib/storage"
+import type { ContextSending, CreditSource, ServerIssue } from "$lib/storage"
 
 export type DialogState = "closed" | "add-open" | "review-open" | "saving"
 
@@ -12,4 +12,5 @@ export type ServerRow = {
   issue: ServerIssue["kind"] | undefined
   /** Unset when the server does not take sentences at all. */
   context: ContextSending | undefined
+  sources: Array<CreditSource>
 }

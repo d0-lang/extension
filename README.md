@@ -12,6 +12,8 @@ DaDict has no dictionary of its own. You add servers that speak the DaDict proto
 - **Phrases.** With the sentence around the word, a server can find the phrase it belongs to, like _in Kraft treten_ for _Kraft_ or _stattfinden_ for _fand … statt_. The phrase is listed first and underlined on the page.
 - **Several languages.** The page's language is detected, so the right server answers. <kbd>A</kbd> / <kbd>D</kbd> switch languages, and the one you pick stays the default for that page.
 - **Keyboard.** <kbd>W</kbd> / <kbd>S</kbd> scroll the popover, <kbd>E</kbd> plays the pronunciation, <kbd>Esc</kbd> closes it.
+- **Grammar labels explained.** Hover or tab to a label like _pf_ to see what it stands for, when the server explains its labels. Parts of speech are named, not shown as tags.
+- **Sources.** The settings credit the material a server's answers are built from, and the popover links each entry and recording to its page.
 - **Russian and Ukrainian stress marks** drawn over the right letter, whatever the font.
 - **Light and dark themes**, following the system or set by hand.
 
@@ -21,7 +23,8 @@ DaDict only talks to the servers you add.
 
 - **What is sent:** the looked up word and its language. A server that supports it can also get the sentence the word is in. You choose this for each server when you add it: from all sites, from all sites except blocked ones, or never.
 - **Blocked sites:** sites like mail or documents can be listed in Settings. Their sentences only go to servers set to get sentences from all sites.
-- **Pronunciation audio** is played only from `upload.wikimedia.org`, over HTTPS.
+- **Pronunciation audio** is played only when you ask, over HTTPS, from the answering server's own host or `upload.wikimedia.org`.
+- **Source links** in the popover go only to the sites a server credits in its signed metadata, like Wiktionary, and open without telling that site which page you were reading.
 - **Nothing else** leaves the browser. There is no analytics or tracking. Settings are kept in the browser's extension storage.
 
 Servers sign what they send with an Ed25519 key. DaDict keeps the key from when you added the server and warns you if it changes.

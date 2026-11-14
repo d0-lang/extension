@@ -2,32 +2,41 @@
   import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right"
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
-  import { isAllowedAudioUrl, linkSense } from "$lib/dict/entries"
+  import { linkSense, playableAudio } from "$lib/dict/entries"
   import type { LookupEntry } from "$lib/dict/types"
+  import type { PairLabels } from "$lib/storage"
   import type { AudioPlayer } from "./audio.svelte"
+  import LabelTag from "./LabelTag.svelte"
+  import { explanationOf, posName } from "./labels"
   import { splitStress, stressedLetter } from "./stress"
 
   let {
     entries,
     language,
     server,
+    labels,
     showIpa,
     audio,
     follow,
+    reserveEnd = false,
   }: {
     entries: Array<LookupEntry>
     /** The language `entries` are in, which a `see` link is looked up in. */
     language: string | undefined
     /** The server that sent `entries`, whose own host may serve their audio. */
     server: string | undefined
+    /** The server's explanations of the labels it sends for `language`. */
+    labels: PairLabels
     showIpa: boolean
     audio: AudioPlayer
     follow: (target: string, language: string | undefined) => void
+    /** Keeps the end of the last sense free, for the Sources link to sit beside it. */
+    reserveEnd?: boolean
   } = $props()
 </script>
 
 {#each entries as entry, index (index)}
-  {@const url = entry.pron?.audio?.find((link) => isAllowedAudioUrl(link, server))}
+  {@const url = playableAudio(entry, server)?.url}
   {@const ipa = entry.pron?.ipa ?? []}
   <section class="flex flex-col gap-1.5" data-audio={url}>
     <div class="flex flex-col">
@@ -37,11 +46,12 @@
           <h2 class="inline text-base font-semibold">
             {@render stressed(entry.lemma)}
           </h2>
-          {" "}<span class="text-muted-foreground text-xs">{entry.pos}</span
-          >{#each entry.labels ?? [] as label (label)}{" "}<span
-              class="bg-muted text-muted-foreground rounded px-1 text-xs whitespace-nowrap"
-              data-label>{label}</span
-            >{/each}
+          {#if posName(entry.pos) !== ""}{" "}<span class="text-muted-foreground text-xs"
+              >{posName(entry.pos)}</span
+            >{/if}{#each entry.labels ?? [] as label (label)}{" "}<LabelTag
+              {label}
+              explanation={explanationOf(labels, label)}
+            />{/each}
         </div>
         {#if url !== undefined}
           {@const going = audio.playing === url}
@@ -78,8 +88,13 @@
     </div>
     <ol class="flex list-decimal flex-col gap-1 pl-5">
       {#each entry.senses as sense, senseIndex (senseIndex)}
-        {@const linked = linkSense(sense.translations.join("; "), sense.see ?? [])}
-        <li class="wrap-anywhere">
+        {@const linked = linkSense(sense.glosses.join("; "), sense.see ?? [])}
+        <li
+          class={[
+            "wrap-anywhere",
+            reserveEnd && index === entries.length - 1 && senseIndex === entry.senses.length - 1 && "pr-16",
+          ]}
+        >
           {#each linked.parts as part, partIndex (partIndex)}{#if part.target === undefined}{part.text}{:else}{@render seeLink(
                 part.text,
                 part.target,

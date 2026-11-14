@@ -11,6 +11,8 @@ type Scenario = {
   verificationUrls: Array<string>
   /** Protocol features listed in meta. */
   features?: Array<string>
+  /** Meta `sources`, as sent. */
+  sources?: Array<unknown>
   /** Scenarios with the same group sign with the same key, as one server on two hosts would. */
   keyGroup?: string
   /** Body sent instead of metadata, pointing here. */
@@ -75,10 +77,26 @@ const scenarios: Record<string, Scenario> = {
     ],
     verificationUrls: [`${ORIGIN}/huge/news`],
     features: ["context", "context-match"],
+    sources: [
+      ...["Wiktionary", "Wikimedia Commons", "Forvo", "Tatoeba", "OpenRussian", "JMdict", "CC-CEDICT"].map(
+        (name, index) => ({
+          name,
+          url: `https://source${index}.example/`,
+          ...(index % 2 === 0 ? { license: "CC-BY-SA-4.0" } : {}),
+        }),
+      ),
+      ...["de_en", "fr_en", "es_en", "it_en", "ja_en"].map((pair) => ({
+        name: `Corpus ${pair}`,
+        url: `https://corpus-${pair.replace("_", "-")}.example/`,
+        license: "CC-BY-4.0",
+        languages: [pair],
+      })),
+    ],
     section: "adds",
-    summary: "Fifty languages into English, eleven into other languages, and it takes sentences.",
+    summary:
+      "Fifty languages into English, eleven into other languages, twelve sources, and it takes sentences.",
     expect:
-      "Languages are grouped by the language they translate into. The list scrolls, Select all shows, and Sentences sits below it with All sites except blocked ones picked. Edit shows the choice that was saved.",
+      "Languages are grouped by the language they translate into. The list scrolls, Select all shows, and Sentences sits below it with All sites except blocked ones picked. Edit shows the choice that was saved. Sources show three, then 9 more sources.",
   },
   overlap: {
     name: "German and Polish",
@@ -104,6 +122,50 @@ const scenarios: Record<string, Scenario> = {
     section: "adds",
     summary: `Meta takes ${SLOW_MS / 1000} seconds.`,
     expect: "Connecting… for a few seconds, then the review. Closing the dialog meanwhile drops the attempt.",
+  },
+  definitions: {
+    name: "Test German Definitions",
+    languages: ["de_de"],
+    verificationUrls: [],
+    section: "adds",
+    summary:
+      "A same-language pair, so its glosses are definitions: one sentence each, not short equivalents.",
+    expect:
+      "A German lookup shows numbered definitions that wrap across lines between words, never inside one, and the popover stays readable.",
+  },
+  credits: {
+    name: "Test Wiktionary",
+    languages: ["de_en", "ru_en"],
+    verificationUrls: [],
+    features: ["labels"],
+    sources: [
+      {
+        name: "Wiktionary",
+        url: "https://en.wiktionary.org/",
+        license: "CC-BY-SA-4.0",
+        license_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+      },
+      {
+        name: "Wikimedia Commons, the free media repository of the Wikimedia Foundation",
+        url: "https://commons.wikimedia.org/",
+      },
+      // Covers only de_en, so its link on собака gets no row.
+      { name: "German Wiktionary", url: "https://de.wiktionary.org/", languages: ["de_en"] },
+      {
+        name: `A source whose name runs past the hundred characters allowed${".".repeat(50)}`,
+        url: "https://example.org/",
+      },
+    ],
+    section: "adds",
+    summary:
+      "Credits Wiktionary and Wikimedia Commons under a long name, links each entry and recording, and explains its Russian labels. German Wiktionary covers only de_en, and one has a name over 100 characters.",
+    steps: [
+      "Add it and tick both languages.",
+      "Look up Mutter or Haus on a German page, or собака or написать on a Russian one.",
+      "Press Sources below the entries. Hover a label, or Tab to it.",
+    ],
+    expect:
+      "The review and the card credit Wiktionary under CC-BY-SA-4.0, Commons under its long name, and German Wiktionary used for German → English only, not the source with the overlong name. Sources lists one row per page and per recording (two formats of one recording are one row), each named Wiktionary or Commons, with the long Commons name cut short and whole on hover, a German Wiktionary row for Mutter but not for собака, and no row for the tracker.example link. Other words show no Sources button. pos reads noun or verb. f, anim and pf show their name, pf also its text; inan has no explanation and stays a plain tag.",
   },
   testing: {
     name: "Testing Only",
@@ -253,19 +315,143 @@ const VOCABULARY: Record<string, Array<string>> = {
   de_en: ["weltschmerz", "kaiser", "reich", "haus", "zeitgeist"],
 }
 
+/** What a same-language pair answers: definitions, which run as long as a sentence. */
+const DEFINITIONS: Array<(word: string) => string> = [
+  (word) =>
+    `Ein Wort, das hier für „${word}“ steht und dessen Bedeutung in einem ganzen Satz erklärt wird, so wie ein einsprachiges Wörterbuch es tut.`,
+  (word) => `Übertragen: etwas, das man mit „${word}“ vergleicht.`,
+]
+
 type MockEntry = {
   lemma: string
   pos: string
-  pron?: { reading: string }
-  senses: Array<{ translations: Array<string> }>
+  labels?: Array<string>
+  pron?: { reading?: string; ipa?: Array<string>; audio?: Array<{ url: string; source?: string }> }
+  senses: Array<{ glosses: Array<string> }>
+  sources?: Array<string>
   match?: Array<string>
 }
 
-const jaEntry = (lemma: string, pos: string, translation: string, reading?: string): MockEntry => ({
+/** A Wikimedia Commons recording: the file, and the file page that credits it. */
+const commonsAudio = (file: string, hash: string) => ({
+  url: `https://upload.wikimedia.org/wikipedia/commons/${hash[0]}/${hash}/${encodeURIComponent(file)}`,
+  source: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file)}`,
+})
+
+const wiktionaryPage = (word: string, language: string) =>
+  `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#${language}`
+
+/** What the credits scenario knows, by language and lowercase word. Any other word gets the plain answer, without links. */
+const CREDITED_WORDS: Record<string, Record<string, Array<MockEntry>>> = {
+  de_en: {
+    mutter: [
+      {
+        lemma: "die Mutter",
+        pos: "NOUN",
+        pron: {
+          ipa: ["/ˈmʊtɐ/"],
+          // One recording in two formats, so the list shows it once.
+          audio: [
+            commonsAudio("De-Mutter.ogg", "03"),
+            {
+              url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/03/De-Mutter.ogg/De-Mutter.ogg.mp3",
+              source: commonsAudio("De-Mutter.ogg", "03").source,
+            },
+          ],
+        },
+        senses: [{ glosses: ["mother"] }, { glosses: ["nut (for a bolt)"] }],
+        sources: [wiktionaryPage("Mutter", "German"), "https://de.wiktionary.org/wiki/Mutter"],
+      },
+      {
+        lemma: "die Mutter",
+        pos: "NOUN",
+        senses: [{ glosses: ["mother superior"] }],
+        // Not on a listed source's origin, so the client shows no link for it.
+        sources: ["https://tracker.example/wiki/Mutter"],
+      },
+    ],
+    haus: [
+      {
+        lemma: "das Haus",
+        pos: "NOUN",
+        pron: { audio: [commonsAudio("De-Haus.ogg", "7e")] },
+        senses: [{ glosses: ["house"] }, { glosses: ["household, family"] }],
+        sources: [wiktionaryPage("Haus", "German"), wiktionaryPage("Hauses", "German")],
+      },
+    ],
+  },
+  ru_en: {
+    собака: [
+      {
+        lemma: "соба́ка",
+        pos: "NOUN",
+        labels: ["f", "anim"],
+        pron: { audio: [commonsAudio("Ru-собака.ogg", "76")] },
+        senses: [{ glosses: ["dog"] }, { glosses: ["at sign (@)"] }],
+        sources: [
+          wiktionaryPage("собака", "Russian"),
+          "https://de.wiktionary.org/wiki/%D1%81%D0%BE%D0%B1%D0%B0%D0%BA%D0%B0",
+        ],
+      },
+    ],
+    написать: [
+      {
+        lemma: "написа́ть",
+        pos: "VERB",
+        labels: ["pf"],
+        senses: [{ glosses: ["to write (down)"] }],
+        sources: [wiktionaryPage("написать", "Russian")],
+      },
+    ],
+    стол: [
+      {
+        lemma: "стол",
+        pos: "NOUN",
+        labels: ["m", "inan"],
+        senses: [{ glosses: ["table"] }, { glosses: ["desk"] }],
+        sources: [wiktionaryPage("стол", "Russian")],
+      },
+    ],
+  },
+}
+
+// The test page has it in the instrumental.
+CREDITED_WORDS.ru_en!.столом = CREDITED_WORDS.ru_en!.стол!
+
+/** What the credits scenario's `/v1/get-labels` explains. `inan` is left out, so it shows without an explanation. */
+const LABELS: Record<string, Record<string, { name: string; text?: string }>> = {
+  ru_en: {
+    f: { name: "feminine" },
+    m: { name: "masculine" },
+    anim: {
+      name: "animate",
+      text: "Names a person or an animal. Its accusative takes the genitive's form: вижу собаку, but вижу кота.",
+    },
+    pf: {
+      name: "perfective",
+      text: "The action is seen as a whole, usually completed. Most verbs come in pairs: писать (impf) and написать (pf).",
+    },
+  },
+  de_en: {},
+}
+
+const getLabels = (scenario: Scenario, url: URL) => {
+  const pairs = (url.searchParams.get("lang") ?? "").split(",").filter(Boolean)
+  if (pairs.length === 0) {
+    return json({ error: "bad_request" }, { status: 400 })
+  }
+  return json({
+    labels: Object.fromEntries(
+      pairs.filter((pair) => scenario.languages.includes(pair)).map((pair) => [pair, LABELS[pair] ?? {}]),
+    ),
+  })
+}
+
+const jaEntry = (lemma: string, pos: string, gloss: string, reading?: string): MockEntry => ({
   lemma,
   pos,
   ...(reading === undefined ? {} : { pron: { reading } }),
-  senses: [{ translations: [translation] }],
+  senses: [{ glosses: [gloss] }],
 })
 
 /**
@@ -394,6 +580,7 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
           languages: scenario.languages,
           verification_urls: scenario.verificationUrls,
           ...(scenario.features === undefined ? {} : { features: scenario.features }),
+          ...(scenario.sources === undefined ? {} : { sources: scenario.sources }),
           ...(scenario.policyVersion === false
             ? {}
             : { legal: await legal(id, scenario.policyVersion ?? 0) }),
@@ -411,7 +598,7 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
   })
 }
 
-const lookup = (scenario: Scenario, url: URL) => {
+const lookup = (id: string, scenario: Scenario, url: URL) => {
   const word = url.searchParams.get("word")
   const lang = url.searchParams.get("lang")
   if (word === null || word === "" || lang === null) {
@@ -423,15 +610,23 @@ const lookup = (scenario: Scenario, url: URL) => {
   if (lang === "ja_en") {
     return lookupJapanese(word, url.searchParams.get("context"))
   }
+  const credited = id === "credits" ? CREDITED_WORDS[lang]?.[word.toLowerCase()] : undefined
+  if (credited !== undefined) {
+    return json({ entries: credited })
+  }
   if (VOCABULARY[lang]?.includes(word.toLowerCase()) === false) {
     return json({ entries: [] })
   }
+  const [from, into] = lang.split("_")
   return json({
     entries: [
       {
         lemma: word,
         pos: "NOUN",
-        senses: [{ translations: [`${word} in ${lang}, answered by ${scenario.name}`] }],
+        senses:
+          from === into
+            ? DEFINITIONS.map((definition) => ({ glosses: [definition(word)] }))
+            : [{ glosses: [`${word} in ${lang}, answered by ${scenario.name}`] }],
       },
     ],
   })
@@ -624,7 +819,11 @@ Bun.serve({
       case "v1/get-meta":
         return getMeta(first, scenario, request)
       case "v1/lookup":
-        return lookup(scenario, url)
+        return lookup(first, scenario, url)
+      case "v1/get-labels":
+        return scenario.features?.includes("labels") === true
+          ? getLabels(scenario, url)
+          : new Response("not found", { status: 404 })
       case "sample":
         return new Response(
           `<!doctype html><html lang="ja"><meta charset="utf-8"><title>Japanese sample</title><body style="font:28px/2 system-ui,sans-serif;max-width:40em;margin:48px auto">${SAMPLE_SENTENCES.map((sentence) => `<p>${sentence}</p>`).join("")}</body></html>`,

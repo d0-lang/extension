@@ -1,5 +1,14 @@
 import { ResultAsync, err, ok, safeTry } from "neverthrow"
-import { contextSending, getServerByLang, getServerIssues, getServers, type ContextSending } from "../storage"
+import {
+  contextSending,
+  getServerByLang,
+  getServerIssues,
+  getServerLabels,
+  getServers,
+  type ContextSending,
+  type CreditSource,
+  type PairLabels,
+} from "../storage"
 import { lookup, type LookupContext } from "./api"
 import { fromUnknown, noServerError, pausedError, type DictError } from "./errors"
 import { rankLanguages, type LookupHints } from "./rank"
@@ -9,35 +18,53 @@ import type { LookupResult } from "./schemas"
 const FALLBACK_TIMEOUT_MS = 2_000
 
 /** `context` is `none` when the server does not list the `context` feature. */
-type Target = { lang: string; url: string; context: ContextSending }
+type Target = {
+  lang: string
+  url: string
+  context: ContextSending
+  sources: Array<CreditSource>
+  labels: PairLabels
+}
 
-/** `lang` is the language that returned `entries`, and `server` the URL that answered. Both unset when none did. */
-export type LookupOutcome = { lang: string | undefined; server: string | undefined } & LookupResult
+/**
+ * `lang` is the language that returned `entries`, and `server` the URL that answered. Both unset when none did.
+ * `sources` are the ones the answering server's stored metadata lists, which decide the links shown.
+ * `labels` are the explanations it last sent for `lang`.
+ */
+export type LookupOutcome = {
+  lang: string | undefined
+  server: string | undefined
+  sources: Array<CreditSource>
+  labels: PairLabels
+} & LookupResult
 
 /** `paused` are bound languages whose server has an issue the user has not resolved. */
 type Targets = { targets: Array<Target>; paused: Array<string> }
 
 // A language whose server stopped listing it cannot answer.
 const loadTargets = (): ResultAsync<Targets, DictError> =>
-  ResultAsync.fromPromise(Promise.all([getServers(), getServerByLang(), getServerIssues()]), fromUnknown).map(
-    ([servers, serverByLang, issues]) => {
-      const offered = Object.entries(serverByLang).filter(([lang, url]) =>
-        servers[url]?.languages.includes(lang),
-      )
-      const isPaused = (url: string) => issues[url] !== undefined
-      return {
-        targets: offered
-          .filter(([, url]) => !isPaused(url))
-          .map(([lang, url]) => ({
-            lang,
-            url,
-            context:
-              servers[url]?.features?.includes("context") === true ? contextSending(servers[url]) : "none",
-          })),
-        paused: offered.filter(([, url]) => isPaused(url)).map(([lang]) => lang),
-      }
-    },
-  )
+  ResultAsync.fromPromise(
+    Promise.all([getServers(), getServerByLang(), getServerIssues(), getServerLabels()]),
+    fromUnknown,
+  ).map(([servers, serverByLang, issues, serverLabels]) => {
+    const offered = Object.entries(serverByLang).filter(([lang, url]) =>
+      servers[url]?.languages.includes(lang),
+    )
+    const isPaused = (url: string) => issues[url] !== undefined
+    return {
+      targets: offered
+        .filter(([, url]) => !isPaused(url))
+        .map(([lang, url]) => ({
+          lang,
+          url,
+          context:
+            servers[url]?.features?.includes("context") === true ? contextSending(servers[url]) : "none",
+          sources: servers[url]?.sources ?? [],
+          labels: serverLabels[url]?.[lang] ?? {},
+        })),
+      paused: offered.filter(([, url]) => isPaused(url)).map(([lang]) => lang),
+    }
+  })
 
 const sendsContext = (sending: ContextSending, siteBlocked: boolean): boolean =>
   sending === "all" || (sending === "unblocked" && !siteBlocked)
@@ -59,7 +86,7 @@ const tryTargets = (
     if (target === undefined) {
       return firstFailure !== undefined && !sawMiss
         ? err(firstFailure)
-        : ok({ lang: undefined, server: undefined, entries: [] })
+        : ok({ lang: undefined, server: undefined, sources: [], labels: {}, entries: [] })
     }
     const result = await lookup(
       target.url,
@@ -69,7 +96,13 @@ const tryTargets = (
       ...(rest.length > 0 ? [FALLBACK_TIMEOUT_MS] : []),
     )
     if (result.isOk() && result.value.entries.length > 0) {
-      return ok({ lang: target.lang, server: target.url, ...result.value })
+      return ok({
+        lang: target.lang,
+        server: target.url,
+        sources: target.sources,
+        labels: target.labels,
+        ...result.value,
+      })
     }
     return ok(
       yield* result.isOk()
