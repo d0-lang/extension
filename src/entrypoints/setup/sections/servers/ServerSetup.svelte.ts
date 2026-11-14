@@ -39,6 +39,8 @@ export class ServerSetup {
   accepted = $state.raw<AcceptedLegal | null | undefined>(undefined)
   /** Holds back saving a server without policies. */
   legalLock = new Countdown()
+  /** The user ticked that they understand what the server gets. */
+  privacyUnderstood = $state(false)
 
   saving = $derived(this.dialogState === "saving")
   /** The draft has no privacy policy or terms, so it is for testing only. */
@@ -54,6 +56,10 @@ export class ServerSetup {
       !(this.draft.url in this.servers) &&
       !(this.draft.movedFrom !== undefined && this.draft.movedFrom in this.servers),
   )
+
+  /** Adding a server, or accepting its changed policies, waits until the user ticks the privacy box. */
+  needsPrivacyTick = $derived(this.isNew || this.changedDocuments.length > 0)
+  privacyReady = $derived(!this.needsPrivacyTick || this.privacyUnderstood)
 
   selectedLanguages = $derived(
     Object.entries(this.selected)
@@ -167,6 +173,7 @@ export class ServerSetup {
 
   resetDialog = () => {
     this.legalLock.stop()
+    this.privacyUnderstood = false
     this.accepted = undefined
     this.editUrl = undefined
     this.draft = null
@@ -194,6 +201,7 @@ export class ServerSetup {
       return
     }
     this.draft = result
+    this.privacyUnderstood = false
     const bound = this.servers[result.url] ?? this.servers[result.movedFrom ?? ""]
     this.context = bound === undefined ? "unblocked" : contextSending(bound)
     this.accepted = bound?.legal
@@ -231,7 +239,7 @@ export class ServerSetup {
   }
 
   save = async () => {
-    if (this.draft === null || !this.canSave || this.legalLock.locked) {
+    if (this.draft === null || !this.canSave || !this.privacyReady || this.legalLock.locked) {
       return
     }
     this.dialogState = "saving"

@@ -244,6 +244,15 @@
           >.
         </p>
       {/if}
+      {#if setup.needsPrivacyTick}
+        <Label
+          for="privacy-understood"
+          class="hover:bg-muted/50 has-focus-visible:bg-muted/50 -mx-2 mt-1 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
+        >
+          <Checkbox id="privacy-understood" bind:checked={setup.privacyUnderstood} />
+          <span>I understand what this server gets</span>
+        </Label>
+      {/if}
     </div>
 
     {#if sources.length > 0}
@@ -264,13 +273,17 @@
   <DialogFooter class="sm:items-center">
     {#if !setup.canSave && languages.length > 0}
       <p class="text-muted-foreground text-center sm:mr-auto sm:text-left">Pick at least one language.</p>
+    {:else if !setup.privacyReady}
+      <p class="text-muted-foreground text-center sm:mr-auto sm:text-left">
+        Read Privacy, then tick the box.
+      </p>
     {/if}
     {#if !setup.isEditing}
       <Button variant="outline" disabled={setup.saving} onclick={setup.backToConnect}>Back</Button>
     {/if}
     <Button
       onclick={() => void setup.save()}
-      disabled={setup.saving || !setup.canSave || setup.legalLock.locked}
+      disabled={setup.saving || !setup.canSave || !setup.privacyReady || setup.legalLock.locked}
     >
       {#if setup.saving}
         Saving…
