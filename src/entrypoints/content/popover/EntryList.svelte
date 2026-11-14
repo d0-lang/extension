@@ -18,6 +18,7 @@
     showIpa,
     audio,
     follow,
+    reserveEnd = false,
   }: {
     entries: Array<LookupEntry>
     /** The language `entries` are in, which a `see` link is looked up in. */
@@ -29,6 +30,8 @@
     showIpa: boolean
     audio: AudioPlayer
     follow: (target: string, language: string | undefined) => void
+    /** Keeps the end of the last sense free, for the Sources link to sit beside it. */
+    reserveEnd?: boolean
   } = $props()
 </script>
 
@@ -86,7 +89,12 @@
     <ol class="flex list-decimal flex-col gap-1 pl-5">
       {#each entry.senses as sense, senseIndex (senseIndex)}
         {@const linked = linkSense(sense.glosses.join("; "), sense.see ?? [])}
-        <li class="wrap-anywhere">
+        <li
+          class={[
+            "wrap-anywhere",
+            reserveEnd && index === entries.length - 1 && senseIndex === entry.senses.length - 1 && "pr-16",
+          ]}
+        >
           {#each linked.parts as part, partIndex (partIndex)}{#if part.target === undefined}{part.text}{:else}{@render seeLink(
                 part.text,
                 part.target,

@@ -314,18 +314,21 @@
             role={split === undefined ? undefined : "tabpanel"}
             class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
-            <EntryList
-              entries={tabEntries}
-              language={result.lang}
-              server={result.server}
-              labels={result.labels}
-              {showIpa}
-              {audio}
-              follow={followLink}
-            />
-            {#if links.length > 0}
-              <SourcesButton open={() => openSources(links)} />
-            {/if}
+            <div class="relative flex flex-col gap-2">
+              <EntryList
+                entries={tabEntries}
+                language={result.lang}
+                server={result.server}
+                labels={result.labels}
+                {showIpa}
+                {audio}
+                follow={followLink}
+                reserveEnd={links.length > 0}
+              />
+              {#if links.length > 0}
+                <SourcesButton open={() => openSources(links)} />
+              {/if}
+            </div>
           </div>
         {/if}
         {#if result.languages.length > 1 && view.sources === undefined}
