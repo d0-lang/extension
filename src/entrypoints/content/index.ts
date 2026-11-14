@@ -27,6 +27,8 @@ export default defineContentScript({
   cssInjectionMode: "ui",
   main(ctx) {
     let picked: Picked | undefined
+    /** Covers the word the popover is open on, when it is the one under the cursor. */
+    let shownRange: Range | undefined
     let enabled = false
     const session = createSession()
     const popover = createPopoverHost(ctx)
@@ -40,8 +42,9 @@ export default defineContentScript({
       context: Sentence | undefined,
       /** The language the text is known to be in, like a subtitle track's. */
       known?: string,
-    ) =>
-      popover.show(async () => {
+    ) => {
+      shownRange = range
+      return popover.show(async () => {
         const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()])
         return {
           word,
@@ -71,6 +74,10 @@ export default defineContentScript({
             session.search(target, element, language, undefined, known),
         }
       })
+    }
+    popover.onClose(() => {
+      shownRange = undefined
+    })
 
     ctx.addEventListener(
       window,
@@ -90,6 +97,11 @@ export default defineContentScript({
           isEnabled: () => enabled,
           lookUp: ({ word, anchor, element, range }, lang) =>
             void open(word, anchor, element, range, sentenceAround(range, word, lang), lang.split("-")[0]),
+          isShown: ({ range }) =>
+            popover.isOpen() &&
+            shownRange?.startContainer === range.startContainer &&
+            shownRange.startOffset === range.startOffset,
+          close: popover.close,
         })
       : undefined
     if (captions !== undefined) {
@@ -102,6 +114,7 @@ export default defineContentScript({
       (event) => {
         // A click on another subtitle word replaces the popover rather than closing it, so the video stays paused.
         if (popover.isOpen() && !popover.contains(event) && captions?.contains(event) !== true) {
+          captions?.keepClosingPress(event)
           popover.close()
         }
       },
@@ -112,6 +125,11 @@ export default defineContentScript({
       "keydown",
       (event) => {
         if (event.key === "Escape") {
+          // Kept from the page, which would act on it too, like YouTube's player. Leaving fullscreen is up to the browser.
+          if (popover.isOpen()) {
+            event.stopPropagation()
+            event.preventDefault()
+          }
           popover.close()
         }
       },

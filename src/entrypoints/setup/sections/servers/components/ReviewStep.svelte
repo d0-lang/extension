@@ -94,19 +94,21 @@
         <AlertTitle>
           Updated {setup.changedDocuments.map((document) => documentName[document]).join(" and ")}
         </AlertTitle>
-        <AlertDescription class="flex flex-col gap-2">
-          {#each setup.changedDocuments as document (document)}
-            {@const change = document === "privacy" ? legal.privacy_change : legal.tos_change}
-            {@const href = document === "privacy" ? legal.privacy_link : legal.tos_link}
-            <p class="wrap-anywhere">
-              {#if change !== undefined}
-                <span class="font-medium">The server says:</span> {change}
-              {/if}
-              <a class="underline" {href} target="_blank" rel="noreferrer"
-                >Read the {documentName[document]}</a
-              >
-            </p>
-          {/each}
+        <AlertDescription class="flex flex-col gap-1">
+          <ul class="list-disc pl-5">
+            {#each setup.changedDocuments as document (document)}
+              {@const change = document === "privacy" ? legal.privacy_change : legal.tos_change}
+              {@const href = document === "privacy" ? legal.privacy_link : legal.tos_link}
+              <li class="py-0.5 wrap-anywhere">
+                {#if change !== undefined}
+                  <span class="font-medium">The server says:</span> {change}
+                {/if}
+                <a class="underline" {href} target="_blank" rel="noreferrer"
+                  >Read the {documentName[document]}</a
+                >
+              </li>
+            {/each}
+          </ul>
           <p>Lookups to this server wait until you save.</p>
         </AlertDescription>
       </Alert>
@@ -123,8 +125,9 @@
     {#if languages.length === 0}
       <p class="text-muted-foreground">This server doesn't offer any languages yet.</p>
     {:else}
-      <!-- Only the list shrinks when the dialog is short, so the choices after it stay in view. -->
-      <div class="flex min-h-0 flex-col gap-2">
+      <!-- Only a list with its own scroll shrinks when the dialog is short, so the choices after it stay in view. -->
+      <!-- Its minimum fits the heading, the filter and the list's own minimum. A shorter list keeps its height. -->
+      <div class={["flex flex-col gap-2", languages.length >= FILTER_FROM ? "min-h-56" : "shrink-0"]}>
         <div class="flex items-center justify-between gap-2">
           <p class="font-medium">Languages</p>
           {#if languages.length >= SELECT_ALL_FROM}
@@ -241,6 +244,15 @@
           >.
         </p>
       {/if}
+      {#if setup.needsPrivacyTick}
+        <Label
+          for="privacy-understood"
+          class="hover:bg-muted/50 has-focus-visible:bg-muted/50 -mx-2 mt-1 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
+        >
+          <Checkbox id="privacy-understood" bind:checked={setup.privacyUnderstood} />
+          <span>I understand what this server gets</span>
+        </Label>
+      {/if}
     </div>
 
     {#if sources.length > 0}
@@ -261,13 +273,17 @@
   <DialogFooter class="sm:items-center">
     {#if !setup.canSave && languages.length > 0}
       <p class="text-muted-foreground text-center sm:mr-auto sm:text-left">Pick at least one language.</p>
+    {:else if !setup.privacyReady}
+      <p class="text-muted-foreground text-center sm:mr-auto sm:text-left">
+        Read Privacy, then tick the box.
+      </p>
     {/if}
     {#if !setup.isEditing}
       <Button variant="outline" disabled={setup.saving} onclick={setup.backToConnect}>Back</Button>
     {/if}
     <Button
       onclick={() => void setup.save()}
-      disabled={setup.saving || !setup.canSave || setup.legalLock.locked}
+      disabled={setup.saving || !setup.canSave || !setup.privacyReady || setup.legalLock.locked}
     >
       {#if setup.saving}
         Saving…

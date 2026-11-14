@@ -1,5 +1,6 @@
-import { isLookupRequestMessage } from "$lib/messages"
+import { isAudioRequestMessage, isLookupRequestMessage } from "$lib/messages"
 import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./action"
+import { fetchAudio } from "./audio"
 import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
 import { answer } from "./lookup"
 import { createMenuItem, openFromMenu, showMenuItem } from "./menu"
@@ -65,6 +66,10 @@ export default defineBackground(() => {
   browser.contextMenus.onClicked.addListener(openFromMenu)
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (isAudioRequestMessage(message)) {
+      void fetchAudio(message.url).then(sendResponse)
+      return true
+    }
     if (!isLookupRequestMessage(message)) {
       return
     }

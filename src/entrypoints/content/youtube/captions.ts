@@ -6,6 +6,7 @@ import type { WordHit } from "../page/pick"
 import { cueAt } from "./cues"
 import { createOverlay, type Overlay } from "./overlay"
 import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn } from "./player"
+import { keepPressFromPage } from "./press"
 import { watchTracks, type Track } from "./track"
 
 /** For videos watched earlier in the tab, because the player may not download their track again on the way back. */
@@ -16,6 +17,10 @@ type CaptionsOptions = {
   isEnabled: () => boolean
   /** `lang` is the track's language. */
   lookUp: (hit: WordHit, lang: string) => void
+  /** Whether the open popover is the lookup of `hit`. */
+  isShown: (hit: WordHit) => boolean
+  /** Closes the popover. */
+  close: () => void
 }
 
 /**
@@ -24,7 +29,10 @@ type CaptionsOptions = {
  * and in players without the button, like the one for Shorts.
  * While on, it also has the page's world undo the audio and captions YouTube picks from the viewer's language.
  */
-export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, lookUp }: CaptionsOptions) => {
+export const showYouTubeCaptions = (
+  ctx: ContentScriptContext,
+  { isEnabled, lookUp, isShown, close }: CaptionsOptions,
+) => {
   const tracks = new Map<string, Track>()
   let showing = true
   let pauses = true
@@ -61,6 +69,11 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
 
   const onWord = (hit: WordHit) => {
     if (track === undefined || overlay === undefined) {
+      return
+    }
+    // Clicking the word again closes its lookup, which plays the video again.
+    if (isShown(hit)) {
+      close()
       return
     }
     lookUp(hit, track.lang)
@@ -128,6 +141,19 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, { isEnabled, look
     popoverClosed: () => {
       void pausedVideo?.play().catch(() => {})
       pausedVideo = undefined
+    },
+    /**
+     * Keeps a press on the player that closes the popover from the player, while a lookup keeps the video paused.
+     * Closing plays the video, and the player would take the press as a pause.
+     */
+    keepClosingPress: (event: PointerEvent) => {
+      if (
+        pausedVideo !== undefined &&
+        overlay !== undefined &&
+        event.composedPath().includes(overlay.player)
+      ) {
+        keepPressFromPage(ctx, event)
+      }
     },
     /** Whether `event` happened on the subtitles. */
     contains: (event: Event): boolean => overlay?.contains(event) ?? false,

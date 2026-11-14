@@ -1,13 +1,21 @@
-/** One pronunciation at a time. `playing` is the URL being fetched or played, `failed` the last one that could not play. */
+import { ResultAsync } from "neverthrow"
+import { fromUnknown } from "$lib/dict/errors"
+import { requestAudio } from "$lib/messages"
+
+/**
+ * One pronunciation at a time. `playing` is the URL being fetched or played, `failed` the last one that could not play.
+ * The background fetches the file, so the request carries nothing of the page.
+ * It plays through Web Audio, which a page's policy on media hosts does not cover.
+ */
 export class AudioPlayer {
   playing = $state<string>()
   failed = $state<string>()
 
-  #player: HTMLAudioElement | undefined
+  #context: AudioContext | undefined
 
   stop = () => {
-    this.#player?.pause()
-    this.#player = undefined
+    void this.#context?.close()
+    this.#context = undefined
     this.playing = undefined
   }
 
@@ -19,21 +27,33 @@ export class AudioPlayer {
       return
     }
     this.failed = undefined
-    const next = new Audio(url)
-    this.#player = next
+    // Made during the press, because a page may only start sound from one.
+    const context = new AudioContext()
+    this.#context = context
     this.playing = url
-    const fail = () => {
-      if (this.#player === next) {
-        this.stop()
-        this.failed = url
-      }
-    }
-    next.addEventListener("ended", () => {
-      if (this.#player === next) {
-        this.stop()
-      }
-    })
-    next.addEventListener("error", fail)
-    void next.play().catch(fail)
+    void requestAudio(url)
+      .andThen((data) => ResultAsync.fromPromise(context.decodeAudioData(data), fromUnknown))
+      .match(
+        (buffer) => {
+          if (this.#context !== context) {
+            return
+          }
+          const source = context.createBufferSource()
+          source.buffer = buffer
+          source.connect(context.destination)
+          source.addEventListener("ended", () => {
+            if (this.#context === context) {
+              this.stop()
+            }
+          })
+          source.start()
+        },
+        () => {
+          if (this.#context === context) {
+            this.stop()
+            this.failed = url
+          }
+        },
+      )
   }
 }
