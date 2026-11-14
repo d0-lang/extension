@@ -25,8 +25,9 @@
             href={source.licenseUrl}
             target="_blank"
             rel="noreferrer">{source.license}</a
-          >{/if}{/if}.{#if source.languages !== undefined}
-        Used for {source.languages.map(pairName).join(", ")}.{/if}
+          >{/if}{/if}.{#if source.languages !== undefined}{" "}Used for {source.languages
+          .map(pairName)
+          .join(", ")}.{/if}
     </li>
   {/each}
   {#if folds}
