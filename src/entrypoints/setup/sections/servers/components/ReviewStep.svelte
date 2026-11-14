@@ -94,19 +94,21 @@
         <AlertTitle>
           Updated {setup.changedDocuments.map((document) => documentName[document]).join(" and ")}
         </AlertTitle>
-        <AlertDescription class="flex flex-col gap-2">
-          {#each setup.changedDocuments as document (document)}
-            {@const change = document === "privacy" ? legal.privacy_change : legal.tos_change}
-            {@const href = document === "privacy" ? legal.privacy_link : legal.tos_link}
-            <p class="wrap-anywhere">
-              {#if change !== undefined}
-                <span class="font-medium">The server says:</span> {change}
-              {/if}
-              <a class="underline" {href} target="_blank" rel="noreferrer"
-                >Read the {documentName[document]}</a
-              >
-            </p>
-          {/each}
+        <AlertDescription class="flex flex-col gap-1">
+          <ul class="list-disc pl-5">
+            {#each setup.changedDocuments as document (document)}
+              {@const change = document === "privacy" ? legal.privacy_change : legal.tos_change}
+              {@const href = document === "privacy" ? legal.privacy_link : legal.tos_link}
+              <li class="py-0.5 wrap-anywhere">
+                {#if change !== undefined}
+                  <span class="font-medium">The server says:</span> {change}
+                {/if}
+                <a class="underline" {href} target="_blank" rel="noreferrer"
+                  >Read the {documentName[document]}</a
+                >
+              </li>
+            {/each}
+          </ul>
           <p>Lookups to this server wait until you save.</p>
         </AlertDescription>
       </Alert>
@@ -123,8 +125,9 @@
     {#if languages.length === 0}
       <p class="text-muted-foreground">This server doesn't offer any languages yet.</p>
     {:else}
-      <!-- Only the list shrinks when the dialog is short, so the choices after it stay in view. -->
-      <div class="flex min-h-0 flex-col gap-2">
+      <!-- Only a list with its own scroll shrinks when the dialog is short, so the choices after it stay in view. -->
+      <!-- Its minimum fits the heading, the filter and the list's own minimum. A shorter list keeps its height. -->
+      <div class={["flex flex-col gap-2", languages.length >= FILTER_FROM ? "min-h-56" : "shrink-0"]}>
         <div class="flex items-center justify-between gap-2">
           <p class="font-medium">Languages</p>
           {#if languages.length >= SELECT_ALL_FROM}
