@@ -23,6 +23,7 @@
   import type { ContextSending, ServerIssue } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
+  import SourceCredits from "./SourceCredits.svelte"
   import ServerDialog from "./ServerDialog.svelte"
 
   const servers = new ServerSetup()
@@ -192,6 +193,11 @@
                 {/if}
                 {#if row.context !== undefined}
                   <p class="text-muted-foreground text-sm">{contextText[row.context]}</p>
+                {/if}
+                {#if row.sources.length > 0}
+                  <div class="text-sm">
+                    <SourceCredits sources={row.sources} />
+                  </div>
                 {/if}
               </div>
               <DropdownMenu>

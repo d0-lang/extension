@@ -130,3 +130,9 @@ export const isAllowedAudioUrl = (value: string, server: string | undefined): bo
   }
   return AUDIO_HOSTS.includes(url.host) || url.host === URL.parse(server ?? "")?.host
 }
+
+export type AudioItem = NonNullable<NonNullable<LookupEntry["pron"]>["audio"]>[number]
+
+/** The recording the entry's play button plays: the first whose `url` the audio host rule allows. */
+export const playableAudio = (entry: LookupEntry, server: string | undefined): AudioItem | undefined =>
+  entry.pron?.audio?.find(({ url }) => isAllowedAudioUrl(url, server))

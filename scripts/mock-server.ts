@@ -11,6 +11,8 @@ type Scenario = {
   verificationUrls: Array<string>
   /** Protocol features listed in meta. */
   features?: Array<string>
+  /** Meta `sources`, as sent. */
+  sources?: Array<unknown>
   /** Scenarios with the same group sign with the same key, as one server on two hosts would. */
   keyGroup?: string
   /** Body sent instead of metadata, pointing here. */
@@ -114,6 +116,31 @@ const scenarios: Record<string, Scenario> = {
       "A same-language pair, so its glosses are definitions: one sentence each, not short equivalents.",
     expect:
       "A German lookup shows numbered definitions that wrap across lines between words, never inside one, and the popover stays readable.",
+  },
+  credits: {
+    name: "Test Wiktionary",
+    languages: ["de_en", "ru_en"],
+    verificationUrls: [],
+    sources: [
+      {
+        name: "Wiktionary",
+        url: "https://en.wiktionary.org/",
+        license: "CC-BY-SA-4.0",
+        license_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+      },
+      { name: "Wikimedia Commons", url: "https://commons.wikimedia.org/" },
+      { name: "A source whose name runs past the forty characters allowed", url: "https://example.org/" },
+    ],
+    section: "adds",
+    summary:
+      "Credits Wiktionary and Wikimedia Commons, and links each entry and recording. A third source has a name over 40 characters.",
+    steps: [
+      "Add it and tick both languages.",
+      "Look up Mutter or Haus on a German page, or собака on a Russian one.",
+      "Press Sources below the entries.",
+    ],
+    expect:
+      'The review and the card list "Derived from Wiktionary, under CC-BY-SA-4.0." and "Derived from Wikimedia Commons.", not the third source. The popover plays the recording and its Sources list has one row per page and per recording, each named Wiktionary or Wikimedia Commons, with no row for the tracker.example link. Other words show no Sources button.',
   },
   testing: {
     name: "Testing Only",
@@ -273,9 +300,73 @@ const DEFINITIONS: Array<(word: string) => string> = [
 type MockEntry = {
   lemma: string
   pos: string
-  pron?: { reading: string }
+  labels?: Array<string>
+  pron?: { reading?: string; ipa?: Array<string>; audio?: Array<{ url: string; source?: string }> }
   senses: Array<{ glosses: Array<string> }>
+  sources?: Array<string>
   match?: Array<string>
+}
+
+/** A Wikimedia Commons recording: the file, and the file page that credits it. */
+const commonsAudio = (file: string, hash: string) => ({
+  url: `https://upload.wikimedia.org/wikipedia/commons/${hash[0]}/${hash}/${encodeURIComponent(file)}`,
+  source: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file)}`,
+})
+
+const wiktionaryPage = (word: string, language: string) =>
+  `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#${language}`
+
+/** What the credits scenario knows, by language and lowercase word. Any other word gets the plain answer, without links. */
+const CREDITED_WORDS: Record<string, Record<string, Array<MockEntry>>> = {
+  de_en: {
+    mutter: [
+      {
+        lemma: "die Mutter",
+        pos: "NOUN",
+        pron: {
+          ipa: ["/ˈmʊtɐ/"],
+          // One recording in two formats, so the list shows it once.
+          audio: [
+            commonsAudio("De-Mutter.ogg", "03"),
+            {
+              url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/03/De-Mutter.ogg/De-Mutter.ogg.mp3",
+              source: commonsAudio("De-Mutter.ogg", "03").source,
+            },
+          ],
+        },
+        senses: [{ glosses: ["mother"] }, { glosses: ["nut (for a bolt)"] }],
+        sources: [wiktionaryPage("Mutter", "German")],
+      },
+      {
+        lemma: "die Mutter",
+        pos: "NOUN",
+        senses: [{ glosses: ["mother superior"] }],
+        // Not on a listed source's origin, so the client shows no link for it.
+        sources: ["https://tracker.example/wiki/Mutter"],
+      },
+    ],
+    haus: [
+      {
+        lemma: "das Haus",
+        pos: "NOUN",
+        pron: { audio: [commonsAudio("De-Haus.ogg", "7e")] },
+        senses: [{ glosses: ["house"] }, { glosses: ["household, family"] }],
+        sources: [wiktionaryPage("Haus", "German"), wiktionaryPage("Hauses", "German")],
+      },
+    ],
+  },
+  ru_en: {
+    собака: [
+      {
+        lemma: "соба́ка",
+        pos: "NOUN",
+        labels: ["f", "anim"],
+        pron: { audio: [commonsAudio("Ru-собака.ogg", "76")] },
+        senses: [{ glosses: ["dog"] }, { glosses: ["at sign (@)"] }],
+        sources: [wiktionaryPage("собака", "Russian")],
+      },
+    ],
+  },
 }
 
 const jaEntry = (lemma: string, pos: string, gloss: string, reading?: string): MockEntry => ({
@@ -411,6 +502,7 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
           languages: scenario.languages,
           verification_urls: scenario.verificationUrls,
           ...(scenario.features === undefined ? {} : { features: scenario.features }),
+          ...(scenario.sources === undefined ? {} : { sources: scenario.sources }),
           ...(scenario.policyVersion === false
             ? {}
             : { legal: await legal(id, scenario.policyVersion ?? 0) }),
@@ -428,7 +520,7 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
   })
 }
 
-const lookup = (scenario: Scenario, url: URL) => {
+const lookup = (id: string, scenario: Scenario, url: URL) => {
   const word = url.searchParams.get("word")
   const lang = url.searchParams.get("lang")
   if (word === null || word === "" || lang === null) {
@@ -439,6 +531,10 @@ const lookup = (scenario: Scenario, url: URL) => {
   }
   if (lang === "ja_en") {
     return lookupJapanese(word, url.searchParams.get("context"))
+  }
+  const credited = id === "credits" ? CREDITED_WORDS[lang]?.[word.toLowerCase()] : undefined
+  if (credited !== undefined) {
+    return json({ entries: credited })
   }
   if (VOCABULARY[lang]?.includes(word.toLowerCase()) === false) {
     return json({ entries: [] })
@@ -645,7 +741,7 @@ Bun.serve({
       case "v1/get-meta":
         return getMeta(first, scenario, request)
       case "v1/lookup":
-        return lookup(scenario, url)
+        return lookup(first, scenario, url)
       case "sample":
         return new Response(
           `<!doctype html><html lang="ja"><meta charset="utf-8"><title>Japanese sample</title><body style="font:28px/2 system-ui,sans-serif;max-width:40em;margin:48px auto">${SAMPLE_SENTENCES.map((sentence) => `<p>${sentence}</p>`).join("")}</body></html>`,

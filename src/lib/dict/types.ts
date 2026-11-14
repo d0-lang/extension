@@ -1,1 +1,8 @@
-export type { LookupEntry, LookupResult, LookupSegment, ServerLegal, ServerMeta } from "./schemas"
+export type {
+  LookupEntry,
+  LookupResult,
+  LookupSegment,
+  ServerLegal,
+  ServerMeta,
+  ServerSource,
+} from "./schemas"

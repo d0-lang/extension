@@ -1,6 +1,6 @@
 /** Server check: the protocol fetches metadata again whenever the client starts, and at least once a day while it runs. */
 import { ResultAsync, ok, safeTry } from "neverthrow"
-import { acceptedLegal, handshake, legalChanged } from "$lib/dict"
+import { acceptedLegal, creditSources, handshake, legalChanged } from "$lib/dict"
 import { toError } from "$lib/errors"
 import {
   bindServer,
@@ -56,6 +56,8 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
         features: meta.features,
         context: server.context,
         legal: changed ? server.legal : acceptedLegal(meta.legal),
+        // Not a policy change, so a new list is saved without asking.
+        sources: creditSources(meta.sources),
       },
       mapped,
       movedFrom,

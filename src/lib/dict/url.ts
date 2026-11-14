@@ -8,6 +8,8 @@ const parseHttpUrl = (value: string): URL | undefined => {
 
 export const isHttpUrl = (value: string): boolean => parseHttpUrl(value) !== undefined
 
+export const isHttpsUrl = (value: string): boolean => parseHttpUrl(value)?.protocol === "https:"
+
 /**
  * Canonical server URL, the key a server is pinned under. Keeps a subpath.
  * Spellings of one address (host case, default port, trailing slash) give one result.

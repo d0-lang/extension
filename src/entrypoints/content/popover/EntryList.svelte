@@ -2,7 +2,7 @@
   import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right"
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
-  import { isAllowedAudioUrl, linkSense } from "$lib/dict/entries"
+  import { linkSense, playableAudio } from "$lib/dict/entries"
   import type { LookupEntry } from "$lib/dict/types"
   import type { AudioPlayer } from "./audio.svelte"
   import { splitStress, stressedLetter } from "./stress"
@@ -27,7 +27,7 @@
 </script>
 
 {#each entries as entry, index (index)}
-  {@const url = entry.pron?.audio?.find((link) => isAllowedAudioUrl(link, server))}
+  {@const url = playableAudio(entry, server)?.url}
   {@const ipa = entry.pron?.ipa ?? []}
   <section class="flex flex-col gap-1.5" data-audio={url}>
     <div class="flex flex-col">

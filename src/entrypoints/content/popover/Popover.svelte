@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte"
   import ArrowLeft from "@lucide/svelte/icons/arrow-left"
+  import { sourceLinks } from "$lib/dict/sources"
   import type { LookupReply } from "$lib/messages"
   import type { AnchorRect } from "../page/pick"
   import { AudioPlayer } from "./audio.svelte"
@@ -10,6 +11,7 @@
   import { placePopover, type Side } from "./position"
   import { errorText, firstTab, pausedText, shownEntries, shownLanguage, shownSplit } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
+  import Sources from "./Sources.svelte"
   import Underlines from "./Underlines.svelte"
 
   let {
@@ -280,6 +282,9 @@
             </p>
           {/if}
         {:else}
+          {@const tabEntries =
+            split === undefined || shownTab === undefined ? entries : (split.parts[shownTab]?.entries ?? [])}
+          {@const links = sourceLinks(tabEntries, result.sources, result.lang, result.server)}
           {#if split !== undefined && shownTab !== undefined}
             <SegmentTabs {split} tab={shownTab} pick={pickTab} />
           {/if}
@@ -290,15 +295,16 @@
             class="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2"
           >
             <EntryList
-              entries={split === undefined || shownTab === undefined
-                ? entries
-                : (split.parts[shownTab]?.entries ?? [])}
+              entries={tabEntries}
               language={result.lang}
               server={result.server}
               {showIpa}
               {audio}
               follow={followLink}
             />
+            {#if links.length > 0}
+              <Sources {links} />
+            {/if}
           </div>
         {/if}
         {#if result.languages.length > 1}

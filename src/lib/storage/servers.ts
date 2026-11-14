@@ -24,6 +24,17 @@ export type BoundServer = {
    * Missing on records stored before policies were read.
    */
   legal?: AcceptedLegal | null
+  /** Whose material the answers are built from, from the last verified meta. Missing on records stored before sources were read. */
+  sources?: Array<CreditSource>
+}
+
+/** A source the server credits. `languages` unset means every pair. */
+export type CreditSource = {
+  name: string
+  url: string
+  license?: string
+  licenseUrl?: string
+  languages?: Array<LanguagePair>
 }
 
 /** Links and hashes of a server's privacy policy and terms of service, as the user accepted them. */
