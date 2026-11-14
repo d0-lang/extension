@@ -31,6 +31,7 @@ export type DictError =
         | "paused"
         | "bad-request"
         | "unsupported-lang"
+        | "audio-host"
       readonly message: string
     }
 
@@ -98,4 +99,9 @@ export const badRequestError = (): DictError => ({
 export const unsupportedLangError = (): DictError => ({
   kind: "unsupported-lang",
   message: "lookup language is not supported",
+})
+
+export const audioHostError = (): DictError => ({
+  kind: "audio-host",
+  message: "audio is not on an allowed host",
 })

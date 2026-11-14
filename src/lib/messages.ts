@@ -1,5 +1,5 @@
 /** Messages between the background script and the content script's popover. */
-import { ResultAsync } from "neverthrow"
+import { ResultAsync, err, ok } from "neverthrow"
 import type { LookupContext } from "./dict/api"
 import { fromUnknown, type DictError } from "./dict/errors"
 import type { LookupOutcome } from "./dict/lookup"
@@ -24,6 +24,12 @@ export type LookupRequestMessage = {
 export type LookupReply = { languages: Array<string>; paused: Array<string>; tried: Array<string> } & (
   ({ ok: true } & LookupOutcome) | { ok: false; error: DictError }
 )
+
+/** Content to background: fetch the recording at `url`, so the request carries nothing of the page. */
+export type AudioRequestMessage = { type: "audio:request"; url: string }
+
+/** The recording's bytes in base64, because Chrome sends messages as JSON. */
+export type AudioReply = { ok: true; data: string } | { ok: false; error: DictError }
 
 export const isOpenLookupMessage = (message: unknown): message is OpenLookupMessage =>
   (message as OpenLookupMessage | undefined)?.type === "lookup:open"
@@ -65,4 +71,24 @@ export const requestLookup = (
         error: fromUnknown("The background script did not reply"),
       },
     (error): LookupReply => ({ ok: false, languages: [], paused: [], tried: [], error }),
+  )
+
+export const isAudioRequestMessage = (message: unknown): message is AudioRequestMessage =>
+  (message as AudioRequestMessage | undefined)?.type === "audio:request" &&
+  typeof (message as AudioRequestMessage).url === "string"
+
+const sendAudioRequest = ResultAsync.fromThrowable(
+  (url: string): Promise<AudioReply | undefined> =>
+    browser.runtime.sendMessage({ type: "audio:request", url } satisfies AudioRequestMessage),
+  fromUnknown,
+)
+
+/** Ask the background script for the recording at `url`. */
+export const requestAudio = (url: string): ResultAsync<ArrayBuffer, DictError> =>
+  sendAudioRequest(url).andThen((reply) =>
+    reply === undefined
+      ? err(fromUnknown("The background script did not reply"))
+      : reply.ok
+        ? ok(Uint8Array.from(atob(reply.data), (char) => char.charCodeAt(0)).buffer)
+        : err(reply.error),
   )
