@@ -16,9 +16,11 @@ const segmenterFor = (locale: string | undefined): Intl.Segmenter => {
   return segmenter
 }
 
-/** Whether the segmenter's piece is a word a dictionary could have. It counts numbers as words too. */
-const isWord = (segment: Intl.SegmentData): boolean =>
-  segment.isWordLike === true && /\p{L}/u.test(segment.segment)
+/**
+ * Whether the segmenter's piece is a word a dictionary could have, which numbers are not.
+ * Not `isWordLike`, which Firefox leaves false on a Japanese word before punctuation or at the end of the text.
+ */
+const isWord = (segment: Intl.SegmentData): boolean => /\p{L}/u.test(segment.segment)
 
 /** `text` cut into words and what lies between them, in order. `locale` is the language of the text, if known. */
 export const segmentsOf = (
