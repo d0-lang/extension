@@ -21,8 +21,12 @@ const segmenterFor = (locale: string | undefined): Intl.Segmenter => {
  * Firefox leaves `isWordLike` false on a Japanese, Chinese or Thai word before a non-word, so there any letters do.
  */
 // TODO: Trust `isWordLike` in Firefox too once its segmenter is fixed.
-const isWord = (segment: Intl.SegmentData): boolean =>
-  (segment.isWordLike === true || import.meta.env.FIREFOX) && /\p{L}/u.test(segment.segment)
+const isWord = (segment: Intl.SegmentData): boolean => {
+  if (!import.meta.env.FIREFOX && segment.isWordLike !== true) {
+    return false
+  }
+  return /\p{L}/u.test(segment.segment)
+}
 
 /** `text` cut into words and what lies between them, in order. `locale` is the language of the text, if known. */
 export const segmentsOf = (
