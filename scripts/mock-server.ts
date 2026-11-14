@@ -542,7 +542,7 @@ const scenarioKey = (id: string, scenario: Scenario) => {
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "X-Nonce",
+  "Access-Control-Allow-Headers": "X-Nonce, Content-Type",
   "Access-Control-Expose-Headers": "X-Signature",
 }
 
@@ -598,17 +598,22 @@ const getMeta = async (id: string, scenario: Scenario, request: Request) => {
   })
 }
 
-const lookup = (id: string, scenario: Scenario, url: URL) => {
-  const word = url.searchParams.get("word")
-  const lang = url.searchParams.get("lang")
-  if (word === null || word === "" || lang === null) {
+/** A lookup is a POST with a JSON body, so a GET finds nothing here, as on a real server. */
+const lookup = async (id: string, scenario: Scenario, request: Request) => {
+  if (request.method !== "POST") {
+    return new Response("not found", { status: 404 })
+  }
+  const body: unknown = await request.json().catch(() => undefined)
+  const { word, lang, context } =
+    typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {}
+  if (typeof word !== "string" || word === "" || typeof lang !== "string") {
     return json({ error: "bad_request" }, { status: 400 })
   }
   if (!scenario.languages.includes(lang)) {
     return json({ error: "unsupported_lang" }, { status: 400 })
   }
   if (lang === "ja_en") {
-    return lookupJapanese(word, url.searchParams.get("context"))
+    return lookupJapanese(word, typeof context === "string" ? context : null)
   }
   const credited = id === "credits" ? CREDITED_WORDS[lang]?.[word.toLowerCase()] : undefined
   if (credited !== undefined) {
@@ -819,7 +824,7 @@ Bun.serve({
       case "v1/get-meta":
         return getMeta(first, scenario, request)
       case "v1/lookup":
-        return lookup(first, scenario, url)
+        return lookup(first, scenario, request)
       case "v1/get-labels":
         return scenario.features?.includes("labels") === true
           ? getLabels(scenario, url)

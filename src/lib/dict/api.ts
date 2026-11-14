@@ -122,7 +122,7 @@ export const getMeta = (
 export type LookupContext = { text: string; at: number | undefined }
 
 /**
- * Get `/v1/lookup`. A word the server does not know is `ok` with no entries.
+ * Post `/v1/lookup`. A word the server does not know is `ok` with no entries.
  * `context` is the sentence around `word`; pass it only to servers that list the `context` feature.
  * Segments that do not split `word`, or the whole word the first entry's `match` names, are dropped.
  */
@@ -134,16 +134,21 @@ export const lookup = (
   timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): ResultAsync<LookupResult, DictError> =>
   safeTry(async function* () {
-    // A `+` in the word is already `%2B` here, so every remaining `+` is a space.
-    const query = new URLSearchParams({
-      word,
-      lang,
-      ...(context === undefined ? {} : { context: context.text }),
-      ...(context?.at === undefined ? {} : { at: String(context.at) }),
-    })
-      .toString()
-      .replaceAll("+", "%20")
-    const response = yield* request(`${baseUrl}/v1/lookup?${query}`, undefined, timeoutMs)
+    // In the body and never in the URL: servers and proxies write URLs to their logs.
+    const response = yield* request(
+      `${baseUrl}/v1/lookup`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          word,
+          lang,
+          ...(context === undefined ? {} : { context: context.text }),
+          ...(context?.at === undefined ? {} : { at: context.at }),
+        }),
+      },
+      timeoutMs,
+    )
     const text = yield* ResultAsync.fromPromise(response.text(), fromUnknown)
 
     if (!response.ok) {
