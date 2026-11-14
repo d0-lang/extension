@@ -3,19 +3,21 @@
 
   let { label, explanation }: { label: string; explanation: LabelExplanation | undefined } = $props()
 
-  /** Space kept between the tooltip and the viewport edge, and between it and the tag. */
+  /** Space kept between the tooltip and the popover's sides or the viewport's edge, and between it and the tag. */
   const MARGIN_PX = 8
   const GAP_PX = 4
 
   const tipId = $props.id()
   let tag = $state<HTMLButtonElement>()
   let tip = $state<HTMLElement>()
+  /** Set by a move over the tag, not on entering it, since the popover can open with the tag under a still cursor. */
   let hovered = $state(false)
   let focused = $state(false)
   let place = $state<{ top: number; left: number }>()
   const open = $derived(hovered || focused)
 
-  // Fixed, so the scroller does not clip it. It sits below the tag, or above it near the bottom of the viewport.
+  // Fixed, so the scroller does not clip it. It sits below the tag, or above it near the bottom of the viewport,
+  // and stays within the popover's sides.
   $effect(() => {
     if (!open || tag === undefined || tip === undefined) {
       place = undefined
@@ -23,13 +25,17 @@
     }
     const anchor = tag.getBoundingClientRect()
     const { width, height } = tip.getBoundingClientRect()
+    const bounds = tag.closest(".dict-popover")?.getBoundingClientRect() ?? {
+      left: 0,
+      right: window.innerWidth,
+    }
     const below = anchor.bottom + GAP_PX
     place = {
       top:
         below + height + MARGIN_PX > window.innerHeight
           ? Math.max(MARGIN_PX, anchor.top - GAP_PX - height)
           : below,
-      left: Math.max(MARGIN_PX, Math.min(anchor.left, window.innerWidth - width - MARGIN_PX)),
+      left: Math.max(bounds.left + MARGIN_PX, Math.min(anchor.left, bounds.right - width - MARGIN_PX)),
     }
     // A scroll moves the tag away from where the tooltip was placed.
     const close = () => {
@@ -51,8 +57,8 @@
     aria-describedby={tipId}
     class="bg-muted align-baseline leading-[normal] text-muted-foreground hover:text-foreground focus-visible:text-foreground cursor-help rounded px-1 text-xs whitespace-nowrap underline decoration-dotted underline-offset-2"
     data-label
-    onmouseenter={() => (hovered = true)}
-    onmouseleave={() => (hovered = false)}
+    onpointermove={() => (hovered = true)}
+    onpointerleave={() => (hovered = false)}
     onfocus={() => (focused = true)}
     onblur={() => (focused = false)}>{label}</button
   ><!-- Always in the document, so a screen reader can read it as the tag's description. --><span
