@@ -5,13 +5,13 @@ const body = (sense: object) => ({ entries: [{ lemma: "mata", pos: "NOUN", sense
 
 describe("lookupResultSchema", () => {
   it("keeps see", () => {
-    const parsed = lookupResultSchema.parse(body({ translations: ["synonym of matka"], see: ["matka"] }))
+    const parsed = lookupResultSchema.parse(body({ glosses: ["synonym of matka"], see: ["matka"] }))
     expect(parsed.entries[0]?.senses[0]?.see).toEqual(["matka"])
   })
 
   it("keeps segments", () => {
     const parsed = lookupResultSchema.parse({
-      ...body({ translations: ["in"] }),
+      ...body({ glosses: ["in"] }),
       segments: [{ text: "ssa", entries: [0] }],
     })
     expect(parsed.segments).toEqual([{ text: "ssa", entries: [0] }])
@@ -19,7 +19,7 @@ describe("lookupResultSchema", () => {
 
   it("drops malformed segments but keeps the entries", () => {
     const parsed = lookupResultSchema.parse({
-      ...body({ translations: ["in"] }),
+      ...body({ glosses: ["in"] }),
       segments: [{ text: "ssa", entries: [-1] }],
     })
     expect(parsed.segments).toBeUndefined()
@@ -27,8 +27,18 @@ describe("lookupResultSchema", () => {
   })
 
   it("accepts a sense without see", () => {
-    const parsed = lookupResultSchema.parse(body({ translations: ["mat (floor pad)"] }))
-    expect(parsed.entries[0]?.senses[0]).toEqual({ translations: ["mat (floor pad)"] })
+    const parsed = lookupResultSchema.parse(body({ glosses: ["mat (floor pad)"] }))
+    expect(parsed.entries[0]?.senses[0]).toEqual({ glosses: ["mat (floor pad)"] })
+  })
+
+  it("keeps a definition as one gloss", () => {
+    const definition = "Eine weibliche Person, die ein Kind geboren hat oder es großzieht."
+    const parsed = lookupResultSchema.parse(body({ glosses: [definition] }))
+    expect(parsed.entries[0]?.senses[0]?.glosses).toEqual([definition])
+  })
+
+  it("rejects a sense with translations instead of glosses", () => {
+    expect(lookupResultSchema.safeParse(body({ translations: ["mat"] })).success).toBe(false)
   })
 
   it("keeps labels and match, and drops malformed ones without the entry", () => {
@@ -36,7 +46,7 @@ describe("lookupResultSchema", () => {
       lemma: "держа́ть у́хо востро́",
       pos: "VERB",
       labels: ["impf"],
-      senses: [{ translations: ["to keep an eye peeled"] }],
+      senses: [{ glosses: ["to keep an eye peeled"] }],
       match: ["держать", "ухо востро"],
     }
     expect(lookupResultSchema.parse({ entries: [entry] }).entries[0]).toEqual(entry)

@@ -11,7 +11,7 @@ import {
 
 const entry = (
   lemma: string,
-  senses: Array<{ translations: Array<string>; see?: Array<string> }>,
+  senses: Array<{ glosses: Array<string>; see?: Array<string> }>,
   pos = "NOUN",
 ) => ({
   lemma,

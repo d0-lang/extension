@@ -105,6 +105,16 @@ const scenarios: Record<string, Scenario> = {
     summary: `Meta takes ${SLOW_MS / 1000} seconds.`,
     expect: "Connecting… for a few seconds, then the review. Closing the dialog meanwhile drops the attempt.",
   },
+  definitions: {
+    name: "Test German Definitions",
+    languages: ["de_de"],
+    verificationUrls: [],
+    section: "adds",
+    summary:
+      "A same-language pair, so its glosses are definitions: one sentence each, not short equivalents.",
+    expect:
+      "A German lookup shows numbered definitions that wrap across lines between words, never inside one, and the popover stays readable.",
+  },
   testing: {
     name: "Testing Only",
     languages: ["sv_en"],
@@ -253,19 +263,26 @@ const VOCABULARY: Record<string, Array<string>> = {
   de_en: ["weltschmerz", "kaiser", "reich", "haus", "zeitgeist"],
 }
 
+/** What a same-language pair answers: definitions, which run as long as a sentence. */
+const DEFINITIONS: Array<(word: string) => string> = [
+  (word) =>
+    `Ein Wort, das hier für „${word}“ steht und dessen Bedeutung in einem ganzen Satz erklärt wird, so wie ein einsprachiges Wörterbuch es tut.`,
+  (word) => `Übertragen: etwas, das man mit „${word}“ vergleicht.`,
+]
+
 type MockEntry = {
   lemma: string
   pos: string
   pron?: { reading: string }
-  senses: Array<{ translations: Array<string> }>
+  senses: Array<{ glosses: Array<string> }>
   match?: Array<string>
 }
 
-const jaEntry = (lemma: string, pos: string, translation: string, reading?: string): MockEntry => ({
+const jaEntry = (lemma: string, pos: string, gloss: string, reading?: string): MockEntry => ({
   lemma,
   pos,
   ...(reading === undefined ? {} : { pron: { reading } }),
-  senses: [{ translations: [translation] }],
+  senses: [{ glosses: [gloss] }],
 })
 
 /**
@@ -426,12 +443,16 @@ const lookup = (scenario: Scenario, url: URL) => {
   if (VOCABULARY[lang]?.includes(word.toLowerCase()) === false) {
     return json({ entries: [] })
   }
+  const [from, into] = lang.split("_")
   return json({
     entries: [
       {
         lemma: word,
         pos: "NOUN",
-        senses: [{ translations: [`${word} in ${lang}, answered by ${scenario.name}`] }],
+        senses:
+          from === into
+            ? DEFINITIONS.map((definition) => ({ glosses: [definition(word)] }))
+            : [{ glosses: [`${word} in ${lang}, answered by ${scenario.name}`] }],
       },
     ],
   })
