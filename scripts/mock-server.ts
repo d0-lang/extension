@@ -145,19 +145,27 @@ const scenarios: Record<string, Scenario> = {
         license: "CC-BY-SA-4.0",
         license_url: "https://creativecommons.org/licenses/by-sa/4.0/",
       },
-      { name: "Wikimedia Commons", url: "https://commons.wikimedia.org/" },
-      { name: "A source whose name runs past the forty characters allowed", url: "https://example.org/" },
+      {
+        name: "Wikimedia Commons, the free media repository of the Wikimedia Foundation",
+        url: "https://commons.wikimedia.org/",
+      },
+      // Covers only de_en, so its link on собака gets no row.
+      { name: "German Wiktionary", url: "https://de.wiktionary.org/", languages: ["de_en"] },
+      {
+        name: `A source whose name runs past the hundred characters allowed${".".repeat(50)}`,
+        url: "https://example.org/",
+      },
     ],
     section: "adds",
     summary:
-      "Credits Wiktionary and Wikimedia Commons, links each entry and recording, and explains its Russian labels. A third source has a name over 40 characters.",
+      "Credits Wiktionary and Wikimedia Commons under a long name, links each entry and recording, and explains its Russian labels. German Wiktionary covers only de_en, and one has a name over 100 characters.",
     steps: [
       "Add it and tick both languages.",
       "Look up Mutter or Haus on a German page, or собака or написать on a Russian one.",
       "Press Sources below the entries. Hover a label, or Tab to it.",
     ],
     expect:
-      'The review and the card list "Derived from Wiktionary, under CC-BY-SA-4.0." and "Derived from Wikimedia Commons.", not the third source. The popover plays the recording and its Sources list has one row per page and per recording, each named Wiktionary or Wikimedia Commons, with no row for the tracker.example link. Other words show no Sources button. pos reads noun or verb. f, anim and pf show their name, pf also its text; inan has no explanation and stays a plain tag.',
+      "The review and the card credit Wiktionary under CC-BY-SA-4.0, Commons under its long name, and German Wiktionary used for German → English only, not the source with the overlong name. Sources lists one row per page and per recording (two formats of one recording are one row), each named Wiktionary or Commons, with the long Commons name cut short and whole on hover, a German Wiktionary row for Mutter but not for собака, and no row for the tracker.example link. Other words show no Sources button. pos reads noun or verb. f, anim and pf show their name, pf also its text; inan has no explanation and stays a plain tag.",
   },
   testing: {
     name: "Testing Only",
@@ -352,7 +360,7 @@ const CREDITED_WORDS: Record<string, Record<string, Array<MockEntry>>> = {
           ],
         },
         senses: [{ glosses: ["mother"] }, { glosses: ["nut (for a bolt)"] }],
-        sources: [wiktionaryPage("Mutter", "German")],
+        sources: [wiktionaryPage("Mutter", "German"), "https://de.wiktionary.org/wiki/Mutter"],
       },
       {
         lemma: "die Mutter",
@@ -380,7 +388,10 @@ const CREDITED_WORDS: Record<string, Record<string, Array<MockEntry>>> = {
         labels: ["f", "anim"],
         pron: { audio: [commonsAudio("Ru-собака.ogg", "76")] },
         senses: [{ glosses: ["dog"] }, { glosses: ["at sign (@)"] }],
-        sources: [wiktionaryPage("собака", "Russian")],
+        sources: [
+          wiktionaryPage("собака", "Russian"),
+          "https://de.wiktionary.org/wiki/%D1%81%D0%BE%D0%B1%D0%B0%D0%BA%D0%B0",
+        ],
       },
     ],
     написать: [

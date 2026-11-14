@@ -75,25 +75,20 @@ describe("creditedSource", () => {
     }
   })
 
-  it("prefers a source that covers the pair when two share an origin", () => {
-    const german: CreditSource = {
-      name: "German Wiktionary",
-      url: "https://en.wiktionary.org/",
-      languages: ["de_en"],
-    }
-    const polish: CreditSource = {
-      name: "Polish Wiktionary",
-      url: "https://en.wiktionary.org/",
-      languages: ["pl_en"],
-    }
-    expect(creditedSource("https://en.wiktionary.org/wiki/mata", [german, polish], "pl_en")).toBe(polish)
-    expect(creditedSource("https://en.wiktionary.org/wiki/mata", [german, polish], "fi_en")).toBe(german)
+  it("counts only a source that covers the pair", () => {
+    const german: CreditSource = { ...wiktionary, languages: ["de_en"] }
+    expect(creditedSource("https://en.wiktionary.org/wiki/Mutter", [german], "de_en")).toBe(german)
+    expect(creditedSource("https://en.wiktionary.org/wiki/pies", [german], "pl_en")).toBeUndefined()
+    expect(creditedSource("https://en.wiktionary.org/wiki/pies", [german, wiktionary], "pl_en")).toBe(
+      wiktionary,
+    )
+    expect(creditedSource("https://en.wiktionary.org/wiki/pies", [german], undefined)).toBeUndefined()
   })
 })
 
 describe("sourceLinks", () => {
-  it("lists an entry's page and the recording it plays, once each", () => {
-    expect(sourceLinks([mutter], sources, "de_en", "https://dict.example")).toEqual([
+  it("lists an entry's page and its recording, once each", () => {
+    expect(sourceLinks([mutter], sources, "de_en")).toEqual([
       {
         href: "https://en.wiktionary.org/wiki/Mutter#German",
         name: "Wiktionary",
@@ -105,34 +100,51 @@ describe("sourceLinks", () => {
         name: "Wikimedia Commons",
         lemma: "die Mutter",
         kind: "recording",
+        recording: undefined,
       },
     ])
   })
 
-  it("removes a page two entries share", () => {
-    const other = { ...mutter, lemma: "die Mutter (nut)", pron: undefined }
-    expect(sourceLinks([mutter, other], sources, "de_en", undefined).map(({ lemma }) => lemma)).toEqual([
-      "die Mutter",
-      "die Mutter",
-    ])
-  })
-
-  it("leaves out links no source names", () => {
-    const entry = { ...mutter, sources: ["https://evil.example/Mutter"] }
-    expect(sourceLinks([entry], [wiktionary], "de_en", undefined)).toEqual([])
-    expect(sourceLinks([mutter], [], "de_en", undefined)).toEqual([])
-  })
-
-  it("does not credit a recording that is not played", () => {
+  it("lists every recording sent, numbered when there are several", () => {
     const entry: LookupEntry = {
       ...mutter,
       sources: undefined,
       pron: {
         audio: [
-          { url: "https://tracker.example/a.ogg", source: "https://commons.wikimedia.org/wiki/File:A.ogg" },
+          ...(mutter.pron?.audio ?? []),
+          // Not a host the client plays from, but it was sent, so it is credited.
+          {
+            url: "https://tracker.example/De-Mutter3.ogg",
+            source: "https://commons.wikimedia.org/wiki/File:De-Mutter3.ogg",
+          },
+          { url: "https://upload.wikimedia.org/c.ogg" },
         ],
       },
     }
-    expect(sourceLinks([entry], sources, "de_en", "https://dict.example")).toEqual([])
+    expect(sourceLinks([entry], sources, "de_en").map(({ href, ...link }) => link)).toEqual([
+      { name: "Wikimedia Commons", lemma: "die Mutter", kind: "recording", recording: 1 },
+      { name: "Wikimedia Commons", lemma: "die Mutter", kind: "recording", recording: 2 },
+    ])
+  })
+
+  it("removes a page or recording two entries share", () => {
+    const other = { ...mutter, lemma: "Mutter", pos: "PROPN" }
+    expect(
+      sourceLinks([mutter, other], sources, "de_en").map(({ lemma, kind }) => `${lemma} ${kind}`),
+    ).toEqual(["die Mutter entry", "die Mutter recording"])
+  })
+
+  it("leaves out links no source names", () => {
+    const entry = { ...mutter, sources: ["https://evil.example/Mutter"] }
+    expect(sourceLinks([entry], [wiktionary], "de_en")).toEqual([])
+    expect(sourceLinks([mutter], [], "de_en")).toEqual([])
+  })
+
+  it("leaves out links whose source does not cover the pair", () => {
+    expect(
+      sourceLinks([mutter], [{ ...wiktionary, languages: ["pl_en"] }, commons], "de_en").map(
+        ({ kind }) => kind,
+      ),
+    ).toEqual(["recording"])
   })
 })

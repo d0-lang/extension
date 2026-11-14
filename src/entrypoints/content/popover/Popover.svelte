@@ -304,7 +304,7 @@
         {:else}
           {@const tabEntries =
             split === undefined || shownTab === undefined ? entries : (split.parts[shownTab]?.entries ?? [])}
-          {@const links = sourceLinks(tabEntries, result.sources, result.lang, result.server)}
+          {@const links = sourceLinks(tabEntries, result.sources, result.lang)}
           {#if split !== undefined && shownTab !== undefined}
             <SegmentTabs {split} tab={shownTab} pick={pickTab} />
           {/if}

@@ -19,19 +19,21 @@
     {#each links as link (link.href)}
       <li class="flex items-baseline gap-3">
         <span class="min-w-0 flex-1 wrap-anywhere"
-          >{link.lemma}{#if link.kind === "recording"}<span class="text-muted-foreground">, recording</span
+          >{link.lemma}{#if link.kind === "recording"}<span class="text-muted-foreground"
+              >, recording{link.recording === undefined ? "" : ` ${link.recording}`}</span
             >{/if}</span
         >
         <!-- No referrer, so the source's site does not learn which page the word was looked up on. -->
+        <!-- A long name is cut short. The tooltip has it whole, and so does a screen reader. -->
         <a
-          class="shrink-0 text-xs underline underline-offset-2"
+          class="flex max-w-1/2 min-w-0 items-baseline text-xs"
           href={link.href}
-          title={link.href}
+          title={`${link.name}\n${link.href}`}
           target="_blank"
           rel="noreferrer"
           onclick={(event) => openWithAlt(event, link.href)}
-          >{link.name}&#x2060;<ArrowUpRight
-            class="ml-px inline size-2.5 align-text-top opacity-60"
+          ><span class="truncate underline underline-offset-2">{link.name}</span><ArrowUpRight
+            class="ml-px size-2.5 shrink-0 self-start opacity-60"
             aria-hidden="true"
           /></a
         >

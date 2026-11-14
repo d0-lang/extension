@@ -31,8 +31,8 @@ const legalSchema = z.object({
   tos_change: legalChangeSchema,
 })
 
-/** The protocol's cap on a source's `name` and on its `license`. */
-export const SOURCE_TEXT_MAX = 40
+/** The cap on a source's `name` and on its `license`. The popover cuts a long name short. */
+export const SOURCE_TEXT_MAX = 100
 
 const sourceTextSchema = z.string().check(z.minLength(1), z.maxLength(SOURCE_TEXT_MAX))
 

@@ -145,6 +145,11 @@ describe("serverMetaSchema sources", () => {
   }
   const commons = { name: "Wikimedia Commons", url: "https://commons.wikimedia.org/" }
 
+  it("keeps a name and a licence at the cap", () => {
+    const long = { ...wiktionary, name: "n".repeat(SOURCE_TEXT_MAX), license: "l".repeat(SOURCE_TEXT_MAX) }
+    expect(serverMetaSchema.parse({ ...meta, sources: [long] }).sources).toEqual([long])
+  })
+
   it("keeps the sources, and none is unset", () => {
     expect(serverMetaSchema.parse({ ...meta, sources: [wiktionary, commons] }).sources).toEqual([
       wiktionary,

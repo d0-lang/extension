@@ -1,6 +1,5 @@
 /** Credit for a server's sources: what saving stores, and which links in an answer the client shows. */
 import type { CreditSource } from "../storage"
-import { playableAudio } from "./entries"
 import type { LookupEntry, ServerSource } from "./types"
 
 /** What saving the server stores as its sources. */
@@ -18,8 +17,8 @@ export const coversLanguage = (source: CreditSource, lang: string | undefined): 
   source.languages === undefined || (lang !== undefined && source.languages.includes(lang))
 
 /**
- * The source that names `link`: one whose `url` has the same origin, preferring one that covers `lang`.
- * Unset for a link that is not `https`, or whose origin no source has, so the link is not shown.
+ * The source that names `link`: the first that covers `lang` and whose `url` has the same origin.
+ * Unset for a link that is not `https`, or whose origin no such source has, so the link is not shown.
  */
 export const creditedSource = (
   link: string,
@@ -30,31 +29,42 @@ export const creditedSource = (
   if (url === null || url.protocol !== "https:") {
     return undefined
   }
-  const matching = sources.filter((source) => URL.parse(source.url)?.origin === url.origin)
-  return matching.find((source) => coversLanguage(source, lang)) ?? matching[0]
+  return sources.find(
+    (source) => coversLanguage(source, lang) && URL.parse(source.url)?.origin === url.origin,
+  )
 }
 
-/** A link the popover lists: an entry's page, or the page that credits its recording. */
-export type SourceLink = { href: string; name: string; lemma: string; kind: "entry" | "recording" }
+/**
+ * A link the popover lists: an entry's page, or the page that credits one of its recordings.
+ * `recording` numbers the recordings of an entry that has more than one.
+ */
+export type SourceLink = { href: string; name: string; lemma: string } & (
+  { kind: "entry" } | { kind: "recording"; recording: number | undefined }
+)
+
+const unique = (values: ReadonlyArray<string>): Array<string> => [...new Set(values)]
 
 /**
- * Links for `entries`, in order, each `href` once. A recording is the one the entry plays.
- * Links no source names are left out.
+ * Links for `entries`, in order, each `href` once: the entry's pages, then every recording it was sent with.
+ * Two audio items with the same `source` are one recording. Links no source names are left out.
  */
 export const sourceLinks = (
   entries: ReadonlyArray<LookupEntry>,
   sources: ReadonlyArray<CreditSource>,
   lang: string | undefined,
-  server: string | undefined,
 ): Array<SourceLink> => {
-  const links = entries.flatMap((entry) => {
-    const recording = playableAudio(entry, server)?.source
+  const links = entries.flatMap((entry): Array<SourceLink> => {
+    const recordings = unique((entry.pron?.audio ?? []).flatMap(({ source }) => source ?? []))
     return [
-      ...(entry.sources ?? []).map((href) => ({ href, kind: "entry" as const })),
-      ...(recording === undefined ? [] : [{ href: recording, kind: "recording" as const }]),
-    ].flatMap(({ href, kind }) => {
-      const source = creditedSource(href, sources, lang)
-      return source === undefined ? [] : [{ href, name: source.name, lemma: entry.lemma, kind }]
+      ...unique(entry.sources ?? []).map((href) => ({ href, kind: "entry" as const })),
+      ...recordings.map((href, index) => ({
+        href,
+        kind: "recording" as const,
+        recording: recordings.length > 1 ? index + 1 : undefined,
+      })),
+    ].flatMap((link) => {
+      const source = creditedSource(link.href, sources, lang)
+      return source === undefined ? [] : [{ ...link, name: source.name, lemma: entry.lemma }]
     })
   })
   return links.filter((link, index) => links.findIndex(({ href }) => href === link.href) === index)
