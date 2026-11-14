@@ -7,6 +7,11 @@
 
   let open = $state(false)
   const listId = $props.id()
+
+  // The list opens at the bottom of the scroller, which a long answer has pushed out of view.
+  const reveal = (list: HTMLElement) => {
+    list.scrollIntoView({ block: "nearest" })
+  }
 </script>
 
 <div class="flex flex-col gap-1 border-t pt-1.5">
@@ -21,7 +26,7 @@
     <ChevronDown class={["size-3 transition-transform", open && "rotate-180"]} aria-hidden="true" />
   </button>
   {#if open}
-    <ul id={listId} class="flex flex-col gap-1 px-1 pb-1 text-xs">
+    <ul id={listId} {@attach reveal} class="flex flex-col gap-1 px-1 pb-1 text-xs">
       {#each links as link (link.href)}
         <li class="flex items-baseline gap-2">
           <span class="text-muted-foreground min-w-0 flex-1 wrap-anywhere"
