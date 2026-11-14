@@ -17,10 +17,12 @@ const segmenterFor = (locale: string | undefined): Intl.Segmenter => {
 }
 
 /**
- * Whether the segmenter's piece is a word a dictionary could have, which numbers are not.
- * Not `isWordLike`, which Firefox leaves false on a Japanese word before punctuation or at the end of the text.
+ * Whether the segmenter's piece is a word a dictionary could have. It counts numbers as words too.
+ * Firefox leaves `isWordLike` false on a Japanese, Chinese or Thai word before a non-word, so there any letters do.
  */
-const isWord = (segment: Intl.SegmentData): boolean => /\p{L}/u.test(segment.segment)
+// TODO: Trust `isWordLike` in Firefox too once its segmenter is fixed.
+const isWord = (segment: Intl.SegmentData): boolean =>
+  (segment.isWordLike === true || import.meta.env.FIREFOX) && /\p{L}/u.test(segment.segment)
 
 /** `text` cut into words and what lies between them, in order. `locale` is the language of the text, if known. */
 export const segmentsOf = (
