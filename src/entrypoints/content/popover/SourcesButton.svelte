@@ -4,13 +4,11 @@
   let { open }: { open: () => void } = $props()
 </script>
 
-<div class="flex border-t pt-1.5">
-  <button
-    type="button"
-    class="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex h-6 cursor-pointer items-center gap-0.5 rounded-md px-1 text-xs font-medium"
-    onclick={open}
-  >
-    Sources
-    <ChevronRight class="size-3" aria-hidden="true" />
-  </button>
-</div>
+<button
+  type="button"
+  class="text-muted-foreground/70 hover:text-foreground focus-visible:text-foreground inline-flex cursor-pointer items-center gap-0.5 self-end rounded-sm text-xs"
+  onclick={open}
+>
+  Sources
+  <ChevronRight class="size-3" aria-hidden="true" />
+</button>
