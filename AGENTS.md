@@ -19,6 +19,10 @@ Inside an entrypoint, group files by job, like `content/page` for reading the pa
 
 Tests sit next to the file they test, as `name.test.ts`.
 
+## Issues and pull requests
+
+Issues and PRs follow the templates in `.github/`, and stay as short as the template.
+
 ## Formatting
 
 Prettier, configured in `.prettierrc.json`. Run `bun run format` after editing.
