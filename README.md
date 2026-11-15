@@ -25,6 +25,7 @@ DaDict only talks to the servers you add.
 - **Blocked sites:** sites like mail or documents can be listed in Settings. Their sentences only go to servers set to get sentences from all sites.
 - **Pronunciation audio** is played only when you ask, over HTTPS, from the answering server's own host or `upload.wikimedia.org`.
 - **Source links** in the popover go only to the sites a server credits in its signed metadata, like Wiktionary, and open without telling that site which page you were reading.
+- **Reports** from the toolbar popup open only when you click them. A wrong meaning opens the answering server's report page with the word, its language and the DaDict version. Neither report carries the sentence or the page you are on.
 - **Nothing else** leaves the browser. There is no analytics or tracking. Settings are kept in the browser's extension storage.
 
 Servers sign what they send with an Ed25519 key. DaDict keeps the key from when you added the server and warns you if it changes.
