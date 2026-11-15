@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import BugIcon from "@lucide/svelte/icons/bug"
+  import CircleHelpIcon from "@lucide/svelte/icons/circle-help"
   import FlagIcon from "@lucide/svelte/icons/flag"
   import { getLastLookup, getServers } from "$lib/storage"
   import { describeBrowser } from "./browser-name"
   import { pageIssueLink, wordReport, type WordReport } from "./links"
+
+  let { id, shown }: { id: string; shown: boolean } = $props()
 
   const version = browser.runtime.getManifest().version
 
@@ -32,23 +34,35 @@
     window.close()
   }
 
-  const line =
-    "hover:bg-accent text-muted-foreground hover:text-foreground flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 text-left text-sm"
+  const item =
+    "hover:bg-accent focus-visible:bg-accent flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-hidden [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0"
 </script>
 
-<div class="-mx-2 -mt-2 flex flex-col">
+<!-- In the flow, not floating: the popup window only grows for content that takes up space.
+     Mounted while closed, so the links are ready when it opens. -->
+<div
+  {id}
+  class={[
+    "bg-popover text-popover-foreground ring-foreground/10 flex-col rounded-lg p-1 shadow-md ring-1",
+    shown ? "flex" : "hidden",
+  ]}
+>
+  <p class="text-muted-foreground px-2 py-1 text-xs font-medium">Report a problem</p>
   {#if report !== undefined}
     {@const { href, word, host } = report}
-    <button type="button" class={line} onclick={() => open(href)}>
-      <FlagIcon class="mt-0.5 size-4 shrink-0" />
+    <button type="button" class={item} onclick={() => open(href)}>
+      <FlagIcon />
       <span class="flex min-w-0 flex-col">
-        The popover showed a wrong or missing meaning
-        <span class="text-xs break-words">Report “{word}” on {host}</span>
+        Wrong or missing meaning
+        <span class="text-muted-foreground text-xs break-words">“{word}”, on {host}</span>
       </span>
     </button>
   {/if}
-  <button type="button" class={line} onclick={() => open(issueHref)}>
-    <BugIcon class="mt-0.5 size-4 shrink-0" />
-    Something else went wrong
+  <button type="button" class={item} onclick={() => open(issueHref)}>
+    <CircleHelpIcon />
+    <span class="flex flex-col">
+      Something else
+      <span class="text-muted-foreground text-xs">On github.com</span>
+    </span>
   </button>
 </div>

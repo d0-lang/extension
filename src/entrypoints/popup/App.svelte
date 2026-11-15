@@ -1,15 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import BugIcon from "@lucide/svelte/icons/bug"
   import SettingsIcon from "@lucide/svelte/icons/settings"
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
   import { Button } from "$lib/components/ui/button"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import { getLookupEnabled, getServerIssues, setLookupEnabled } from "$lib/storage"
-  import ReportLinks from "./report/ReportLinks.svelte"
+  import ReportMenu from "./report/ReportMenu.svelte"
 
   let lookupEnabled = $state(false)
   let issueCount = $state(0)
+  let reporting = $state(false)
 
   onMount(async () => {
     const [enabled, issues] = await Promise.all([getLookupEnabled(), getServerIssues()])
@@ -47,9 +49,24 @@
       {issueCount === 1 ? "A server needs" : `${issueCount} servers need`} your attention.
     </button>
   {/if}
-  <Button variant="outline" size="lg" class="text-base" onclick={openSetup}>
-    <SettingsIcon />
-    Settings
-  </Button>
-  <ReportLinks />
+  <div class="flex flex-col gap-2">
+    <div class="flex gap-2">
+      <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
+        <SettingsIcon />
+        Settings
+      </Button>
+      <Button
+        variant="outline"
+        size="icon-lg"
+        aria-label="Report a problem"
+        title="Report a problem"
+        aria-expanded={reporting}
+        aria-controls="report-menu"
+        onclick={() => (reporting = !reporting)}
+      >
+        <BugIcon />
+      </Button>
+    </div>
+    <ReportMenu id="report-menu" shown={reporting} />
+  </div>
 </main>
