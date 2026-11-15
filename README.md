@@ -4,7 +4,7 @@ A browser extension for looking up words on any page, using dictionary servers y
 
 Hold <kbd>Alt</kbd> over a word, or right-click it and choose **Look up**. A popover shows the dictionary entries: meanings, part of speech, grammar labels, IPA and pronunciation. Works in Chrome and Firefox.
 
-DaDict has no dictionary of its own. You add servers that speak the DaDict protocol and pick which of their languages to use. Each language is answered by one server.
+DaDict has no dictionary of its own. You add servers that speak the [DaDict protocol](https://github.com/d0-lang/protocol) and pick which of their languages to use. Each language is answered by one server.
 
 ## Features
 
@@ -104,3 +104,7 @@ Dependencies are pinned by `bun.lock`. npm does not read it, so use Bun. Node.js
    ```
 
 The add-on is in `.output/firefox-mv2`. Its files match the submitted zip. `bun run zip:firefox` packs it into `.output/dadict-<version>-firefox.zip`.
+
+## Contributing and licence
+
+[CONTRIBUTING.md](CONTRIBUTING.md) says what helps and how to send a change. The code is under the [MIT licence](LICENSE).

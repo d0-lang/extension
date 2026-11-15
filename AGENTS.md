@@ -1,6 +1,6 @@
 # Extension
 
-Dict client lives in `src/lib/dict`. Protocol is `../Protocol.md`.
+Dict client lives in `src/lib/dict`. Protocol is `../protocol/README.md` ([d0-lang/protocol](https://github.com/d0-lang/protocol)).
 
 ## Layout
 
