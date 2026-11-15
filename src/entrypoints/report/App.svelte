@@ -2,7 +2,7 @@
   import { onMount } from "svelte"
   import CircleHelpIcon from "@lucide/svelte/icons/circle-help"
   import FlagIcon from "@lucide/svelte/icons/flag"
-  import Logo from "$lib/components/Logo.svelte"
+  import PageHeader from "$lib/components/PageHeader.svelte"
   import { parseReportTab } from "$lib/report-page"
   import { getLastLookup, getServers } from "$lib/storage"
   import { describeBrowser } from "./browser-name"
@@ -37,14 +37,7 @@
 </script>
 
 <div class="bg-background min-h-svh">
-  <header class="border-b">
-    <div class="mx-auto flex h-14 max-w-xl items-center gap-2 px-6">
-      <Logo class="text-foreground h-6" />
-      <p class="text-lg tracking-tight">
-        <span class="font-normal">Da</span><span class="font-bold">Dict</span>
-      </p>
-    </div>
-  </header>
+  <PageHeader class="max-w-xl" />
 
   <main class="mx-auto flex max-w-xl flex-col gap-4 px-6 py-8">
     <h1 class="text-xl font-medium">Report a problem</h1>
