@@ -1,5 +1,5 @@
 /**
- * The popup's report links. Neither carries the sentence around the word or the page the user is on:
+ * The report page's links. Neither carries the sentence around the word or the page the user is on:
  * a link is built only from the fields named here.
  */
 import type { LastLookup, Servers } from "$lib/storage"
@@ -25,7 +25,7 @@ export const wordReportLink = (
   return url
 }
 
-/** The "wrong or missing meaning" line: what it opens, and the word and host it names. */
+/** The "wrong or missing meaning" choice: what it opens, and the word and host it names. */
 export type WordReport = { href: string; word: string; host: string }
 
 /** Unset before the tab's first answered lookup, or when the server that answered it has no `report_url`. */

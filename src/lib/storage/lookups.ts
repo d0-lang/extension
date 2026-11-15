@@ -1,5 +1,5 @@
 /**
- * The last lookup in each tab that got an answer, kept so the popup can report it.
+ * The last lookup in each tab that got an answer, kept so the report page can report it.
  * In session storage, because Chrome can stop the background at any time. One key per tab, so tabs do not race.
  */
 

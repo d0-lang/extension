@@ -1,7 +1,7 @@
 /** Names the browser for the issue form, like `Firefox 158.0 on Linux`. */
 
 /** A brand from `navigator.userAgentData`. */
-export type Brand = { brand: string; version: string }
+type Brand = { brand: string; version: string }
 
 const OS_NAMES: Record<string, string> = {
   android: "Android",

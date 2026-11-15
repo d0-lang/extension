@@ -47,7 +47,7 @@ const scenarios: Record<string, Scenario> = {
     section: "adds",
     summary: "One language. The happy path. Its report_url is plain http.",
     expect:
-      "Review titled Test Polish with Polish → English. Add server saves it. After a Polish lookup, the toolbar popup offers only Something else went wrong.",
+      "Review titled Test Polish with Polish → English. Add server saves it. After a Polish lookup, the popup's bug button opens a report page with only Something else went wrong.",
   },
   many: {
     name: "Big Multilingual Dictionary Server With A Long Name",
@@ -169,10 +169,10 @@ const scenarios: Record<string, Scenario> = {
       "Add it and tick both languages.",
       "Look up Mutter or Haus on a German page, or собака or написать on a Russian one.",
       "Press Sources below the entries. Hover a label, or Tab to it.",
-      "Open the toolbar popup in the same tab, and in a tab without a lookup.",
+      "Press the bug button in the toolbar popup, in the same tab and in a tab without a lookup.",
     ],
     expect:
-      "The review and the card credit Wiktionary under CC-BY-SA-4.0, Commons under its long name, and German Wiktionary used for German → English only, not the source with the overlong name. Sources lists one row per page and per recording (two formats of one recording are one row), each named Wiktionary or Commons, with the long Commons name cut short and whole on hover, a German Wiktionary row for Mutter but not for собака, and no row for the tracker.example link. Other words show no Sources button. pos reads noun or verb. f, anim and pf show their name, pf also its text; inan has no explanation and stays a plain tag. After a lookup, the popup offers Report “Mutter” on github.com, which opens the dict-server-ts word form with word, lang and client added. A tab without a lookup offers only Something else went wrong.",
+      "The review and the card credit Wiktionary under CC-BY-SA-4.0, Commons under its long name, and German Wiktionary used for German → English only, not the source with the overlong name. Sources lists one row per page and per recording (two formats of one recording are one row), each named Wiktionary or Commons, with the long Commons name cut short and whole on hover, a German Wiktionary row for Mutter but not for собака, and no row for the tracker.example link. Other words show no Sources button. pos reads noun or verb. f, anim and pf show their name, pf also its text; inan has no explanation and stays a plain tag. After a lookup, the report page offers Report “Mutter” on github.com, which opens the dict-server-ts word form with word, lang and client added. From a tab without a lookup it offers only Something else went wrong.",
   },
   testing: {
     name: "Testing Only",

@@ -3,7 +3,7 @@ import { boundLanguages, lookupWord, rankLanguages, type LookupOutcome } from "$
 import type { LookupReply, LookupRequestMessage } from "$lib/messages"
 import { isSiteBlocked, setLastLookup, type LastLookup } from "$lib/storage"
 
-/** What the popup's report link needs of an answer: never the sentence or the page. Unset when no server answered. */
+/** What the report page's link needs of an answer: never the sentence or the page. Unset when no server answered. */
 export const lastLookupOf = (
   word: string,
   { lang, server }: Pick<LookupOutcome, "lang" | "server">,
