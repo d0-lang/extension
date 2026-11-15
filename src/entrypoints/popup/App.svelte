@@ -6,6 +6,7 @@
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import { getLookupEnabled, getServerIssues, setLookupEnabled } from "$lib/storage"
+  import ReportLinks from "./report/ReportLinks.svelte"
 
   let lookupEnabled = $state(false)
   let issueCount = $state(0)
@@ -50,4 +51,5 @@
     <SettingsIcon />
     Settings
   </Button>
+  <ReportLinks />
 </main>
