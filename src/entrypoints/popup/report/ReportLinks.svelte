@@ -33,10 +33,10 @@
   }
 
   const line =
-    "hover:bg-accent text-muted-foreground hover:text-foreground flex cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm"
+    "hover:bg-accent text-muted-foreground hover:text-foreground flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 text-left text-sm"
 </script>
 
-<div class="-mx-1 -mt-2 flex flex-col">
+<div class="-mx-2 -mt-2 flex flex-col">
   {#if report !== undefined}
     {@const { href, word, host } = report}
     <button type="button" class={line} onclick={() => open(href)}>
