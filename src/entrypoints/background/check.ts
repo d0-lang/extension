@@ -58,6 +58,8 @@ const checkServer = (server: BoundServer, mapped: Array<string>): ResultAsync<Ch
         legal: changed ? server.legal : acceptedLegal(meta.legal),
         // Not a policy change, so a new list is saved without asking.
         sources: creditSources(meta.sources),
+        // Not a policy change either, so lookups go on.
+        ...(meta.report_url === undefined ? {} : { reportUrl: meta.report_url }),
       },
       mapped,
       movedFrom,

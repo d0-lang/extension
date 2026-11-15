@@ -213,3 +213,24 @@ describe("labelsResultSchema", () => {
     expect(labelsResultSchema.safeParse({ labels: [] }).success).toBe(false)
   })
 })
+
+describe("serverMetaSchema report_url", () => {
+  const meta = { name: "dict", nonce: "n" }
+
+  it("keeps an https URL", () => {
+    const report_url = "https://github.com/d0-lang/dict-server-ts/issues/new?template=word.yml"
+    expect(serverMetaSchema.parse({ ...meta, report_url }).report_url).toBe(report_url)
+  })
+
+  it.each([
+    ["http", "http://dict.example/report"],
+    ["relative", "/report"],
+    ["javascript", "javascript:alert(1)"],
+    ["no URL", "not a url"],
+    ["a number", 42],
+  ])("treats %s as none, not as a broken response", (_, report_url) => {
+    const parsed = serverMetaSchema.safeParse({ ...meta, report_url })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.report_url).toBeUndefined()
+  })
+})

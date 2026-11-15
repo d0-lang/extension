@@ -27,6 +27,8 @@ export type BoundServer = {
   legal?: AcceptedLegal | null
   /** Whose material the answers are built from, from the last verified meta. Missing on records stored before sources were read. */
   sources?: Array<CreditSource>
+  /** Where to report a wrong or missing answer, from the last verified meta. Unset when the server has none. */
+  reportUrl?: string
 }
 
 /** A source the server credits. `languages` unset means every pair. */
