@@ -1,4 +1,5 @@
 import { isAudioRequestMessage, isLookupRequestMessage } from "$lib/messages"
+import { clearLastLookup } from "$lib/storage"
 import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./action"
 import { fetchAudio } from "./audio"
 import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
@@ -65,6 +66,10 @@ export default defineBackground(() => {
 
   browser.contextMenus.onClicked.addListener(openFromMenu)
 
+  browser.tabs.onRemoved.addListener((tabId) => {
+    void clearLastLookup(tabId)
+  })
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (isAudioRequestMessage(message)) {
       void fetchAudio(message.url).then(sendResponse)
@@ -73,7 +78,7 @@ export default defineBackground(() => {
     if (!isLookupRequestMessage(message)) {
       return
     }
-    void answer(message, sender.url).then(sendResponse)
+    void answer(message, sender.url, sender.tab?.id).then(sendResponse)
     // Chrome only keeps the channel open for `sendResponse` when the listener returns true.
     return true
   })

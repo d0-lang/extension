@@ -255,6 +255,7 @@ export class ServerSetup {
         context: this.context,
         legal: acceptedLegal(this.draft.meta.legal),
         sources: creditSources(this.draft.meta.sources),
+        ...(this.draft.meta.report_url === undefined ? {} : { reportUrl: this.draft.meta.report_url }),
       },
       this.selectedLanguages,
       this.draft.movedFrom,

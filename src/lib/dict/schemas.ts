@@ -70,6 +70,8 @@ export const serverMetaSchema = z.object({
   // A malformed section counts as none, which warns rather than trusts.
   legal: z.catch(z.optional(legalSchema), undefined),
   sources: sourcesSchema,
+  // Anything but an absolute `https` URL counts as none, so the response still verifies.
+  report_url: z.catch(z.optional(httpsUrlSchema), undefined),
 })
 
 /** Domain-move body instead of metadata. Same signature/nonce rules; same signing key. */

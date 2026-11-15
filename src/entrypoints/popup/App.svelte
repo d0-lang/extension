@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import BugIcon from "@lucide/svelte/icons/bug"
   import SettingsIcon from "@lucide/svelte/icons/settings"
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
   import { Button } from "$lib/components/ui/button"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import { getLookupEnabled, getServerIssues, setLookupEnabled } from "$lib/storage"
+  import { reportPagePath } from "$lib/report-page"
 
   let lookupEnabled = $state(false)
   let issueCount = $state(0)
@@ -23,6 +25,16 @@
 
   const openSetup = () => {
     void browser.tabs.create({ url: browser.runtime.getURL("/setup.html") })
+    window.close()
+  }
+
+  // Next to the tab it reports on, so the popup keeps its size.
+  const openReport = async () => {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+    await browser.tabs.create({
+      url: browser.runtime.getURL(reportPagePath(tab?.id)),
+      ...(tab === undefined ? {} : { index: tab.index + 1 }),
+    })
     window.close()
   }
 </script>
@@ -46,8 +58,19 @@
       {issueCount === 1 ? "A server needs" : `${issueCount} servers need`} your attention.
     </button>
   {/if}
-  <Button variant="outline" size="lg" class="text-base" onclick={openSetup}>
-    <SettingsIcon />
-    Settings
-  </Button>
+  <div class="flex gap-2">
+    <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
+      <SettingsIcon />
+      Settings
+    </Button>
+    <Button
+      variant="outline"
+      size="icon-lg"
+      aria-label="Report a problem"
+      title="Report a problem"
+      onclick={() => void openReport()}
+    >
+      <BugIcon />
+    </Button>
+  </div>
 </main>
