@@ -7,11 +7,10 @@
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import { getLookupEnabled, getServerIssues, setLookupEnabled } from "$lib/storage"
-  import ReportMenu from "./report/ReportMenu.svelte"
+  import { reportPagePath } from "$lib/report-page"
 
   let lookupEnabled = $state(false)
   let issueCount = $state(0)
-  let reporting = $state(false)
 
   onMount(async () => {
     const [enabled, issues] = await Promise.all([getLookupEnabled(), getServerIssues()])
@@ -26,6 +25,16 @@
 
   const openSetup = () => {
     void browser.tabs.create({ url: browser.runtime.getURL("/setup.html") })
+    window.close()
+  }
+
+  // Next to the tab it reports on, so the popup keeps its size.
+  const openReport = async () => {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+    await browser.tabs.create({
+      url: browser.runtime.getURL(reportPagePath(tab?.id)),
+      ...(tab === undefined ? {} : { index: tab.index + 1 }),
+    })
     window.close()
   }
 </script>
@@ -49,24 +58,19 @@
       {issueCount === 1 ? "A server needs" : `${issueCount} servers need`} your attention.
     </button>
   {/if}
-  <div class="flex flex-col gap-2">
-    <div class="flex gap-2">
-      <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
-        <SettingsIcon />
-        Settings
-      </Button>
-      <Button
-        variant="outline"
-        size="icon-lg"
-        aria-label="Report a problem"
-        title="Report a problem"
-        aria-expanded={reporting}
-        aria-controls="report-menu"
-        onclick={() => (reporting = !reporting)}
-      >
-        <BugIcon />
-      </Button>
-    </div>
-    <ReportMenu id="report-menu" shown={reporting} />
+  <div class="flex gap-2">
+    <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
+      <SettingsIcon />
+      Settings
+    </Button>
+    <Button
+      variant="outline"
+      size="icon-lg"
+      aria-label="Report a problem"
+      title="Report a problem"
+      onclick={() => void openReport()}
+    >
+      <BugIcon />
+    </Button>
   </div>
 </main>
