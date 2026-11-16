@@ -9,7 +9,7 @@
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
-  import { errorText, firstTab, pausedText, shownEntries, shownLanguage, shownSplit } from "./reply"
+  import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import SourceList from "./SourceList.svelte"
   import SourcesButton from "./SourcesButton.svelte"
@@ -279,7 +279,7 @@
         {@const entries = shownEntries(result, view.word, view.followed)}
         {@const shown = shownLanguage(result)}
         {@const split = shownSplit(result, view.word, view.followed, marks?.offsetIn)}
-        {@const shownTab = split === undefined ? undefined : (tab ?? firstTab(split))}
+        {@const shownTab = split === undefined ? undefined : (tab ?? split.opens)}
         {#if view.sources !== undefined}
           <div
             {@attach restoreScroll}
@@ -324,6 +324,7 @@
                 {audio}
                 follow={followLink}
                 reserveEnd={links.length > 0}
+                whole={split === undefined || shownTab === undefined ? 0 : wholeOnTop(split, shownTab)}
               />
               {#if links.length > 0}
                 <SourcesButton open={() => openSources(links)} />
