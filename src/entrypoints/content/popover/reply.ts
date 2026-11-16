@@ -13,8 +13,13 @@ import type { LookupReply } from "$lib/messages"
 /**
  * `clicked` are the parts the looked-up word is in, when the split is of a longer word around it.
  * `opens` is the main part, which the popover opens on.
+ * `whole` is how many of the main part's entries, from the top, are the whole word's own.
  */
-export type Split = { parts: Array<SegmentPart>; clicked: Array<number>; opens: number }
+export type Split = { parts: Array<SegmentPart>; clicked: Array<number>; opens: number; whole: number }
+
+/** How many of `tab`'s entries, from the top, to set apart as the whole word's own. None when they are all it holds. */
+export const wholeOnTop = (split: Split, tab: number): number =>
+  tab === split.opens && (split.parts[tab]?.entries.length ?? 0) > split.whole ? split.whole : 0
 
 /**
  * The segment holding the lowest entry index, since the server ranks first the piece that carries
@@ -62,13 +67,14 @@ export const shownSplit = (
   const merged = parts.map((part, index) =>
     index === opens ? { ...part, entries: [...wholeEntries, ...part.entries] } : part,
   )
+  const shown = { parts: merged, opens, whole: wholeEntries.length }
   const whole = splitWord(result.entries, word)
   if (whole === word) {
-    return { parts: merged, clicked: [], opens }
+    return { ...shown, clicked: [] }
   }
   const start = offsetIn?.(whole) ?? whole.indexOf(word)
   const texts = parts.map(({ text }) => text)
-  return { parts: merged, clicked: partsCovering(texts, start, start + word.length), opens }
+  return { ...shown, clicked: partsCovering(texts, start, start + word.length) }
 }
 
 /** Why a miss may not be one: the languages it skipped because their server is paused. */

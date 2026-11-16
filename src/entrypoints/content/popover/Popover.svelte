@@ -9,7 +9,7 @@
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
-  import { errorText, pausedText, shownEntries, shownLanguage, shownSplit } from "./reply"
+  import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import SourceList from "./SourceList.svelte"
   import SourcesButton from "./SourcesButton.svelte"
@@ -324,6 +324,7 @@
                 {audio}
                 follow={followLink}
                 reserveEnd={links.length > 0}
+                whole={split === undefined || shownTab === undefined ? 0 : wholeOnTop(split, shownTab)}
               />
               {#if links.length > 0}
                 <SourcesButton open={() => openSources(links)} />

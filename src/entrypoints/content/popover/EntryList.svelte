@@ -19,6 +19,7 @@
     audio,
     follow,
     reserveEnd = false,
+    whole = 0,
   }: {
     entries: Array<LookupEntry>
     /** The language `entries` are in, which a `see` link is looked up in. */
@@ -32,10 +33,25 @@
     follow: (target: string, language: string | undefined) => void
     /** Keeps the end of the last sense free, for the Sources link to sit beside it. */
     reserveEnd?: boolean
+    /** How many entries, from the top, are the whole word's own. A bar beside them sets them apart from a part's entries. */
+    whole?: number
   } = $props()
 </script>
 
-{#each entries as entry, index (index)}
+{#if whole > 0}
+  <div class="relative flex flex-col gap-2">
+    <!-- In the panel's side padding, so the entries line up with those under it. -->
+    <span class="bg-link/80 absolute inset-y-0 -left-1.5 w-0.5 rounded-full" aria-hidden="true"></span>
+    {#each entries.slice(0, whole) as entry, index (index)}
+      {@render entryItem(entry, index)}
+    {/each}
+  </div>
+{/if}
+{#each entries.slice(whole) as entry, offset (offset)}
+  {@render entryItem(entry, whole + offset)}
+{/each}
+
+{#snippet entryItem(entry: LookupEntry, index: number)}
   {@const url = playableAudio(entry, server)?.url}
   {@const ipa = entry.pron?.ipa ?? []}
   <section class="flex flex-col gap-1.5" data-audio={url}>
@@ -107,7 +123,7 @@
       {/each}
     </ol>
   </section>
-{/each}
+{/snippet}
 
 {#snippet stressed(text: string)}
   {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter = stressedLetter(

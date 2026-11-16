@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { LookupReply } from "$lib/messages"
-import { shownSplit } from "./reply"
+import { shownSplit, wholeOnTop } from "./reply"
 
 const entry = (lemma: string) => ({ lemma, pos: "X", senses: [{ glosses: [lemma] }] })
 
@@ -73,5 +73,28 @@ describe("shownSplit", () => {
     const shown = split(["Haupt"], [{ text: "Haupt" }, { text: "bahnhof" }], "Hauptbahnhof")
     expect(shown.opens).toBe(0)
     expect(lemmasOf(shown.parts)).toEqual([["Haupt"], []])
+  })
+})
+
+describe("wholeOnTop", () => {
+  const oSend = () =>
+    split(
+      ["送る", "送り", "お"],
+      [
+        { text: "お", entries: [2] },
+        { text: "送り", entries: [1] },
+      ],
+      "お送り",
+    )
+
+  it("sets the whole word's entries apart on the main segment only", () => {
+    const shown = oSend()
+    expect(wholeOnTop(shown, 1)).toBe(1)
+    expect(wholeOnTop(shown, 0)).toBe(0)
+  })
+
+  it("leaves them alone when the tab holds nothing else", () => {
+    const shown = split(["Haupt"], [{ text: "Haupt" }, { text: "bahnhof" }], "Hauptbahnhof")
+    expect(wholeOnTop(shown, 0)).toBe(0)
   })
 })
