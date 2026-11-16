@@ -11,7 +11,7 @@ export type Picked = {
   anchor: AnchorRect
   /** Where the surrounding text for language detection comes from. */
   element: Element | null
-  /** Covers `underCursor`, to underline it. */
+  /** Covers `underCursor`, to mark it on the page. */
   range: Range | undefined
   /** The sentence around whichever of `selected` and `underCursor` is set. */
   context: Sentence | undefined

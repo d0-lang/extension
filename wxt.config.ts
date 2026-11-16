@@ -16,6 +16,8 @@ export default defineConfig({
     description: "Look up words on any page using dictionary servers you choose.",
     permissions: ["storage", "contextMenus", "notifications", "alarms"],
     host_permissions: ["<all_urls>"],
+    // WXT builds `marks.content.css` but leaves a style-only content script out of the manifest.
+    content_scripts: [{ matches: ["<all_urls>"], all_frames: true, css: ["content-scripts/marks.css"] }],
     ...(browser === "firefox" && {
       browser_specific_settings: {
         gecko: {

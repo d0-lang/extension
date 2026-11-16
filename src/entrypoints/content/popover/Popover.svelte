@@ -3,24 +3,26 @@
   import ArrowLeft from "@lucide/svelte/icons/arrow-left"
   import { sourceLinks, type SourceLink } from "$lib/dict/sources"
   import type { LookupReply } from "$lib/messages"
+  import type { MarkStyle } from "$lib/storage"
   import type { AnchorRect } from "../page/pick"
   import { AudioPlayer } from "./audio.svelte"
   import EntryList from "./EntryList.svelte"
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
+  import { highlightRanges } from "./highlight"
   import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import SourceList from "./SourceList.svelte"
   import SourcesButton from "./SourcesButton.svelte"
-  import Underlines from "./Underlines.svelte"
 
   let {
     word,
     anchor,
     dark,
     showIpa,
-    underline,
+    markStyle,
+    highlight,
     marks,
     search,
     follow,
@@ -29,9 +31,10 @@
     anchor: AnchorRect
     dark: boolean
     showIpa: boolean
-    /** Covers the looked-up word. `dark` is the page behind it, which picks the accent that shows up there. */
-    underline: { range: Range; dark: boolean } | undefined
-    /** Finds the parts of the sentence a context entry's `match` names, to underline instead. */
+    markStyle: MarkStyle
+    /** Covers the looked-up word. `dark` is the page behind it, which picks the colour that shows up there. */
+    highlight: { range: Range; dark: boolean } | undefined
+    /** Finds the parts of the sentence a context entry's `match` names, to mark instead. */
     marks:
       | {
           rangesOf: (match: ReadonlyArray<string>) => Array<Range>
@@ -82,6 +85,12 @@
     return () => {
       current = false
     }
+  })
+  $effect(() => {
+    if (matched.length > 0 && marks !== undefined) {
+      return highlightRanges(matched, markStyle, marks.dark)
+    }
+    return highlight === undefined ? undefined : highlightRanges([highlight.range], markStyle, highlight.dark)
   })
   let scroller: HTMLElement | undefined
   const shownScroller = (): HTMLElement | undefined => (scroller?.isConnected ? scroller : undefined)
@@ -227,12 +236,6 @@
 
   $effect(() => listenForKeys({ scroller: shownScroller, stepLanguage, play: audio.play }))
 </script>
-
-{#if matched.length > 0 && marks !== undefined}
-  <Underlines ranges={matched} dark={marks.dark} />
-{:else if underline !== undefined}
-  <Underlines ranges={[underline.range]} dark={underline.dark} />
-{/if}
 
 <div
   bind:this={element}
