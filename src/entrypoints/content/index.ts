@@ -1,5 +1,5 @@
 import { isOpenLookupMessage, type OpenLookupMessage } from "$lib/messages"
-import { getLookupEnabled, getShowIpa, getTheme } from "$lib/storage"
+import { getLookupEnabled, getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import { watchAltHold } from "./hold"
 import { createPopoverHost } from "./mount"
@@ -37,7 +37,7 @@ export default defineContentScript({
       word: string,
       anchor: AnchorRect,
       element: Element | null,
-      /** Covers `word` when it is the one under the cursor, to underline it. */
+      /** Covers `word` when it is the one under the cursor, to mark it on the page. */
       range: Range | undefined,
       context: Sentence | undefined,
       /** The language the text is known to be in, like a subtitle track's. */
@@ -45,13 +45,14 @@ export default defineContentScript({
     ) => {
       shownRange = range
       return popover.show(async () => {
-        const [theme, showIpa] = await Promise.all([getTheme(), getShowIpa()])
+        const [theme, showIpa, markStyle] = await Promise.all([getTheme(), getShowIpa(), getMarkStyle()])
         return {
           word,
           anchor,
           dark: isDark(theme),
           showIpa,
-          underline: range === undefined ? undefined : { range, dark: isDarkBehind(element) },
+          markStyle,
+          highlight: range === undefined ? undefined : { range, dark: isDarkBehind(element) },
           marks:
             context === undefined
               ? undefined

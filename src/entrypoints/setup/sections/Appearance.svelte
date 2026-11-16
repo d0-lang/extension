@@ -1,12 +1,24 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import HighlighterIcon from "@lucide/svelte/icons/highlighter"
   import MonitorIcon from "@lucide/svelte/icons/monitor"
   import MoonIcon from "@lucide/svelte/icons/moon"
   import SunIcon from "@lucide/svelte/icons/sun"
+  import UnderlineIcon from "@lucide/svelte/icons/underline"
   import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
-  import { getShowIpa, getTheme, setShowIpa, setTheme, type Theme } from "$lib/storage"
+  import {
+    getMarkStyle,
+    getShowIpa,
+    getTheme,
+    setMarkStyle,
+    setShowIpa,
+    setTheme,
+    type MarkStyle,
+    type Theme,
+  } from "$lib/storage"
+  import { canUnderline } from "./underline"
 
   const themes = [
     { value: "system", label: "System", icon: MonitorIcon },
@@ -14,13 +26,28 @@
     { value: "dark", label: "Dark", icon: MoonIcon },
   ] satisfies Array<{ value: Theme; label: string; icon: typeof SunIcon }>
 
+  const markStyles = [
+    { value: "tint", label: "Tint", icon: HighlighterIcon },
+    { value: "underline", label: "Underline", icon: UnderlineIcon },
+  ] satisfies Array<{ value: MarkStyle; label: string; icon: typeof SunIcon }>
+
   let theme = $state<Theme>("system")
   let showIpa = $state(true)
+  let markStyle = $state<MarkStyle>("tint")
+  /** Without the underline, tint is the only style left, so the choice is not shown. */
+  let underlines = $state(false)
 
   onMount(async () => {
-    const [storedTheme, storedIpa] = await Promise.all([getTheme(), getShowIpa()])
+    const [storedTheme, storedIpa, storedMark, drawsUnderline] = await Promise.all([
+      getTheme(),
+      getShowIpa(),
+      getMarkStyle(),
+      canUnderline(),
+    ])
     theme = storedTheme
     showIpa = storedIpa
+    markStyle = storedMark
+    underlines = drawsUnderline
   })
 
   const onTheme = async (next: string) => {
@@ -31,6 +58,16 @@
     }
     theme = picked.value
     await setTheme(picked.value)
+  }
+
+  const onMarkStyle = async (next: string) => {
+    // Pressing the active item deselects it, which leaves no style.
+    const picked = markStyles.find((option) => option.value === next)
+    if (picked === undefined) {
+      return
+    }
+    markStyle = picked.value
+    await setMarkStyle(picked.value)
   }
 
   const onIpa = async (checked: boolean) => {
@@ -62,6 +99,30 @@
         {/each}
       </ToggleGroup>
     </div>
+    {#if underlines}
+      <div class="flex flex-wrap items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <p class="text-sm font-medium">Looked-up word</p>
+          <p class="text-muted-foreground text-sm">
+            How the word is marked on the page while its popover is open.
+          </p>
+        </div>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={markStyle}
+          onValueChange={(next) => void onMarkStyle(next)}
+        >
+          {#each markStyles as option (option.value)}
+            <ToggleGroupItem value={option.value}>
+              <option.icon />
+              {option.label}
+            </ToggleGroupItem>
+          {/each}
+        </ToggleGroup>
+      </div>
+    {/if}
     <div class="flex items-center justify-between gap-4 p-4">
       <div class="flex flex-col gap-0.5">
         <Label for="show-ipa">Show IPA</Label>

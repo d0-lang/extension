@@ -1,4 +1,5 @@
 /** Names the browser for the issue form, like `Firefox 158.0 on Linux`. */
+import { firefoxInfo } from "$lib/firefox"
 
 /** A brand from `navigator.userAgentData`. */
 type Brand = { brand: string; version: string }
@@ -39,15 +40,12 @@ type UserAgentData = {
   getHighEntropyValues: (hints: Array<string>) => Promise<{ fullVersionList?: Array<Brand> }>
 }
 
-// Firefox only. Chrome tells through `navigator.userAgentData` instead.
-type FirefoxRuntime = { getBrowserInfo?: () => Promise<{ name: string; version: string }> }
-
 const browserInfo = async (): Promise<{ name: string; version: string } | undefined> => {
-  const runtime = browser.runtime as FirefoxRuntime
-  if (runtime.getBrowserInfo !== undefined) {
-    const { name, version } = await runtime.getBrowserInfo()
-    return { name, version }
+  const firefox = await firefoxInfo()
+  if (firefox !== undefined) {
+    return firefox
   }
+  // Chrome tells through `navigator.userAgentData` instead.
   const data = (navigator as { userAgentData?: UserAgentData }).userAgentData
   if (data === undefined) {
     return undefined
