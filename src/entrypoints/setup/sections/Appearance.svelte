@@ -18,6 +18,7 @@
     type MarkStyle,
     type Theme,
   } from "$lib/storage"
+  import LanguageOrder from "./LanguageOrder.svelte"
   import { canUnderline } from "./underline"
 
   const themes = [
@@ -132,5 +133,6 @@
       </div>
       <Switch id="show-ipa" checked={showIpa} onCheckedChange={(checked) => void onIpa(checked)} />
     </div>
+    <LanguageOrder />
   </div>
 </section>

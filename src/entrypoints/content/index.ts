@@ -159,8 +159,9 @@ export default defineContentScript({
       if ("lookupEnabled" in changes) {
         enabled = changes.lookupEnabled?.newValue === true
       }
-      // A server's sentence setting and the blocked sites decide what an answer was based on.
-      if ("servers" in changes || "serverByLang" in changes || "contextSites" in changes) {
+      // A server's sentence setting and the blocked sites decide what an answer was based on, the order which
+      // language it came from.
+      if (["servers", "serverByLang", "contextSites", "languageOrder"].some((key) => key in changes)) {
         session.clearReplies()
       }
     })
