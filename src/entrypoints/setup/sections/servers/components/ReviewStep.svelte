@@ -78,7 +78,8 @@
     </DialogDescription>
   </DialogHeader>
 
-  <div class="-mx-4 flex min-h-0 flex-col gap-3 overflow-y-auto px-4">
+  <!-- Room around the edges for focus rings, which the scroll would cut. A scrollbar takes part of the side's. -->
+  <div class="-mx-4 -mt-1 flex min-h-0 flex-col gap-3 overflow-y-auto px-4 pt-1">
     {#if draft.movedFrom !== undefined}
       <Alert>
         <AlertTitle>This server has moved</AlertTitle>
@@ -140,7 +141,7 @@
             <Button
               variant="link"
               size="xs"
-              class="-mr-2"
+              class="-mr-1 px-1"
               onclick={() => setup.selectAll(!setup.allSelected)}
             >
               {setup.allSelected ? "Clear all" : "Select all"}
