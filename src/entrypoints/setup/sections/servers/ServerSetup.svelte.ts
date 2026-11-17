@@ -22,6 +22,8 @@ import type { DialogState, ServerRow } from "./types"
 
 export class ServerSetup {
   rows = $state.raw<Array<ServerRow>>([])
+  /** Set once the first `load` is in, so an empty `rows` means no servers rather than not read yet. */
+  loaded = $state(false)
   servers = $state.raw<Servers>({})
   serverByLang = $state.raw<ServerByLang>({})
   dialogState = $state<DialogState>("closed")
@@ -125,6 +127,7 @@ export class ServerSetup {
         sources: server.sources ?? [],
       }
     })
+    this.loaded = true
   }
 
   /** Reload when the startup check or another tab changes servers. Returns the unsubscribe. */

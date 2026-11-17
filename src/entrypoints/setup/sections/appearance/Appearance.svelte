@@ -44,6 +44,10 @@
   let markStyle = $state<MarkStyle>("tint")
   /** Without the underline, tint is the only style left, so the choice is not shown. */
   let underlines = $state(false)
+  /** Set once the settings are read, so the defaults do not show first and then change. */
+  let loaded = $state(false)
+  /** Set once the language order is read, so the list does not appear after the rest. */
+  let orderLoaded = $state(false)
 
   onMount(async () => {
     const [storedTheme, storedIpa, storedMark, drawsUnderline] = await Promise.all([
@@ -56,6 +60,7 @@
     showIpa = storedIpa
     markStyle = storedMark
     underlines = drawsUnderline
+    loaded = true
   })
 
   const onTheme = async (next: string) => {
@@ -94,7 +99,7 @@
   </SectionTitle>
   <!-- The preview only fits beside the settings on a wide screen. -->
   <div class="grid items-start gap-8 min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-    <div class="flex flex-col divide-y rounded-lg border">
+    <div class={["flex flex-col divide-y rounded-lg border", !(loaded && orderLoaded) && "invisible"]}>
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
           <p class="text-sm font-medium">Theme</p>
@@ -148,12 +153,12 @@
         </div>
         <Switch id="show-ipa" checked={showIpa} onCheckedChange={(checked) => void onIpa(checked)} />
       </div>
-      <LanguageOrder />
+      <LanguageOrder onload={() => (orderLoaded = true)} />
     </div>
     <!-- Stuck at the height it starts at, under the header, title and gaps, so scrolling never moves it. -->
     <div class="self-stretch max-[1199px]:hidden">
       <div class="sticky top-[8.25rem]">
-        <PopoverPreview class="mx-auto" {showIpa} {markStyle} />
+        <PopoverPreview class={["mx-auto", !loaded && "invisible"]} {showIpa} {markStyle} />
       </div>
     </div>
   </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import type { ClassValue } from "svelte/elements"
   import { entriesForLemma, playableAudio } from "$lib/dict/entries"
   import { sourceLinks, type SourceLink } from "$lib/dict/sources"
   import { AudioPlayer } from "$lib/popover/audio.svelte"
@@ -22,7 +23,7 @@
     showIpa,
     markStyle,
     class: className,
-  }: { showIpa: boolean; markStyle: MarkStyle; class?: string } = $props()
+  }: { showIpa: boolean; markStyle: MarkStyle; class?: ClassValue } = $props()
 
   /** `sources` shows those links instead of the word's entries. */
   type View = { word: string; sources?: Array<SourceLink> }
@@ -118,7 +119,11 @@
   })
 </script>
 
-<div bind:this={preview} class={cn("flex w-85 max-w-full flex-col gap-2", className)}>
+<!-- Hidden until the footer's languages are read, so it does not grow a footer after showing. -->
+<div
+  bind:this={preview}
+  class={cn("flex w-85 max-w-full flex-col gap-2", languages.length === 0 && "invisible", className)}
+>
   <p class="text-muted-foreground text-sm">
     …last summer we visited my <mark
       class={[

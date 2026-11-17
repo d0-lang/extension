@@ -7,7 +7,8 @@
   import SectionTitle from "../../layout/SectionTitle.svelte"
   import { siteHost } from "./site-host"
 
-  let blocked = $state<Array<string>>([])
+  /** Unset until storage answers, so "No blocked sites" does not flash. */
+  let blocked = $state<Array<string>>()
   let draft = $state("")
   let draftError = $state<string>()
 
@@ -69,7 +70,9 @@
   {#if draftError !== undefined}
     <p class="text-destructive text-sm">{draftError}</p>
   {/if}
-  {#if blocked.length === 0}
+  {#if blocked === undefined}
+    <!-- Not read yet. -->
+  {:else if blocked.length === 0}
     <p class="text-muted-foreground text-sm">No blocked sites.</p>
   {:else}
     <ul class="flex flex-col divide-y rounded-lg border">

@@ -7,8 +7,8 @@
   import SectionTitle from "../../layout/SectionTitle.svelte"
   import { groupIntegrations, integrations, SEARCH_FROM } from "./integrations"
 
-  /** Integration name → whether it is on. */
-  let on = $state<Record<string, boolean>>({})
+  /** Integration name → whether it is on. Unset until storage answers, so no switch flips after showing. */
+  let on = $state<Record<string, boolean>>()
   let lookupEnabled = $state(true)
   let query = $state("")
 
@@ -39,7 +39,7 @@
   })
 
   const toggle = async (name: string, set: (on: boolean) => Promise<void>, checked: boolean) => {
-    on[name] = checked
+    on = { ...on, [name]: checked }
     await set(checked)
   }
 </script>
@@ -60,7 +60,7 @@
       />
     </div>
   {/if}
-  {#each groups as { kind, items } (kind)}
+  {#each on === undefined ? [] : groups as { kind, items } (kind)}
     <div class="flex flex-col gap-2">
       <h2 class="text-muted-foreground text-sm font-medium">{kind}</h2>
       <ul class="flex flex-col divide-y rounded-lg border">
@@ -79,7 +79,7 @@
             </label>
             <Switch
               {id}
-              checked={on[integration.name] ?? false}
+              checked={on?.[integration.name] ?? false}
               disabled={!lookupEnabled}
               onCheckedChange={(checked) => void toggle(integration.name, integration.set, checked)}
             />
@@ -88,6 +88,8 @@
       </ul>
     </div>
   {:else}
-    <p class="text-muted-foreground text-sm">No integration matches “{query.trim()}”.</p>
+    {#if on !== undefined}
+      <p class="text-muted-foreground text-sm">No integration matches “{query.trim()}”.</p>
+    {/if}
   {/each}
 </section>

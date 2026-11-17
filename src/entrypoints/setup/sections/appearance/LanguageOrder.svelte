@@ -7,6 +7,9 @@
   import { LANGUAGE_KEYS, orderedLanguages } from "./languages"
   import { dropIndex, moved } from "./reorder"
 
+  /** `onload` runs once the languages are first read, so the settings around the list can show with it. */
+  let { onload }: { onload?: () => void } = $props()
+
   const FLIP_MS = 150
 
   /** Bound languages in the order the popover shows them, with the paused ones in their place too. */
@@ -22,6 +25,7 @@
     const next = await orderedLanguages()
     order = next.order
     paused = next.paused
+    onload?.()
   }
 
   onMount(() => {

@@ -82,14 +82,16 @@
 
 <section class="flex max-w-2xl flex-col gap-5">
   <SectionTitle title="Servers">
-    {#if servers.rows.length > 0}
+    {#if servers.loaded && servers.rows.length > 0}
       <Button size="sm" onclick={servers.openAdd}>
         <PlusIcon />
         Add
       </Button>
     {/if}
   </SectionTitle>
-  {#if servers.rows.length === 0}
+  {#if !servers.loaded}
+    <!-- Nothing until storage answers, so the screen for no servers does not flash. -->
+  {:else if servers.rows.length === 0}
     <div class="flex flex-col items-center gap-4 rounded-xl border border-dashed p-6 text-center">
       <div class="flex flex-col gap-1">
         <h2 class="text-lg font-semibold">Add a dictionary server to start</h2>

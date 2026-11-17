@@ -4,7 +4,8 @@
   import { Switch } from "$lib/components/ui/switch"
   import { getLookupEnabled, setLookupEnabled } from "$lib/storage"
 
-  let enabled = $state(true)
+  /** Unset until storage answers. The switch keeps its space meanwhile, so the header does not shift. */
+  let enabled = $state<boolean>()
 
   onMount(() => {
     const load = async () => {
@@ -27,7 +28,11 @@
   }
 </script>
 
-<div class="flex items-center gap-2.5">
+<div class={["flex items-center gap-2.5", enabled === undefined && "invisible"]}>
   <Label for="lookup-enabled">Word lookup</Label>
-  <Switch id="lookup-enabled" checked={enabled} onCheckedChange={(checked) => void onToggle(checked)} />
+  <Switch
+    id="lookup-enabled"
+    checked={enabled ?? false}
+    onCheckedChange={(checked) => void onToggle(checked)}
+  />
 </div>
