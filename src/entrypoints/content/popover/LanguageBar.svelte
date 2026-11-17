@@ -1,7 +1,6 @@
 <script lang="ts">
   import Keycap from "$lib/components/Keycap.svelte"
-  import { pairName } from "$lib/languages"
-  import { shortNames } from "./languages"
+  import { pairName, shortNames } from "$lib/languages"
 
   let {
     languages,

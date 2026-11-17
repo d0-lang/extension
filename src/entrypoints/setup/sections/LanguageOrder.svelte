@@ -3,7 +3,7 @@
   import { flip } from "svelte/animate"
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical"
   import { boundLanguages } from "$lib/dict"
-  import { pairName } from "$lib/languages"
+  import { pairName, shortNames } from "$lib/languages"
   import { getLanguageOrder, orderLanguages, setLanguageOrder } from "$lib/storage"
   import { dropIndex, moved } from "./reorder"
 
@@ -13,6 +13,8 @@
   let order = $state.raw<Array<string>>([])
   let paused = $state.raw<Array<string>>([])
   let list = $state<HTMLElement>()
+  /** As the popover's footer names them. */
+  const names = $derived(shortNames(order))
   /** `grab` is where the item was pressed, from its top. `lift` moves it from its place to under the pointer. */
   let drag = $state<{ code: string; pointer: number; grab: number; lift: number }>()
 
@@ -146,7 +148,7 @@
             <GripVerticalIcon class="size-4" />
           </button>
           <span class="truncate">{pairName(code)}</span>
-          <span class="text-muted-foreground shrink-0 font-mono text-xs">{code}</span>
+          <span class="text-muted-foreground shrink-0 text-xs">{names.get(code) ?? code}</span>
           {#if paused.includes(code)}
             <span class="text-muted-foreground ml-auto shrink-0 text-xs"
               >Paused until its server is fixed</span
