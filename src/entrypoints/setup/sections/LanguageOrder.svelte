@@ -110,10 +110,7 @@
   <div class="flex flex-col gap-3 p-4">
     <div class="flex flex-col gap-0.5">
       <p class="text-sm font-medium">Language order</p>
-      <p class="text-muted-foreground text-sm">
-        The order of the languages at the bottom of the popover. When a page's language isn't known, lookups
-        try them in this order too.
-      </p>
+      <p class="text-muted-foreground text-sm">The order of the languages at the bottom of the popover.</p>
     </div>
     <ol
       bind:this={list}

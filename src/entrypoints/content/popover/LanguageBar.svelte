@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Kbd } from "$lib/components/ui/kbd"
+  import Keycap from "$lib/components/Keycap.svelte"
   import { pairName } from "$lib/languages"
   import { shortNames } from "./languages"
 
@@ -14,8 +14,6 @@
   } = $props()
 
   const names = $derived(shortNames(languages))
-  /** Outlined like a key, so A and D do not read as two more languages. */
-  const KEYCAP = "shrink-0 border border-b-2 border-foreground/20 bg-transparent"
 
   /** Faded at an end with more languages past it, wide enough that a language there shows it is cut off. */
   const FADE_PX = 32
@@ -84,7 +82,7 @@
 </script>
 
 <div class="mt-auto flex shrink-0 items-center gap-2 border-t p-2">
-  <Kbd class={KEYCAP} title="Previous language">A</Kbd>
+  <Keycap class="shrink-0" title="Previous language">A</Keycap>
   <div
     bind:this={strip}
     {@attach wheelScrolls}
@@ -119,5 +117,5 @@
       </button>
     {/each}
   </div>
-  <Kbd class={KEYCAP} title="Next language">D</Kbd>
+  <Keycap class="shrink-0" title="Next language">D</Keycap>
 </div>
