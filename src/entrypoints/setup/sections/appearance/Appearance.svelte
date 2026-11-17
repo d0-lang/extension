@@ -150,9 +150,7 @@
       </div>
       <LanguageOrder />
     </div>
-    <div
-      class="bg-muted/40 sticky top-22 flex justify-center rounded-xl border px-6 pt-6 pb-8 max-[1199px]:hidden"
-    >
+    <div class="bg-muted/40 flex justify-center rounded-xl border px-6 pt-6 pb-8 max-[1199px]:hidden">
       <PopoverPreview {showIpa} {markStyle} />
     </div>
   </div>

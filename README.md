@@ -74,6 +74,7 @@ The mock server runs a set of dictionary servers for trying out adding servers, 
 | `src/entrypoints/popup`         | The toolbar button's popup                               |
 | `src/entrypoints/setup`         | The settings page                                        |
 | `src/lib/dict`                  | The protocol client: handshake, signatures, lookup       |
+| `src/lib/popover`               | The popover's entries and footer, also drawn in settings |
 | `src/lib/storage.ts`            | Everything kept in extension storage                     |
 | `scripts/mock-server.ts`        | The test dictionary servers                              |
 
@@ -104,6 +105,10 @@ Dependencies are pinned by `bun.lock`. npm does not read it, so use Bun. Node.js
    ```
 
 The add-on is in `.output/firefox-mv2`. Its files match the submitted zip. `bun run zip:firefox` packs it into `.output/dadict-<version>-firefox.zip`.
+
+## Credits
+
+The popover preview in Settings plays two recordings from Wikimedia Commons, both by Dvortygirl under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/): [En-us-mother.ogg](https://commons.wikimedia.org/wiki/File:En-us-mother.ogg) and [En-us-mom.ogg](https://commons.wikimedia.org/wiki/File:En-us-mom.ogg). They stream from Commons when you press play, and the preview's Sources view links them.
 
 ## Contributing and licence
 
