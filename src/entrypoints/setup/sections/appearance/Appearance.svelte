@@ -156,7 +156,7 @@
       <LanguageOrder onload={() => (orderLoaded = true)} />
     </div>
     <!-- Stuck at the height it starts at, under the header, title and gaps, so scrolling never moves it. -->
-    <div class="self-stretch max-[1199px]:hidden">
+    <div class="self-stretch max-[1200px]:hidden">
       <div class="sticky top-[8.25rem]">
         <PopoverPreview class={["mx-auto", !loaded && "invisible"]} {showIpa} {markStyle} />
       </div>
