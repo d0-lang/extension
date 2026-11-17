@@ -18,7 +18,7 @@
 </script>
 
 <div class="bg-background min-h-svh">
-  <Header inSection={route.section !== undefined} />
+  <Header inSection={route.section !== undefined} back={route.toList} />
 
   <div class="md:grid md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[15.5rem_minmax(0,1fr)]">
     <Sidebar
