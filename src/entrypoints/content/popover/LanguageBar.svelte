@@ -37,21 +37,30 @@
   })
 
   /** Scrolls as little as it can to bring `button` clear of the faded ends. */
-  const scrollToShow = (bar: HTMLElement, button: HTMLElement) => {
+  const scrollToShow = (bar: HTMLElement, button: HTMLElement, behavior: ScrollBehavior) => {
     const { left, right } = bar.getBoundingClientRect()
     const item = button.getBoundingClientRect()
-    if (item.left < left + FADE_PX) {
-      bar.scrollLeft -= left + FADE_PX - item.left
-    } else if (item.right > right - FADE_PX) {
-      bar.scrollLeft += item.right - (right - FADE_PX)
+    const by =
+      item.left < left + FADE_PX
+        ? item.left - (left + FADE_PX)
+        : item.right > right - FADE_PX
+          ? item.right - (right - FADE_PX)
+          : 0
+    if (by !== 0) {
+      bar.scrollBy({ left: by, behavior })
     }
   }
 
-  // On open, and after A or D, the language in use can be scrolled out of view.
+  /** Set once the bar has scrolled to the language it opened on. */
+  let placed = false
+
+  // On open, and after A or D, the language in use can be scrolled out of view. Sliding to it shows where it went.
   $effect(() => {
     const button = shown === undefined ? null : strip?.querySelector(`[data-code="${CSS.escape(shown)}"]`)
     if (strip !== undefined && button instanceof HTMLElement) {
-      scrollToShow(strip, button)
+      const still = !placed || matchMedia("(prefers-reduced-motion: reduce)").matches
+      scrollToShow(strip, button, still ? "instant" : "smooth")
+      placed = true
     }
   })
 
