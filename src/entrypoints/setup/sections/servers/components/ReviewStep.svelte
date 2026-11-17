@@ -47,6 +47,11 @@
     { value: "none", label: "Never" },
   ] satisfies Array<{ value: ContextSending; label: string; hint?: string }>
 
+  /** The language the list's one Tab stop is on. The arrows move it, as they do in the Sentences choice. */
+  let current = $state<string>()
+  const shownPairs = $derived(groups.flatMap((group) => group.pairs))
+  const tabStop = $derived(current !== undefined && shownPairs.includes(current) ? current : shownPairs[0])
+
   const arrowSteps: Record<string, 1 | -1> = { ArrowDown: 1, ArrowUp: -1 }
 
   /** Arrow keys move focus between the checkboxes, wrapping at either end. */
@@ -132,7 +137,12 @@
         <div class="flex items-center justify-between gap-2">
           <p class="font-medium">Languages</p>
           {#if languages.length >= SELECT_ALL_FROM}
-            <Button variant="link" size="xs" class="px-0" onclick={() => setup.selectAll(!setup.allSelected)}>
+            <Button
+              variant="link"
+              size="xs"
+              class="-mr-2"
+              onclick={() => setup.selectAll(!setup.allSelected)}
+            >
               {setup.allSelected ? "Clear all" : "Select all"}
             </Button>
           {/if}
@@ -168,7 +178,12 @@
                       for={`lang-${lang}`}
                       class="hover:bg-muted/50 has-focus-visible:bg-muted/50 cursor-pointer gap-3 rounded-md px-2 py-2 font-normal"
                     >
-                      <Checkbox id={`lang-${lang}`} bind:checked={setup.selected[lang]} />
+                      <Checkbox
+                        id={`lang-${lang}`}
+                        bind:checked={setup.selected[lang]}
+                        tabindex={lang === tabStop ? 0 : -1}
+                        onfocus={() => (current = lang)}
+                      />
                       <span class="flex min-w-0 flex-1 flex-col gap-1">
                         <span title={pairName(lang)}>{sourceName(lang)}</span>
                         {#if owner !== undefined}
@@ -272,17 +287,18 @@
   </div>
 
   <DialogFooter class="sm:items-center">
+    <!-- Add comes before Back in the tab order, since Esc already leaves. `order` keeps Back on its left. -->
     {#if !setup.canSave && languages.length > 0}
-      <p class="text-muted-foreground text-center sm:mr-auto sm:text-left">Pick at least one language.</p>
+      <p class="text-muted-foreground order-1 text-center sm:mr-auto sm:text-left">
+        Pick at least one language.
+      </p>
     {:else if !setup.privacyReady}
-      <p class="text-muted-foreground text-center sm:mr-auto sm:text-left">
+      <p class="text-muted-foreground order-1 text-center sm:mr-auto sm:text-left">
         Read Privacy, then tick the box.
       </p>
     {/if}
-    {#if !setup.isEditing}
-      <Button variant="outline" disabled={setup.saving} onclick={setup.backToConnect}>Back</Button>
-    {/if}
     <Button
+      class="order-3"
       onclick={() => void setup.save()}
       disabled={setup.saving || !setup.canSave || !setup.privacyReady || setup.legalLock.locked}
     >
@@ -292,5 +308,10 @@
         {setup.isNew ? "Add server" : "Save"}{setup.legalLock.locked ? ` (${setup.legalLock.seconds})` : ""}
       {/if}
     </Button>
+    {#if !setup.isEditing}
+      <Button variant="outline" class="order-2" disabled={setup.saving} onclick={setup.backToConnect}
+        >Back</Button
+      >
+    {/if}
   </DialogFooter>
 {/if}
