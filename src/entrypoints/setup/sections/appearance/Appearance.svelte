@@ -18,7 +18,9 @@
     type MarkStyle,
     type Theme,
   } from "$lib/storage"
+  import SectionTitle from "../../layout/SectionTitle.svelte"
   import LanguageOrder from "./LanguageOrder.svelte"
+  import PopoverPreview from "./PopoverPreview.svelte"
   import { canUnderline } from "./underline"
 
   const themes = [
@@ -77,45 +79,24 @@
   }
 </script>
 
-<section class="flex flex-col gap-4">
-  <h2 class="text-lg font-semibold">Appearance</h2>
-  <div class="flex flex-col divide-y rounded-lg border">
-    <div class="flex flex-wrap items-center justify-between gap-4 p-4">
-      <div class="flex flex-col gap-0.5">
-        <p class="text-sm font-medium">Theme</p>
-        <p class="text-muted-foreground text-sm">Applies to settings and the lookup popover.</p>
-      </div>
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        size="sm"
-        value={theme}
-        onValueChange={(next) => void onTheme(next)}
-      >
-        {#each themes as option (option.value)}
-          <ToggleGroupItem value={option.value}>
-            <option.icon />
-            {option.label}
-          </ToggleGroupItem>
-        {/each}
-      </ToggleGroup>
-    </div>
-    {#if underlines}
+<section class="flex max-w-5xl flex-col gap-5">
+  <SectionTitle title="Appearance" />
+  <!-- The preview only fits beside the settings on a wide screen. -->
+  <div class="grid items-start gap-8 min-[1200px]:grid-cols-[minmax(0,1fr)_340px]">
+    <div class="flex flex-col divide-y rounded-lg border">
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
-          <p class="text-sm font-medium">Looked-up word</p>
-          <p class="text-muted-foreground text-sm">
-            How the word is marked on the page while its popover is open.
-          </p>
+          <p class="text-sm font-medium">Theme</p>
+          <p class="text-muted-foreground text-sm">Applies to settings and the lookup popover.</p>
         </div>
         <ToggleGroup
           type="single"
           variant="outline"
           size="sm"
-          value={markStyle}
-          onValueChange={(next) => void onMarkStyle(next)}
+          value={theme}
+          onValueChange={(next) => void onTheme(next)}
         >
-          {#each markStyles as option (option.value)}
+          {#each themes as option (option.value)}
             <ToggleGroupItem value={option.value}>
               <option.icon />
               {option.label}
@@ -123,16 +104,41 @@
           {/each}
         </ToggleGroup>
       </div>
-    {/if}
-    <div class="flex items-center justify-between gap-4 p-4">
-      <div class="flex flex-col gap-0.5">
-        <Label for="show-ipa">Show IPA</Label>
-        <p class="text-muted-foreground text-sm">
-          The phonetic spelling under each word, like <span class="text-foreground">/ˈhɛləʊ/</span> for hello.
-        </p>
+      {#if underlines}
+        <div class="flex flex-wrap items-center justify-between gap-4 p-4">
+          <div class="flex flex-col gap-0.5">
+            <p class="text-sm font-medium">Looked-up word</p>
+            <p class="text-muted-foreground text-sm">
+              How the word is marked on the page while its popover is open.
+            </p>
+          </div>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={markStyle}
+            onValueChange={(next) => void onMarkStyle(next)}
+          >
+            {#each markStyles as option (option.value)}
+              <ToggleGroupItem value={option.value}>
+                <option.icon />
+                {option.label}
+              </ToggleGroupItem>
+            {/each}
+          </ToggleGroup>
+        </div>
+      {/if}
+      <div class="flex items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="show-ipa">Show IPA</Label>
+          <p class="text-muted-foreground text-sm">
+            The phonetic spelling under each word, like <span class="text-foreground">/ˈhɛləʊ/</span> for hello.
+          </p>
+        </div>
+        <Switch id="show-ipa" checked={showIpa} onCheckedChange={(checked) => void onIpa(checked)} />
       </div>
-      <Switch id="show-ipa" checked={showIpa} onCheckedChange={(checked) => void onIpa(checked)} />
+      <LanguageOrder />
     </div>
-    <LanguageOrder />
+    <PopoverPreview class="sticky top-22 max-[1199px]:hidden" {showIpa} {markStyle} />
   </div>
 </section>

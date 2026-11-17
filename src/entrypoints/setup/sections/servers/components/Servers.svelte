@@ -24,6 +24,7 @@
   import type { ContextSending, ServerIssue } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
+  import SectionTitle from "../../../layout/SectionTitle.svelte"
   import SourceCredits from "./SourceCredits.svelte"
   import ServerDialog from "./ServerDialog.svelte"
 
@@ -79,7 +80,15 @@
   })
 </script>
 
-<section class="flex flex-col gap-4">
+<section class="flex max-w-2xl flex-col gap-5">
+  <SectionTitle title="Servers">
+    {#if servers.rows.length > 0}
+      <Button size="sm" onclick={servers.openAdd}>
+        <PlusIcon />
+        Add
+      </Button>
+    {/if}
+  </SectionTitle>
   {#if servers.rows.length === 0}
     <div class="flex flex-col items-center gap-4 rounded-xl border border-dashed p-6 text-center">
       <div class="flex flex-col gap-1">
@@ -116,110 +125,100 @@
       </ol>
     </div>
   {:else}
-    <div class="flex items-center justify-between gap-4">
-      <div class="flex flex-col gap-0.5">
-        <h2 class="text-lg font-semibold">Servers</h2>
-        <p class="text-muted-foreground text-sm">Each language is answered by one server.</p>
-      </div>
-      <Button size="sm" onclick={servers.openAdd}>
-        <PlusIcon />
-        Add
-      </Button>
-    </div>
     <ul class="flex flex-col gap-3">
       {#each servers.rows as row (row.url)}
         <li>
           <ContextMenu>
             <ContextMenuTrigger
               class={[
-                "flex items-start gap-3 rounded-lg border p-4 select-text",
+                "flex flex-col gap-3 rounded-lg border p-4 select-text",
                 row.issue !== undefined && "border-destructive/50",
               ]}
             >
-              <div class="flex min-w-0 flex-1 flex-col gap-3">
-                <div class="flex min-w-0 flex-col gap-0.5">
+              <div class="flex items-start gap-3">
+                <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                   <p class="text-lg leading-snug font-semibold wrap-anywhere">{row.name}</p>
                   <p class="text-muted-foreground truncate font-mono text-xs">{row.url}</p>
                 </div>
-                {#if row.issue !== undefined}
-                  <div
-                    class="bg-destructive/10 text-destructive flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md px-3 py-2 text-sm"
-                  >
-                    <ShieldAlertIcon class="size-4 shrink-0" />
-                    <p class="min-w-0 flex-1">{issueText[row.issue].text}</p>
-                    <Button variant="outline" size="xs" onclick={() => servers.openEdit(row)}>
-                      {issueText[row.issue].action}
-                    </Button>
-                  </div>
-                {/if}
-                {#if row.languages.length === 0}
-                  <p class="text-muted-foreground text-sm">No languages selected</p>
-                {:else}
-                  {@const folded = folds(row.languages) && unfolded[row.url] !== true}
-                  {@const groups = shownGroups(row.languages, folded)}
-                  <div class="flex flex-col gap-2">
-                    {#each groups as group, groupIndex (group.into)}
-                      <div class="flex flex-col gap-1.5">
-                        <p class="text-muted-foreground text-xs">Into {group.into}</p>
-                        <ul class="flex flex-wrap gap-1.5">
-                          {#each group.pairs as lang (lang)}
-                            {@const unoffered = row.unoffered.includes(lang)}
-                            <li
-                              class={[
-                                "bg-muted rounded-full px-2.5 py-0.5 text-xs",
-                                unoffered && "text-muted-foreground line-through",
-                              ]}
-                              title={unoffered
-                                ? `${pairName(lang)}: no longer offered by this server`
-                                : pairName(lang)}
-                            >
-                              {sourceName(lang)}
-                            </li>
-                          {/each}
-                          {#if groupIndex === groups.length - 1 && folds(row.languages)}
-                            <li>
-                              <button
-                                type="button"
-                                class="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full border px-2.5 py-0.5 text-xs"
-                                onclick={() => (unfolded[row.url] = folded)}
-                              >
-                                {folded ? `+${row.languages.length - FOLDED_LANGUAGES} more` : "Show less"}
-                              </button>
-                            </li>
-                          {/if}
-                        </ul>
-                      </div>
-                    {/each}
-                  </div>
-                {/if}
-                {#if row.context !== undefined}
-                  <p class="text-muted-foreground text-sm">{contextText[row.context]}</p>
-                {/if}
-                {#if row.sources.length > 0}
-                  <div class="text-sm">
-                    <SourceCredits sources={row.sources} />
-                  </div>
-                {/if}
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    {#snippet child({ props })}
+                      <Button {...props} variant="ghost" size="icon-sm" aria-label="Actions for {row.name}">
+                        <EllipsisIcon />
+                      </Button>
+                    {/snippet}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" class="min-w-40">
+                    <DropdownMenuItem onSelect={() => servers.openEdit(row)}>
+                      <PencilIcon />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onSelect={() => servers.askRemove(row)}>
+                      <Trash2Icon />
+                      Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  {#snippet child({ props })}
-                    <Button {...props} variant="ghost" size="icon-sm" aria-label="Actions for {row.name}">
-                      <EllipsisIcon />
-                    </Button>
-                  {/snippet}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="min-w-40">
-                  <DropdownMenuItem onSelect={() => servers.openEdit(row)}>
-                    <PencilIcon />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onSelect={() => servers.askRemove(row)}>
-                    <Trash2Icon />
-                    Remove
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {#if row.issue !== undefined}
+                <div
+                  class="bg-destructive/10 text-destructive flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md px-3 py-2 text-sm"
+                >
+                  <ShieldAlertIcon class="size-4 shrink-0" />
+                  <p class="min-w-0 flex-1">{issueText[row.issue].text}</p>
+                  <Button variant="outline" size="xs" onclick={() => servers.openEdit(row)}>
+                    {issueText[row.issue].action}
+                  </Button>
+                </div>
+              {/if}
+              {#if row.languages.length === 0}
+                <p class="text-muted-foreground text-sm">No languages selected</p>
+              {:else}
+                {@const folded = folds(row.languages) && unfolded[row.url] !== true}
+                {@const groups = shownGroups(row.languages, folded)}
+                <div class="flex flex-col gap-2">
+                  {#each groups as group, groupIndex (group.into)}
+                    <div class="flex flex-col gap-1.5">
+                      <p class="text-muted-foreground text-xs">Into {group.into}</p>
+                      <ul class="flex flex-wrap gap-1.5">
+                        {#each group.pairs as lang (lang)}
+                          {@const unoffered = row.unoffered.includes(lang)}
+                          <li
+                            class={[
+                              "bg-muted rounded-full px-2.5 py-0.5 text-xs",
+                              unoffered && "text-muted-foreground line-through",
+                            ]}
+                            title={unoffered
+                              ? `${pairName(lang)}: no longer offered by this server`
+                              : pairName(lang)}
+                          >
+                            {sourceName(lang)}
+                          </li>
+                        {/each}
+                        {#if groupIndex === groups.length - 1 && folds(row.languages)}
+                          <li>
+                            <button
+                              type="button"
+                              class="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-full border px-2.5 py-0.5 text-xs"
+                              onclick={() => (unfolded[row.url] = folded)}
+                            >
+                              {folded ? `+${row.languages.length - FOLDED_LANGUAGES} more` : "Show less"}
+                            </button>
+                          </li>
+                        {/if}
+                      </ul>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+              {#if row.context !== undefined}
+                <p class="text-muted-foreground text-sm">{contextText[row.context]}</p>
+              {/if}
+              {#if row.sources.length > 0}
+                <div class="text-sm">
+                  <SourceCredits sources={row.sources} />
+                </div>
+              {/if}
             </ContextMenuTrigger>
             <ContextMenuContent class="min-w-40">
               <ContextMenuItem onSelect={() => servers.openEdit(row)}>
