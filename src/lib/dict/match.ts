@@ -88,3 +88,81 @@ export const placeMatch = (
   }
   return undefined
 }
+
+/** Where a clause starts: after `,` `;` `:` and the spaces after them, or at a spaced dash. */
+const CLAUSE_START = /[,;:]\s+|\s+(?=[—–]\s)/gu
+
+/** `[from, to)` grown by one piece at a time, right then left, while it stays within `max`. */
+const expand = (
+  [from, to]: [number, number],
+  max: number,
+  right: (to: number) => number | undefined,
+  left: (from: number) => number | undefined,
+  length: (from: number, to: number) => number,
+): [number, number] => {
+  let span: [number, number] = [from, to]
+  for (let grew = true; grew;) {
+    grew = false
+    const next = right(span[1])
+    if (next !== undefined && length(span[0], next) <= max) {
+      span = [span[0], next]
+      grew = true
+    }
+    const previous = left(span[0])
+    if (previous !== undefined && length(previous, span[1]) <= max) {
+      span = [previous, span[1]]
+      grew = true
+    }
+  }
+  return span
+}
+
+/**
+ * The part `[from, to)` of a sentence too long to send, around the word at `[start, end)`: the clause
+ * holding it (cut at `,` `;` `:` and spaced dashes), with whole clauses on either side while it stays
+ * within `max`, or else the words around it. Trailing spaces are left out. Unset when the word is longer.
+ */
+export const excerptAround = (
+  text: string,
+  start: number,
+  end: number,
+  max: number,
+): [number, number] | undefined => {
+  const length = (from: number, to: number) => text.slice(from, to).trimEnd().length
+  const trimmed = ([from, to]: [number, number]): [number, number] => [from, from + length(from, to)]
+  if (text.length <= max) {
+    return [0, text.length]
+  }
+  if (end - start > max) {
+    return undefined
+  }
+  const starts = [0, ...[...text.matchAll(CLAUSE_START)].map((found) => found.index + found[0].length)]
+  const ends = [...starts.slice(1), text.length]
+  const first = starts.findLastIndex((at) => at <= start)
+  const last = ends.findIndex((at) => at >= end)
+  const clause: [number, number] = [starts[first]!, ends[last]!]
+  if (length(...clause) <= max) {
+    return trimmed(
+      expand(
+        clause,
+        max,
+        (to) => ends.find((at) => at > to),
+        (from) => starts.findLast((at) => at < from),
+        length,
+      ),
+    )
+  }
+  // A clause too long on its own: the words around the word.
+  const spaces = [...text.matchAll(/\s+/gu)]
+  const wordStarts = [0, ...spaces.map((found) => found.index + found[0].length)]
+  const wordEnds = [...spaces.map((found) => found.index), text.length]
+  return trimmed(
+    expand(
+      [wordStarts.findLast((at) => at <= start)!, wordEnds.find((at) => at >= end)!],
+      max,
+      (to) => wordEnds.find((at) => at > to),
+      (from) => wordStarts.findLast((at) => at < from),
+      length,
+    ),
+  )
+}

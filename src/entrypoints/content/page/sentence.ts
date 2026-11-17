@@ -1,8 +1,8 @@
 import { fromThrowable } from "neverthrow"
-import { collapseWhitespace, copyNumber, placeMatch } from "$lib/dict/match"
+import { collapseWhitespace, copyNumber, excerptAround, placeMatch } from "$lib/dict/match"
 import { firstText, indexIn, rangeIn, runAround } from "./text"
 
-/** A longer run is not one sentence, so nothing is sent. */
+/** The protocol's limit on `context`: of a longer sentence, the part around the word is sent. */
 const MAX_SENTENCE_CHARS = 500
 
 const createSegmenter = (locale: string | undefined): Intl.Segmenter =>
@@ -12,7 +12,7 @@ const createSegmenter = (locale: string | undefined): Intl.Segmenter =>
 const segmenterFor = (locale: string | undefined): Intl.Segmenter =>
   fromThrowable(() => createSegmenter(locale))().unwrapOr(createSegmenter(undefined))
 
-/** The sentence sent as `context`, and where the looked-up word is in it. */
+/** The sentence sent as `context` (or the part of it around the word), and where the looked-up word is in it. */
 export type Sentence = {
   text: string
   /** Which copy of the word in `text` was looked up, from 1: the protocol's `at`. */
@@ -24,8 +24,8 @@ export type Sentence = {
 }
 
 /**
- * The sentence or subtitle line around `range`, with whitespace collapsed.
- * Unset when it is too long, or when it does not contain `word` as picked.
+ * The sentence or subtitle line around `range`, with whitespace collapsed. Of a sentence over the
+ * limit, the clauses around the word (`excerptAround`). Unset when it does not contain `word` as picked.
  */
 export const sentenceAround = (
   range: Range,
@@ -36,7 +36,7 @@ export const sentenceAround = (
   if (from === undefined) {
     return undefined
   }
-  // One past the limit, so a sentence cut off at the edge of the run is too long to send.
+  // One past the limit each way, so an excerpt never reaches a sentence cut off at the edge of the run.
   const run = runAround(from, MAX_SENTENCE_CHARS + 1)
   const text = run.text
   const start = indexIn(run, range.startContainer, range.startOffset)
@@ -49,15 +49,27 @@ export const sentenceAround = (
   if (first === undefined || last === undefined) {
     return undefined
   }
-  const { text: sentence, rawIndex } = collapseWhitespace(
+  const { text: whole, rawIndex } = collapseWhitespace(
     text.slice(first.index, last.index + last.segment.length),
   )
   const spaced = word.replace(/\s+/g, " ")
-  if (sentence.length > MAX_SENTENCE_CHARS || !sentence.includes(spaced)) {
+  const clickedInWhole = rawIndex.findIndex((index) => first.index + index >= start)
+  const span =
+    whole.length <= MAX_SENTENCE_CHARS
+      ? ([0, whole.length] as [number, number])
+      : clickedInWhole < 0
+        ? undefined
+        : excerptAround(whole, clickedInWhole, clickedInWhole + spaced.length, MAX_SENTENCE_CHARS)
+  if (span === undefined) {
     return undefined
   }
-  const clicked = rawIndex.findIndex((index) => first.index + index >= start)
-  const toRaw = (index: number) => first.index + rawIndex[index]!
+  const [cut] = span
+  const sentence = whole.slice(...span)
+  if (!sentence.includes(spaced)) {
+    return undefined
+  }
+  const clicked = clickedInWhole < 0 ? -1 : clickedInWhole - cut
+  const toRaw = (index: number) => first.index + rawIndex[cut + index]!
   return {
     text: sentence,
     at: clicked < 0 ? undefined : copyNumber(sentence, spaced, clicked),
