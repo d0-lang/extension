@@ -53,7 +53,7 @@
     <div class="flex flex-col gap-1.5 md:gap-px">
       <p class="text-muted-foreground px-1 text-xs font-medium md:px-2 md:pb-0.5">{group}</p>
       <ul
-        class="divide-y overflow-hidden rounded-xl border md:divide-y-0 md:overflow-visible md:rounded-none md:border-0"
+        class="divide-y overflow-hidden rounded-xl border md:flex md:flex-col md:gap-0.5 md:divide-y-0 md:overflow-visible md:rounded-none md:border-0"
       >
         {#each sections as section (section.id)}
           {@const Icon = icons[section.id]}

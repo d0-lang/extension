@@ -131,7 +131,7 @@
   </p>
   <!-- As `.dict-popover` sets it up on a page, with the system font a page's popover uses. -->
   <div
-    class="bg-popover text-popover-foreground flex w-full flex-col rounded-lg border text-sm shadow-lg [--radius:7px] [font-family:ui-sans-serif,system-ui,sans-serif]"
+    class="dict-popover bg-popover text-popover-foreground flex w-full flex-col rounded-lg border text-sm shadow-lg [--radius:7px] [font-family:ui-sans-serif,system-ui,sans-serif]"
     role="dialog"
     aria-label="Popover preview"
   >

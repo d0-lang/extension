@@ -150,9 +150,11 @@
       </div>
       <LanguageOrder />
     </div>
-    <!-- One height, with the popover pinned at its top, so changing what the popover shows moves nothing else. -->
-    <div class="relative h-[27rem] max-[1199px]:hidden">
-      <PopoverPreview class="absolute top-0 left-1/2 -translate-x-1/2" {showIpa} {markStyle} />
+    <!-- Stuck at the height it starts at, under the header, title and gaps, so scrolling never moves it. -->
+    <div class="self-stretch max-[1199px]:hidden">
+      <div class="sticky top-[8.25rem]">
+        <PopoverPreview class="mx-auto" {showIpa} {markStyle} />
+      </div>
     </div>
   </div>
 </section>

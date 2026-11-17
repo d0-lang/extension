@@ -24,7 +24,8 @@
       return
     }
     const anchor = tag.getBoundingClientRect()
-    const { width, height } = tip.getBoundingClientRect()
+    // Unplaced, it sits at the corner it is fixed to. That is the viewport's, unless an ancestor is transformed.
+    const { width, height, top: originTop, left: originLeft } = tip.getBoundingClientRect()
     const bounds = tag.closest(".dict-popover")?.getBoundingClientRect() ?? {
       left: 0,
       right: window.innerWidth,
@@ -32,10 +33,12 @@
     const below = anchor.bottom + GAP_PX
     place = {
       top:
-        below + height + MARGIN_PX > window.innerHeight
+        (below + height + MARGIN_PX > window.innerHeight
           ? Math.max(MARGIN_PX, anchor.top - GAP_PX - height)
-          : below,
-      left: Math.max(bounds.left + MARGIN_PX, Math.min(anchor.left, bounds.right - width - MARGIN_PX)),
+          : below) - originTop,
+      left:
+        Math.max(bounds.left + MARGIN_PX, Math.min(anchor.left, bounds.right - width - MARGIN_PX)) -
+        originLeft,
     }
     // A scroll moves the tag away from where the tooltip was placed.
     const close = () => {
