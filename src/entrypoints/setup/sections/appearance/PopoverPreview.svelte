@@ -1,17 +1,22 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { playableAudio } from "$lib/dict/entries"
+  import { entriesForLemma, playableAudio } from "$lib/dict/entries"
+  import { sourceLinks, type SourceLink } from "$lib/dict/sources"
   import { AudioPlayer } from "$lib/popover/audio.svelte"
+  import BackBar from "$lib/popover/BackBar.svelte"
   import EntryList from "$lib/popover/EntryList.svelte"
   import LanguageBar from "$lib/popover/LanguageBar.svelte"
+  import SourceList from "$lib/popover/SourceList.svelte"
+  import SourcesButton from "$lib/popover/SourcesButton.svelte"
   import type { MarkStyle } from "$lib/storage"
   import { cn } from "$lib/utils"
   import { LANGUAGE_KEYS, orderedLanguages } from "./languages"
-  import { SAMPLE_ENTRIES, SAMPLE_LABELS, SAMPLE_LANGUAGES } from "./sample"
+  import { SAMPLE_ENTRIES, SAMPLE_LABELS, SAMPLE_LANGUAGES, SAMPLE_SOURCES, SAMPLE_WORD } from "./sample"
 
   /**
    * The lookup popover over a sample word, drawn by its own parts with the current settings.
-   * Its footer has the bound languages in their order, and A, D and E work as on a page. The word stays English.
+   * Its footer has the bound languages in their order, and A, D and E work as on a page. The words stay English.
+   * A `see` link, Back and Sources move between views as the popover does, within the sample.
    */
   let {
     showIpa,
@@ -19,7 +24,14 @@
     class: className,
   }: { showIpa: boolean; markStyle: MarkStyle; class?: string } = $props()
 
+  /** `sources` shows those links instead of the word's entries. */
+  type View = { word: string; sources?: Array<SourceLink> }
+
   const audio = new AudioPlayer()
+  let view = $state.raw<View>({ word: SAMPLE_WORD })
+  let history = $state.raw<Array<View>>([])
+  const entries = $derived(entriesForLemma(SAMPLE_ENTRIES, view.word))
+  const links = $derived(sourceLinks(entries, SAMPLE_SOURCES, "en_en"))
   let languages = $state.raw<Array<string>>([])
   let picked = $state<string>()
   let preview = $state<HTMLElement>()
@@ -44,10 +56,21 @@
     picked = languages[(index + by + languages.length) % languages.length]
   }
 
+  const open = (next: View) => {
+    history = [...history, view]
+    view = next
+  }
+
+  const goBack = () => {
+    view = history.at(-1) ?? view
+    history = history.slice(0, -1)
+  }
+
+  /** The first recording in view, as E plays on a page. */
   const playFirst = () => {
-    const url = SAMPLE_ENTRIES.map((entry) => playableAudio(entry, undefined)?.url).find(
-      (found) => found !== undefined,
-    )
+    const url = entries
+      .map((entry) => playableAudio(entry, undefined)?.url)
+      .find((found) => found !== undefined)
     if (url !== undefined) {
       audio.play(url)
     }
@@ -66,7 +89,11 @@
     ) {
       return
     }
-    const action = { KeyA: () => step(-1), KeyD: () => step(1), KeyE: playFirst }[event.code]
+    const action = {
+      KeyA: () => step(-1),
+      KeyD: () => step(1),
+      KeyE: () => view.sources === undefined && playFirst(),
+    }[event.code]
     if (action !== undefined) {
       event.preventDefault()
       action()
@@ -91,7 +118,7 @@
   })
 </script>
 
-<div bind:this={preview} class={cn("flex flex-col gap-2", className)}>
+<div bind:this={preview} class={cn("flex w-85 max-w-full flex-col gap-2", className)}>
   <p class="text-muted-foreground text-sm">
     …last summer we visited my <mark
       class={[
@@ -108,18 +135,35 @@
     role="dialog"
     aria-label="Popover preview"
   >
-    <div class="flex flex-col gap-2 px-3 py-2">
-      <EntryList
-        entries={SAMPLE_ENTRIES}
-        language="en_en"
-        server={undefined}
-        labels={SAMPLE_LABELS}
-        {showIpa}
-        {audio}
-        follow={() => {}}
-      />
-    </div>
-    {#if languages.length > 1}
+    {#if history.length > 0}
+      <BackBar back={goBack} />
+    {/if}
+    {#if view.sources !== undefined}
+      <div class="flex flex-col px-3 py-2">
+        <SourceList links={view.sources} />
+      </div>
+    {:else if entries.length === 0}
+      <p class="text-muted-foreground px-3 py-2 wrap-anywhere">No entries for {view.word} in this preview.</p>
+    {:else}
+      <div class="flex flex-col gap-2 px-3 py-2">
+        <div class="relative flex flex-col gap-2">
+          <EntryList
+            {entries}
+            language="en_en"
+            server={undefined}
+            labels={SAMPLE_LABELS}
+            {showIpa}
+            {audio}
+            follow={(target) => open({ word: target })}
+            reserveEnd={links.length > 0}
+          />
+          {#if links.length > 0}
+            <SourcesButton open={() => open({ ...view, sources: links })} />
+          {/if}
+        </div>
+      </div>
+    {/if}
+    {#if languages.length > 1 && view.sources === undefined}
       <LanguageBar {languages} {shown} pick={(code) => (picked = code)} />
     {/if}
   </div>

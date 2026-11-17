@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte"
-  import ArrowLeft from "@lucide/svelte/icons/arrow-left"
   import { sourceLinks, type SourceLink } from "$lib/dict/sources"
   import type { LookupReply } from "$lib/messages"
   import type { MarkStyle } from "$lib/storage"
   import type { AnchorRect } from "../page/pick"
   import { AudioPlayer } from "$lib/popover/audio.svelte"
+  import BackBar from "$lib/popover/BackBar.svelte"
   import EntryList from "$lib/popover/EntryList.svelte"
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "$lib/popover/LanguageBar.svelte"
@@ -13,7 +13,7 @@
   import { highlightRanges, type Paint } from "./highlight"
   import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
-  import SourceList from "./SourceList.svelte"
+  import SourceList from "$lib/popover/SourceList.svelte"
   import SourcesButton from "$lib/popover/SourcesButton.svelte"
 
   let {
@@ -261,16 +261,7 @@
   aria-label="Dictionary lookup"
 >
   {#if history.length > 0}
-    <div class="flex border-b p-2">
-      <button
-        type="button"
-        class="hover:bg-accent inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-2 text-xs font-medium"
-        onclick={goBack}
-      >
-        <ArrowLeft class="size-3" />
-        Back
-      </button>
-    </div>
+    <BackBar back={goBack} />
   {/if}
   {#if view.reply === undefined}
     <p class="text-muted-foreground px-3 py-2">

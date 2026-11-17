@@ -30,17 +30,20 @@
     />
 
     <main class={["min-w-0 px-4 pt-5 pb-10 md:px-8 md:pt-8", route.section === undefined && "max-md:hidden"]}>
-      {#if open === "servers"}
-        <Servers />
-      {:else if open === "integrations"}
-        <Integrations />
-      {:else if open === "sites"}
-        <BlockedSites />
-      {:else if open === "appearance"}
-        <Appearance />
-      {:else}
-        <Hotkeys />
-      {/if}
+      <!-- One column for every section, so the title stays put when the section changes. -->
+      <div class="mx-auto w-full max-w-5xl">
+        {#if open === "servers"}
+          <Servers />
+        {:else if open === "integrations"}
+          <Integrations />
+        {:else if open === "sites"}
+          <BlockedSites />
+        {:else if open === "appearance"}
+          <Appearance />
+        {:else}
+          <Hotkeys />
+        {/if}
+      </div>
     </main>
   </div>
 </div>

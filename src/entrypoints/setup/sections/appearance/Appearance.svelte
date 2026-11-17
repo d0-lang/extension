@@ -5,6 +5,9 @@
   import MoonIcon from "@lucide/svelte/icons/moon"
   import SunIcon from "@lucide/svelte/icons/sun"
   import UnderlineIcon from "@lucide/svelte/icons/underline"
+  import EyeIcon from "@lucide/svelte/icons/eye"
+  import { Button } from "$lib/components/ui/button"
+  import { Dialog, DialogContent, DialogHeader, DialogTitle } from "$lib/components/ui/dialog"
   import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
@@ -35,6 +38,8 @@
   ] satisfies Array<{ value: MarkStyle; label: string; icon: typeof SunIcon }>
 
   let theme = $state<Theme>("system")
+  /** The preview in a dialog, on screens without room for it beside the settings. */
+  let previewOpen = $state(false)
   let showIpa = $state(true)
   let markStyle = $state<MarkStyle>("tint")
   /** Without the underline, tint is the only style left, so the choice is not shown. */
@@ -79,10 +84,16 @@
   }
 </script>
 
-<section class="flex max-w-5xl flex-col gap-5">
-  <SectionTitle title="Appearance" />
+<section class="flex flex-col gap-5">
+  <SectionTitle title="Appearance">
+    <!-- Where the preview does not fit beside the settings. -->
+    <Button variant="outline" size="sm" class="min-[1200px]:hidden" onclick={() => (previewOpen = true)}>
+      <EyeIcon />
+      Preview
+    </Button>
+  </SectionTitle>
   <!-- The preview only fits beside the settings on a wide screen. -->
-  <div class="grid items-start gap-8 min-[1200px]:grid-cols-[minmax(0,1fr)_340px]">
+  <div class="grid items-start gap-8 min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
     <div class="flex flex-col divide-y rounded-lg border">
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
@@ -139,6 +150,19 @@
       </div>
       <LanguageOrder />
     </div>
-    <PopoverPreview class="sticky top-22 max-[1199px]:hidden" {showIpa} {markStyle} />
+    <div
+      class="bg-muted/40 sticky top-22 flex justify-center rounded-xl border px-6 pt-6 pb-8 max-[1199px]:hidden"
+    >
+      <PopoverPreview {showIpa} {markStyle} />
+    </div>
   </div>
 </section>
+
+<Dialog bind:open={previewOpen}>
+  <DialogContent class="grid-cols-[minmax(0,1fr)] p-4 sm:max-w-sm sm:p-6">
+    <DialogHeader>
+      <DialogTitle>Popover preview</DialogTitle>
+    </DialogHeader>
+    <PopoverPreview class="mx-auto" {showIpa} {markStyle} />
+  </DialogContent>
+</Dialog>
