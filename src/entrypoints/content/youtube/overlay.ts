@@ -1,7 +1,7 @@
 /** The cue shown inside the player, in the page's own DOM so a word's sentence and Alt work on it as on any text. */
 import type { WordHit } from "../page/pick"
 import { segmentsOf } from "../page/tokenize"
-import type { Paint } from "../popover/highlight"
+import { highlightRanges, type Paint } from "../popover/highlight"
 import css from "./overlay.css?inline"
 
 const STYLE_ID = "dadict-captions-style"
@@ -30,7 +30,11 @@ export type Overlay = {
   contains: (event: Event) => boolean
   /** Whether `node` is in the subtitles. */
   holds: (node: Node) => boolean
-  /** Marks the words on the spans that hold them, so the mark is as tall as the line's background whatever font draws them. */
+  /**
+   * Tints the words on the spans that hold them, so the tint is as tall as the line's background whatever font
+   * draws them. A word the range only partly covers is tinted whole. The underline is a highlight, which sits on the
+   * baseline in any font.
+   */
   mark: Paint
   remove: () => void
 }
@@ -158,8 +162,11 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
     },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),
-    // Always over the dark background, so `dark` changes nothing. The next cue's text drops the mark with the spans.
+    // Always over the dark background. The next cue's text drops the tint with the spans.
     mark: (ranges, style) => {
+      if (style === "underline") {
+        return highlightRanges(ranges, style, true)
+      }
       const parts = coveredParts(root, ranges)
       for (const part of parts) {
         part.dataset.mark = style

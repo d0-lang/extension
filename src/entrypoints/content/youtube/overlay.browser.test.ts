@@ -68,9 +68,21 @@ describe("createOverlay", () => {
     // From the end of the word before, which is where the word starts too.
     range.setStart(wordSpan("Wir").firstChild!, 3)
     range.setEnd(wordSpan("senden").firstChild!, 6)
-    overlay.mark([range], "underline", true)
+    overlay.mark([range], "tint", true)
     const marked = [...document.querySelectorAll("[data-mark]")].map((part) => part.textContent)
     expect(marked).toEqual(["senden"])
+  })
+
+  it("underlines with a highlight", () => {
+    const overlay = createOverlay(player(), () => {})
+    overlay.show("Mamy gościa.", "pl")
+    const range = document.createRange()
+    range.selectNodeContents(wordSpan("gościa").firstChild!)
+    const remove = overlay.mark([range], "underline", true)
+    expect([...CSS.highlights.get("dadict-underline-dark")!]).toEqual([range])
+    expect(document.querySelector("[data-mark]")).toBeNull()
+    remove()
+    expect(CSS.highlights.has("dadict-underline-dark")).toBe(false)
   })
 
   it("takes its mark away when done", () => {

@@ -44,17 +44,12 @@
 }
 
 /*
- * The looked-up word, marked on its span rather than with a highlight, which Firefox paints as tall as a
- * fallback font like a Japanese one. The colours are the dark ones in `marks.content.css`.
+ * The looked-up word's tint, on its span rather than a highlight, which Firefox paints as tall as a fallback font
+ * like a Japanese one. The colour is the dark one in `marks.content.css`.
  */
 [data-dadict-captions] [data-mark="tint"] {
   border-radius: 0;
   background: oklch(0.785 0.115 274.713 / 0.3);
-}
-
-[data-dadict-captions] [data-mark="underline"] {
-  text-decoration: underline 2px oklch(0.785 0.115 274.713);
-  text-underline-offset: 3px;
 }
 
 .html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {
