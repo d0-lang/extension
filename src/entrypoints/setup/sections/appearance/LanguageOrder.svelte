@@ -2,9 +2,9 @@
   import { onMount, tick } from "svelte"
   import { flip } from "svelte/animate"
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical"
-  import { boundLanguages } from "$lib/dict"
   import { pairName, shortNames } from "$lib/languages"
-  import { getLanguageOrder, orderLanguages, setLanguageOrder } from "$lib/storage"
+  import { setLanguageOrder } from "$lib/storage"
+  import { LANGUAGE_KEYS, orderedLanguages } from "./languages"
   import { dropIndex, moved } from "./reorder"
 
   const FLIP_MS = 150
@@ -19,23 +19,16 @@
   let drag = $state<{ code: string; pointer: number; grab: number; lift: number }>()
 
   const load = async () => {
-    const [bound, stored] = await Promise.all([
-      boundLanguages().unwrapOr({ languages: [], paused: [] }),
-      getLanguageOrder(),
-    ])
-    order = orderLanguages([...bound.languages, ...bound.paused], stored)
-    paused = bound.paused
+    const next = await orderedLanguages()
+    order = next.order
+    paused = next.paused
   }
 
   onMount(() => {
     void load()
     // Adding a server or a language changes the list, from this tab or another.
     const onChanged = (changes: Record<string, unknown>, area: string) => {
-      if (
-        area === "local" &&
-        drag === undefined &&
-        ["servers", "serverByLang", "serverIssues", "languageOrder"].some((key) => key in changes)
-      ) {
+      if (area === "local" && drag === undefined && LANGUAGE_KEYS.some((key) => key in changes)) {
         void load()
       }
     }

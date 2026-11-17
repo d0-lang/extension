@@ -1,25 +1,33 @@
-/** What the popover preview shows: a German word, as a server would answer it. */
+/** What the popover preview shows: an English word, as a server would answer it, whatever languages are bound. */
 import type { LookupEntry } from "$lib/dict/types"
-
-/** Its audio is on this host, which the play button allows. The preview never plays it. */
-export const SAMPLE_SERVER = "https://dict.example.org"
+import type { PairLabels } from "$lib/storage"
 
 export const SAMPLE_ENTRIES: Array<LookupEntry> = [
   {
-    lemma: "Mutter",
+    lemma: "mother",
     pos: "NOUN",
-    labels: ["f"],
-    pron: { ipa: ["/ˈmʊtɐ/"], audio: [{ url: `${SAMPLE_SERVER}/audio/mutter.mp3`, source: undefined }] },
-    senses: [{ glosses: ["mother"], see: ["Mama"] }, { glosses: ["nut (threaded fastener)"] }],
+    labels: undefined,
+    pron: {
+      ipa: ["/ˈmʌðə/", "/ˈmʌðɚ/"],
+      // A real recording, on a host any server may link, so the play button plays.
+      audio: [
+        { url: "https://upload.wikimedia.org/wikipedia/commons/0/07/En-us-mother.ogg", source: undefined },
+      ],
+    },
+    senses: [{ glosses: ["a female parent"] }, { glosses: ["the source or origin of something"] }],
   },
   {
-    lemma: "Muttersprache",
-    pos: "NOUN",
-    labels: ["f"],
-    pron: { ipa: ["/ˈmʊtɐˌʃpʁaːxə/"], audio: undefined },
-    senses: [{ glosses: ["mother tongue, native language"] }],
+    lemma: "mother",
+    pos: "VERB",
+    labels: ["transitive"],
+    pron: undefined,
+    senses: [{ glosses: ["to look after someone kindly, and sometimes too closely"] }],
   },
 ]
 
-/** The languages in the preview's footer, German first. */
-export const SAMPLE_LANGUAGES = ["de_en", "nl_en", "pl_en", "uk_en"]
+export const SAMPLE_LABELS: PairLabels = {
+  transitive: { name: "Transitive", text: "Takes a direct object." },
+}
+
+/** Shown in the footer while fewer than two languages are bound, so there is something to switch between. */
+export const SAMPLE_LANGUAGES = ["en_en", "de_en", "fr_en", "es_en"]
