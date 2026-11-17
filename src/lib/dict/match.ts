@@ -89,8 +89,20 @@ export const placeMatch = (
   return undefined
 }
 
-/** Where a clause starts: after `,` `;` `:` and the spaces after them, or at a spaced dash. */
-const CLAUSE_START = /[,;:]\s+|\s+(?=[—–]\s)/gu
+/**
+ * Where a clause starts: after `,` `;` `:` and the spaces after them (so `2,5` stays whole), after the
+ * full-width marks of Chinese and Japanese (`，` `、` `；` `：`) and the Arabic comma and semicolon
+ * (`،` `؛`), or at a spaced dash.
+ */
+const CLAUSE_START = /[,;:]\s+|[，、；：،؛]\s*|\s+(?=[—–]\s)/gu
+
+/** `max` characters around `[start, end)`, the word in the middle where the text allows, not splitting a surrogate pair. */
+const charactersAround = (text: string, start: number, end: number, max: number): [number, number] => {
+  const to = Math.min(text.length, Math.max(0, start - Math.floor((max - (end - start)) / 2)) + max)
+  const from = Math.max(0, to - max)
+  const lowSurrogate = (at: number) => at > 0 && at < text.length && /[\uDC00-\uDFFF]/u.test(text[at]!)
+  return [lowSurrogate(from) ? from + 1 : from, lowSurrogate(to) ? to - 1 : to]
+}
 
 /** `[from, to)` grown by one piece at a time, right then left, while it stays within `max`. */
 const expand = (
@@ -119,8 +131,9 @@ const expand = (
 
 /**
  * The part `[from, to)` of a sentence too long to send, around the word at `[start, end)`: the clause
- * holding it (cut at `,` `;` `:` and spaced dashes), with whole clauses on either side while it stays
- * within `max`, or else the words around it. Trailing spaces are left out. Unset when the word is longer.
+ * holding it (`CLAUSE_START`), with whole clauses on either side while it stays within `max`, or else
+ * the words around it, or in text without spaces the characters around it. Never longer than `max`.
+ * Trailing spaces are left out. Unset when the word is longer.
  */
 export const excerptAround = (
   text: string,
@@ -156,7 +169,7 @@ export const excerptAround = (
   const spaces = [...text.matchAll(/\s+/gu)]
   const wordStarts = [0, ...spaces.map((found) => found.index + found[0].length)]
   const wordEnds = [...spaces.map((found) => found.index), text.length]
-  return trimmed(
+  const words = trimmed(
     expand(
       [wordStarts.findLast((at) => at <= start)!, wordEnds.find((at) => at >= end)!],
       max,
@@ -165,4 +178,6 @@ export const excerptAround = (
       length,
     ),
   )
+  // Without spaces around the word (Chinese, Japanese), its neighbours are one long "word".
+  return length(...words) <= max ? words : charactersAround(text, start, end, max)
 }

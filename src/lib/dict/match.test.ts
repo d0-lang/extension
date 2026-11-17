@@ -65,6 +65,26 @@ describe("excerptAround", () => {
     expect(cut("uno dos tres cuatro cinco seis siete", "cuatro", 18)).toBe("tres cuatro cinco")
   })
 
+  it("cuts at full-width and Arabic clause marks, and not inside a number", () => {
+    expect(cut("我们今天在北京，因为明年要去上海工作。", "上海", 12)).toBe("因为明年要去上海工作。")
+    expect(cut("ذهب الولد إلى المدرسة، ثم عاد إلى البيت.", "البيت", 20)).toBe("ثم عاد إلى البيت.")
+    // Cut inside `2,5`, its clause would be `5 g de plata` (12, within the limit); whole it is 14, too long.
+    expect(cut("a, 2,5 g de plata", "plata", 13)).toBe("g de plata")
+  })
+
+  it("sends the characters around the word in text without spaces, never more than the limit", () => {
+    const text = "我们今天在北京学习中文因为明年要去上海工作".repeat(40)
+    const start = text.indexOf("上海", 400)
+    const span = excerptAround(text, start, start + 2, 500)!
+    expect(span[1] - span[0]).toBe(500)
+    expect(span[0] <= start && start + 2 <= span[1]).toBe(true)
+    // Not splitting a character outside the Basic Multilingual Plane.
+    const astral = "𠀋".repeat(400)
+    const [from, to] = excerptAround(astral, 400, 402, 101)!
+    expect(to - from).toBeLessThanOrEqual(101)
+    expect(astral.slice(from, to)).toBe("𠀋".repeat((to - from) / 2))
+  })
+
   it("sends nothing when the word itself is too long", () => {
     expect(cut("Donaudampfschifffahrt fährt.", "Donaudampfschifffahrt", 10)).toBeUndefined()
   })
