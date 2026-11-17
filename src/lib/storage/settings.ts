@@ -13,7 +13,6 @@ const markStyles: ReadonlyArray<string> = ["tint", "underline"] satisfies Array<
 const empty = {
   lookupEnabled: true,
   youtubeCaptions: true,
-  pauseOnLookup: true,
   showIpa: true,
   theme: "system" as Theme,
   markStyle: "tint" as MarkStyle,
@@ -36,16 +35,6 @@ export const getYoutubeCaptions = async (): Promise<boolean> => {
 
 export const setYoutubeCaptions = async (youtubeCaptions: boolean): Promise<void> => {
   await browser.storage.local.set({ youtubeCaptions })
-}
-
-/** Whether a video pauses while a word from its subtitles is looked up. */
-export const getPauseOnLookup = async (): Promise<boolean> => {
-  const { pauseOnLookup } = await browser.storage.local.get("pauseOnLookup")
-  return typeof pauseOnLookup === "boolean" ? pauseOnLookup : empty.pauseOnLookup
-}
-
-export const setPauseOnLookup = async (pauseOnLookup: boolean): Promise<void> => {
-  await browser.storage.local.set({ pauseOnLookup })
 }
 
 export const getShowIpa = async (): Promise<boolean> => {
