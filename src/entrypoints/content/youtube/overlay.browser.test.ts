@@ -50,6 +50,38 @@ describe("createOverlay", () => {
     expect(onPlayer).not.toHaveBeenCalled()
   })
 
+  it("marks the words a range covers and what is between them", () => {
+    const overlay = createOverlay(player(), () => {})
+    overlay.show("Wir senden heute live.", "de")
+    const range = document.createRange()
+    range.setStart(wordSpan("senden").firstChild!, 0)
+    range.setEnd(wordSpan("heute").firstChild!, 5)
+    overlay.mark([range], "tint", true)
+    const marked = [...document.querySelectorAll("[data-mark=tint]")].map((part) => part.textContent)
+    expect(marked).toEqual(["senden", " ", "heute"])
+  })
+
+  it("leaves a word the range only touches", () => {
+    const overlay = createOverlay(player(), () => {})
+    overlay.show("Wir senden heute live.", "de")
+    const range = document.createRange()
+    // From the end of the word before, which is where the word starts too.
+    range.setStart(wordSpan("Wir").firstChild!, 3)
+    range.setEnd(wordSpan("senden").firstChild!, 6)
+    overlay.mark([range], "underline", true)
+    const marked = [...document.querySelectorAll("[data-mark]")].map((part) => part.textContent)
+    expect(marked).toEqual(["senden"])
+  })
+
+  it("takes its mark away when done", () => {
+    const overlay = createOverlay(player(), () => {})
+    overlay.show("Mamy gościa.", "pl")
+    const range = document.createRange()
+    range.selectNodeContents(wordSpan("gościa").firstChild!)
+    overlay.mark([range], "tint", true)()
+    expect(document.querySelector("[data-mark]")).toBeNull()
+  })
+
   it("hides until the next cue", () => {
     const overlay = createOverlay(player(), () => {})
     overlay.show("Mamy gościa.", "pl")

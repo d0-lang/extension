@@ -17,26 +17,23 @@
   text-wrap: balance;
   word-break: auto-phrase;
   color: #fff;
-  /* The dark background is as tall as the line, so the line is only as tall as the text. */
   font:
-    500 var(--dadict-caption-size, 22px) / normal "YouTube Noto",
+    500 var(--dadict-caption-size, 22px) / 1.4 "YouTube Noto",
     Roboto,
     Arial,
     sans-serif;
 }
 
-/*
- * A box per line, so the background covers the whole line, as a looked-up word's mark does.
- * An inline background only covers the main font, not a taller fallback like a Japanese one.
- */
 [data-dadict-captions] > span {
-  display: inline-block;
   pointer-events: auto;
-  padding: 0 0.3em;
+  padding: 0.05em 0.3em;
   border-radius: 0.15em;
   background: rgb(8 8 8 / 0.75);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
+/* An inline box like the line's, so the hover is as tall as the dark background. */
 [data-dadict-captions] [data-word] {
   cursor: pointer;
   border-radius: 0.15em;
@@ -44,6 +41,20 @@
 
 [data-dadict-captions] [data-word]:hover {
   background: rgb(255 255 255 / 0.25);
+}
+
+/*
+ * The looked-up word, marked on its span rather than with a highlight, which Firefox paints as tall as a
+ * fallback font like a Japanese one. The colours are the dark ones in `marks.content.css`.
+ */
+[data-dadict-captions] [data-mark="tint"] {
+  border-radius: 0;
+  background: oklch(0.785 0.115 274.713 / 0.3);
+}
+
+[data-dadict-captions] [data-mark="underline"] {
+  text-decoration: underline 2px oklch(0.785 0.115 274.713);
+  text-underline-offset: 3px;
 }
 
 .html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {

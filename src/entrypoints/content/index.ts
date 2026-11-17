@@ -73,6 +73,7 @@ export default defineContentScript({
                   ),
           follow: (target: string, language: string | undefined) =>
             session.search(target, element, language, undefined, known),
+          paint: element === null ? undefined : captions?.markFor(element),
         }
       })
     }

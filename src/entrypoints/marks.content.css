@@ -1,7 +1,7 @@
 /*
  * In the page's own document, where the looked-up words are. Each rule does nothing until the content script
  * registers a highlight under its name (`content/popover/highlight.ts`). The colours are the popover's `--link`,
- * which lives in its shadow root, for a light and a dark page.
+ * which lives in its shadow root, for a light and a dark page. `content/youtube/overlay.css` repeats the dark ones.
  */
 ::highlight(dadict-tint) {
   background-color: oklch(0.457 0.24 277.023 / 0.15);

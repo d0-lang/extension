@@ -1,6 +1,7 @@
 /** The cue shown inside the player, in the page's own DOM so a word's sentence and Alt work on it as on any text. */
 import type { WordHit } from "../page/pick"
 import { segmentsOf } from "../page/tokenize"
+import type { Paint } from "../popover/highlight"
 import css from "./overlay.css?inline"
 
 const STYLE_ID = "dadict-captions-style"
@@ -27,6 +28,10 @@ export type Overlay = {
   /** A cue's text, lines apart with `\n`. `undefined` hides the overlay until the next cue. */
   show: (text: string | undefined, lang: string) => void
   contains: (event: Event) => boolean
+  /** Whether `node` is in the subtitles. */
+  holds: (node: Node) => boolean
+  /** Marks the words on the spans that hold them, so the mark is as tall as the line's background whatever font draws them. */
+  mark: Paint
   remove: () => void
 }
 
@@ -39,21 +44,52 @@ const addStyle = () => {
   }
 }
 
-/** A line with each word in its own span, so hovering and clicking a word need no hit testing. */
+/**
+ * A line with each word in its own span, so hovering and clicking a word need no hit testing.
+ * What is between words gets a span too, so a mark over a phrase has no gaps.
+ */
 const lineOf = (text: string, lang: string): HTMLElement => {
   const line = document.createElement("span")
   for (const segment of segmentsOf(text, lang)) {
+    const part = document.createElement("span")
     if (segment.word) {
-      const word = document.createElement("span")
-      word.dataset.word = ""
-      word.textContent = segment.text
-      line.append(word)
-    } else {
-      line.append(segment.text)
+      part.dataset.word = ""
     }
+    part.textContent = segment.text
+    line.append(part)
   }
   return line
 }
+
+/** Whether `range` covers some of `text`, not only touches it. */
+const overlaps = (range: Range, text: Text): boolean => {
+  const whole = document.createRange()
+  whole.selectNodeContents(text)
+  return (
+    range.compareBoundaryPoints(Range.END_TO_START, whole) < 0 &&
+    range.compareBoundaryPoints(Range.START_TO_END, whole) > 0
+  )
+}
+
+const isCovered = (part: Element | undefined, ranges: ReadonlyArray<Range>): boolean =>
+  part instanceof HTMLElement &&
+  part.dataset.word !== undefined &&
+  part.firstChild instanceof Text &&
+  ranges.some((range) => overlaps(range, part.firstChild as Text))
+
+/** The words `ranges` cover in `root`, and what is between two of them on a line. */
+const coveredParts = (root: HTMLElement, ranges: ReadonlyArray<Range>): Array<HTMLElement> =>
+  [...root.children].flatMap((line) => {
+    const parts = [...line.children]
+    return parts.filter(
+      (part, index): part is HTMLElement =>
+        isCovered(part, ranges) ||
+        (part instanceof HTMLElement &&
+          part.dataset.word === undefined &&
+          isCovered(parts[index - 1], ranges) &&
+          isCovered(parts[index + 1], ranges)),
+    )
+  })
 
 const hitOn = (word: HTMLElement): WordHit | undefined => {
   const text = word.firstChild
@@ -121,6 +157,19 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
       )
     },
     contains: (event) => event.composedPath().includes(root),
+    holds: (node) => root.contains(node),
+    // Always over the dark background, so `dark` changes nothing. The next cue's text drops the mark with the spans.
+    mark: (ranges, style) => {
+      const parts = coveredParts(root, ranges)
+      for (const part of parts) {
+        part.dataset.mark = style
+      }
+      return () => {
+        for (const part of parts) {
+          delete part.dataset.mark
+        }
+      }
+    },
     remove: () => {
       resize.disconnect()
       root.remove()
