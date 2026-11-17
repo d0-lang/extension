@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CreditSource } from "$lib/storage"
-  import { pairName } from "../languages"
+  import { pairName } from "$lib/languages"
 
   let { sources }: { sources: Array<CreditSource> } = $props()
 

@@ -3,9 +3,9 @@
   import { flip } from "svelte/animate"
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical"
   import { boundLanguages } from "$lib/dict"
+  import { pairName } from "$lib/languages"
   import { getLanguageOrder, orderLanguages, setLanguageOrder } from "$lib/storage"
   import { dropIndex, moved } from "./reorder"
-  import { pairName } from "./servers/languages"
 
   const FLIP_MS = 150
 

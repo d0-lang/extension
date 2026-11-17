@@ -1,19 +1,6 @@
-/** Human names for language pairs, in the browser's language. */
+/** Grouping, naming and filtering language pairs in the server cards and the review. */
+import { languageName, pairName } from "$lib/languages"
 import type { LanguagePair } from "$lib/storage"
-
-const names = new Intl.DisplayNames(undefined, { type: "language", fallback: "code" })
-
-const languageName = (code: string): string => {
-  try {
-    return names.of(code) ?? code
-  } catch {
-    // `of` throws on a code that is not well-formed BCP 47.
-    return code
-  }
-}
-
-/** `de_en` → "German → English". */
-export const pairName = (pair: LanguagePair): string => pair.split("_").map(languageName).join(" → ")
 
 /** The language a pair translates from, and the one it translates into. */
 const splitPair = (pair: LanguagePair): { from: string; into: string } => {

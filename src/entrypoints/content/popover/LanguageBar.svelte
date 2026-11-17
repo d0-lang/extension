@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Kbd } from "$lib/components/ui/kbd"
+  import { pairName } from "$lib/languages"
+  import { shortNames } from "./languages"
 
   let {
     languages,
@@ -10,6 +12,10 @@
     shown: string | undefined
     pick: (code: string) => void
   } = $props()
+
+  const names = $derived(shortNames(languages))
+  /** Outlined like a key, so A and D do not read as two more languages. */
+  const KEYCAP = "shrink-0 border border-b-2 border-foreground/20 bg-transparent"
 
   /** Faded at an end with more languages past it, wide enough that a language there shows it is cut off. */
   const FADE_PX = 32
@@ -78,7 +84,7 @@
 </script>
 
 <div class="mt-auto flex shrink-0 items-center gap-2 border-t p-2">
-  <Kbd class="shrink-0" title="Previous language">A</Kbd>
+  <Kbd class={KEYCAP} title="Previous language">A</Kbd>
   <div
     bind:this={strip}
     {@attach wheelScrolls}
@@ -100,16 +106,18 @@
         type="button"
         data-code={code}
         class={[
-          "h-6 shrink-0 cursor-pointer rounded-md px-2 text-xs font-medium",
-          active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          "h-6 min-w-8 shrink-0 cursor-pointer rounded-md border px-2 text-xs font-medium",
+          active
+            ? "bg-muted text-foreground border-foreground/25"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
         ]}
         aria-pressed={active}
-        title="Use {code} on this page. Change the order under Appearance in settings."
+        title="Use {pairName(code)} on this page. Change the order under Appearance in settings."
         onclick={() => pick(code)}
       >
-        {code}
+        {names.get(code) ?? code}
       </button>
     {/each}
   </div>
-  <Kbd class="shrink-0" title="Next language">D</Kbd>
+  <Kbd class={KEYCAP} title="Next language">D</Kbd>
 </div>
