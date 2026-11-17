@@ -172,7 +172,7 @@
                    padding keeps room for focus rings, so it sticks that much higher to leave no gap above it. -->
               <p
                 class={[
-                  "bg-muted text-muted-foreground sticky z-10 rounded-sm px-2 py-1 text-xs font-medium",
+                  "bg-popover text-muted-foreground sticky z-10 px-2 py-1 text-xs font-medium",
                   languages.length >= FILTER_FROM ? "top-0" : "-top-1",
                 ]}
               >
