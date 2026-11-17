@@ -5,16 +5,16 @@
   import type { LookupReply } from "$lib/messages"
   import type { MarkStyle } from "$lib/storage"
   import type { AnchorRect } from "../page/pick"
-  import { AudioPlayer } from "./audio.svelte"
-  import EntryList from "./EntryList.svelte"
+  import { AudioPlayer } from "$lib/popover/audio.svelte"
+  import EntryList from "$lib/popover/EntryList.svelte"
   import { listenForKeys } from "./keyboard"
-  import LanguageBar from "./LanguageBar.svelte"
+  import LanguageBar from "$lib/popover/LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
   import { highlightRanges, type Paint } from "./highlight"
   import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import SourceList from "./SourceList.svelte"
-  import SourcesButton from "./SourcesButton.svelte"
+  import SourcesButton from "$lib/popover/SourcesButton.svelte"
 
   let {
     word,
