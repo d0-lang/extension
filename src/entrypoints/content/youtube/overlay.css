@@ -17,7 +17,7 @@
   text-wrap: balance;
   word-break: auto-phrase;
   color: #fff;
-  /* Chrome paints a looked-up word's mark as tall as the line, so the line is only as tall as its dark background. */
+  /* The dark background is as tall as the line, so the line is only as tall as the text. */
   font:
     500 var(--dadict-caption-size, 22px) / normal "YouTube Noto",
     Roboto,
@@ -25,16 +25,18 @@
     sans-serif;
 }
 
+/*
+ * A box per line, so the background covers the whole line, as a looked-up word's mark does.
+ * An inline background only covers the main font, not a taller fallback like a Japanese one.
+ */
 [data-dadict-captions] > span {
+  display: inline-block;
   pointer-events: auto;
   padding: 0 0.3em;
   border-radius: 0.15em;
   background: rgb(8 8 8 / 0.75);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 
-/* An inline box like the line's, so the hover is as tall as the dark background. */
 [data-dadict-captions] [data-word] {
   cursor: pointer;
   border-radius: 0.15em;
