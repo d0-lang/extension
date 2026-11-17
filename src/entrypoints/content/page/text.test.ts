@@ -112,6 +112,19 @@ describe("sentenceAround", () => {
     expect(sentence?.rangesOf(["Weltschmerz"]).map(String)).toEqual(["Weltschmerz"])
   })
 
+  it("sends the clauses around the word of a sentence over 500 characters", () => {
+    const long = "uno, ".repeat(110)
+    render(`<p>Antes. ${long}así como un plan, ${long}fin. Después.</p>`)
+    const run = runAround(textNode(`Antes. ${long}así como un plan, ${long}fin. Después.`), 600)
+    const at = run.text.indexOf("como")
+    const sentence = sentenceAround(rangeIn(run, at, at + 4)!, "como", "es")
+    expect(sentence?.text.length).toBeLessThanOrEqual(500)
+    expect(sentence?.text).toContain("así como un plan,")
+    expect(sentence?.text.startsWith("uno,")).toBe(true)
+    expect(sentence?.at).toBe(1)
+    expect(sentence?.rangesOf(["así como"]).map(String)).toEqual(["así como"])
+  })
+
   it("reads on past a line break in the markup", () => {
     render(`<p>Erster Satz. Ich habe\n      Weltschmerz heute. Letzter Satz.</p>`)
     const run = runAround(textNode("Erster Satz. Ich habe\n      Weltschmerz heute. Letzter Satz."), 64)
