@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Kbd, KbdGroup } from "$lib/components/ui/kbd"
+  import Keycap from "$lib/components/Keycap.svelte"
+  import { KbdGroup } from "$lib/components/ui/kbd"
 
   /** `combo` keys are pressed together. Otherwise each key is one direction, like W for up and S for down. */
   const hotkeys = [
@@ -13,13 +14,7 @@
 </script>
 
 <section class="flex flex-col gap-4">
-  <div class="flex flex-col gap-0.5">
-    <h2 class="text-lg font-semibold">Hotkeys</h2>
-    <p class="text-muted-foreground text-sm">
-      Letters go by their place on the keyboard, so on any layout they sit where W, A, S, D and E are on
-      QWERTY.
-    </p>
-  </div>
+  <h2 class="text-lg font-semibold">Hotkeys</h2>
   <dl class="flex flex-col divide-y rounded-lg border">
     {#each hotkeys as hotkey (hotkey.action)}
       <div class="flex items-center justify-between gap-4 px-4 py-2.5">
@@ -30,7 +25,7 @@
               {#if index > 0}
                 <span class="text-muted-foreground text-xs">{hotkey.combo ? "+" : "/"}</span>
               {/if}
-              <Kbd>{key}</Kbd>
+              <Keycap>{key}</Keycap>
             {/each}
           </KbdGroup>
         </dd>

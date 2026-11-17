@@ -5,6 +5,8 @@ import {
   getServerIssues,
   getServerLabels,
   getServers,
+  getLanguageOrder,
+  orderLanguages,
   type ContextSending,
   type CreditSource,
   type PairLabels,
@@ -41,15 +43,20 @@ export type LookupOutcome = {
 /** `paused` are bound languages whose server has an issue the user has not resolved. */
 type Targets = { targets: Array<Target>; paused: Array<string> }
 
-// A language whose server stopped listing it cannot answer.
+// A language whose server stopped listing it cannot answer. The rest come in the order the user put them in.
 const loadTargets = (): ResultAsync<Targets, DictError> =>
   ResultAsync.fromPromise(
-    Promise.all([getServers(), getServerByLang(), getServerIssues(), getServerLabels()]),
+    Promise.all([getServers(), getServerByLang(), getServerIssues(), getServerLabels(), getLanguageOrder()]),
     fromUnknown,
-  ).map(([servers, serverByLang, issues, serverLabels]) => {
-    const offered = Object.entries(serverByLang).filter(([lang, url]) =>
+  ).map(([servers, serverByLang, issues, serverLabels, order]) => {
+    const listed = Object.entries(serverByLang).filter(([lang, url]) =>
       servers[url]?.languages.includes(lang),
     )
+    const ranked = orderLanguages(
+      listed.map(([lang]) => lang),
+      order,
+    )
+    const offered = listed.toSorted(([a], [b]) => ranked.indexOf(a) - ranked.indexOf(b))
     const isPaused = (url: string) => issues[url] !== undefined
     return {
       targets: offered

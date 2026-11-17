@@ -3,7 +3,7 @@
   import XIcon from "@lucide/svelte/icons/x"
   import { Button } from "$lib/components/ui/button"
   import { Input } from "$lib/components/ui/input"
-  import { Kbd } from "$lib/components/ui/kbd"
+  import Keycap from "$lib/components/Keycap.svelte"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import {
@@ -105,7 +105,7 @@
       <div class="flex flex-col gap-0.5">
         <Label for="lookup-enabled">Word lookup</Label>
         <p class="text-muted-foreground text-sm">
-          Hold <Kbd>Alt</Kbd> over a word, or right-click and choose Look up.
+          Hold <Keycap>Alt</Keycap> over a word, or right-click and choose Look up.
         </p>
       </div>
       <Switch

@@ -111,6 +111,8 @@
   /** Bound languages from the last reply, and the one shown or being looked up. */
   let languages = $state.raw<Array<string>>([])
   let language = $state<string>()
+  /** The language the footer marks: the one being looked up, then the one that answered. */
+  let footerLanguage = $state<string>()
   const audio = new AudioPlayer()
   onDestroy(audio.stop)
 
@@ -201,6 +203,7 @@
 
   const switchLanguage = (target: string) => {
     language = target
+    footerLanguage = target
     tab = undefined
     view = {
       ...view,
@@ -217,6 +220,7 @@
       }
       languages = result.languages
       language = shownLanguage(result) ?? language
+      footerLanguage = shownLanguage(result)
     })
   })
 
@@ -338,10 +342,11 @@
             </div>
           </div>
         {/if}
-        {#if result.languages.length > 1 && view.sources === undefined}
-          <LanguageBar languages={result.languages} {shown} pick={switchLanguage} />
-        {/if}
       {/await}
     {/key}
+    <!-- Outside the view, so it stays while another language loads and scrolls from where it was. -->
+    {#if languages.length > 1 && view.sources === undefined}
+      <LanguageBar {languages} shown={footerLanguage} pick={switchLanguage} />
+    {/if}
   {/if}
 </div>

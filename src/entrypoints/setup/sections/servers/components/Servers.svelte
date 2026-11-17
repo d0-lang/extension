@@ -6,7 +6,7 @@
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
   import Trash2Icon from "@lucide/svelte/icons/trash-2"
   import { Button } from "$lib/components/ui/button"
-  import { Kbd } from "$lib/components/ui/kbd"
+  import Keycap from "$lib/components/Keycap.svelte"
   import {
     ContextMenu,
     ContextMenuContent,
@@ -19,7 +19,8 @@
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "$lib/components/ui/dropdown-menu"
-  import { groupByTarget, pairName, sourceName } from "../languages"
+  import { pairName } from "$lib/languages"
+  import { groupByTarget, sourceName } from "../languages"
   import type { ContextSending, ServerIssue } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
@@ -109,7 +110,7 @@
             <span class="text-muted-foreground tabular-nums">3</span>Look up
           </p>
           <p class="text-muted-foreground text-sm">
-            Hold <Kbd>Alt</Kbd> over a word, or right-click and choose Look up.
+            Hold <Keycap>Alt</Keycap> over a word, or right-click and choose Look up.
           </p>
         </li>
       </ol>
