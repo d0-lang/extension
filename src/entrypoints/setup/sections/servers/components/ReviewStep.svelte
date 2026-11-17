@@ -42,7 +42,7 @@
     {
       value: "unblocked",
       label: "From all sites except blocked ones",
-      hint: "Blocked sites are listed under Lookup.",
+      hint: "Blocked sites have their own section in settings.",
     },
     { value: "none", label: "Never" },
   ] satisfies Array<{ value: ContextSending; label: string; hint?: string }>
