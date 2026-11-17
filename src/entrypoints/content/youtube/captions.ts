@@ -4,6 +4,7 @@ import { getLookupEnabled, getPauseOnLookup, getYoutubeCaptions } from "$lib/sto
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { cueAt } from "./cues"
+import type { Paint } from "../popover/highlight"
 import { createOverlay, type Overlay } from "./overlay"
 import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn } from "./player"
 import { keepPressFromPage } from "./press"
@@ -157,5 +158,7 @@ export const showYouTubeCaptions = (
     },
     /** Whether `event` happened on the subtitles. */
     contains: (event: Event): boolean => overlay?.contains(event) ?? false,
+    /** How to mark words around `node`, when it is in the subtitles. */
+    markFor: (node: Node): Paint | undefined => (overlay?.holds(node) === true ? overlay.mark : undefined),
   }
 }

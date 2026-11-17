@@ -39,8 +39,17 @@
   border-radius: 0.15em;
 }
 
-[data-dadict-captions] [data-word]:hover {
+[data-dadict-captions] [data-word]:hover:not([data-mark]) {
   background: rgb(255 255 255 / 0.25);
+}
+
+/*
+ * The looked-up word's tint, on its span rather than a highlight, which Firefox paints as tall as a fallback font
+ * like a Japanese one. The colour is the dark one in `marks.content.css`.
+ */
+[data-dadict-captions] [data-mark="tint"] {
+  border-radius: 0;
+  background: oklch(0.785 0.115 274.713 / 0.3);
 }
 
 .html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {

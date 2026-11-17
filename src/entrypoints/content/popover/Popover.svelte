@@ -10,7 +10,7 @@
   import { listenForKeys } from "./keyboard"
   import LanguageBar from "./LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
-  import { highlightRanges } from "./highlight"
+  import { highlightRanges, type Paint } from "./highlight"
   import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import SourceList from "./SourceList.svelte"
@@ -26,6 +26,7 @@
     marks,
     search,
     follow,
+    paint = highlightRanges,
   }: {
     word: string
     anchor: AnchorRect
@@ -47,6 +48,8 @@
     search: ((language?: string, target?: string) => Promise<LookupReply>) | undefined
     /** Look up a `see` word in `language`. */
     follow: (target: string, language: string | undefined) => Promise<LookupReply>
+    /** Marks the word and the sentence's matched parts. Text the extension draws itself marks them its own way. */
+    paint?: Paint
   } = $props()
 
   /**
@@ -88,9 +91,9 @@
   })
   $effect(() => {
     if (matched.length > 0 && marks !== undefined) {
-      return highlightRanges(matched, markStyle, marks.dark)
+      return paint(matched, markStyle, marks.dark)
     }
-    return highlight === undefined ? undefined : highlightRanges([highlight.range], markStyle, highlight.dark)
+    return highlight === undefined ? undefined : paint([highlight.range], markStyle, highlight.dark)
   })
   let scroller: HTMLElement | undefined
   const shownScroller = (): HTMLElement | undefined => (scroller?.isConnected ? scroller : undefined)
