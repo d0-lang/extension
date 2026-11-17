@@ -39,7 +39,7 @@
   border-radius: 0.15em;
 }
 
-[data-dadict-captions] [data-word]:hover {
+[data-dadict-captions] [data-word]:hover:not([data-mark]) {
   background: rgb(255 255 255 / 0.25);
 }
 
