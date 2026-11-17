@@ -168,7 +168,14 @@
           {#each groups as group (group.into)}
             <!-- Its own box, so the heading stops sticking where the group ends. -->
             <div>
-              <p class="bg-popover text-muted-foreground sticky top-0 z-10 px-2 py-1 text-xs font-medium">
+              <!-- Chrome sticks it below the scroller's top padding. A short list scrolls with the dialog, whose
+                   padding keeps room for focus rings, so it sticks that much higher to leave no gap above it. -->
+              <p
+                class={[
+                  "bg-muted text-muted-foreground sticky z-10 rounded-sm px-2 py-1 text-xs font-medium",
+                  languages.length >= FILTER_FROM ? "top-0" : "-top-1",
+                ]}
+              >
                 Into {group.into}
               </p>
               <ul class="flex flex-col">
@@ -287,7 +294,7 @@
     {/if}
   </div>
 
-  <DialogFooter class="sm:items-center">
+  <DialogFooter class="py-2 sm:items-center">
     <!-- Add comes before Back in the tab order, since Esc already leaves. `order` keeps Back on its left. -->
     {#if !setup.canSave && languages.length > 0}
       <p class="text-muted-foreground order-1 text-center sm:mr-auto sm:text-left">
