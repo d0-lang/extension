@@ -2,7 +2,7 @@
 import type { LookupEntry } from "$lib/dict/types"
 import type { CreditSource, PairLabels } from "$lib/storage"
 
-/** The word the preview opens on. Its first sense links to the other. */
+/** The word the preview opens on. Its first sense links to the other word, which links nowhere. */
 export const SAMPLE_WORD = "mother"
 
 /** Real recordings on Wikimedia Commons, a host any server may link, so the play button plays them. */
@@ -47,7 +47,7 @@ export const SAMPLE_ENTRIES: Array<LookupEntry> = [
         },
       ],
     },
-    senses: [{ glosses: ["mother"], see: ["mother"] }],
+    senses: [{ glosses: ["mother"] }],
     sources: ["https://en.wiktionary.org/wiki/mom"],
   },
 ]

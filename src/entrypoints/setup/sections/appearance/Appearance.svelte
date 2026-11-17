@@ -150,8 +150,9 @@
       </div>
       <LanguageOrder />
     </div>
-    <div class="bg-muted/40 flex justify-center rounded-xl border px-6 pt-6 pb-8 max-[1199px]:hidden">
-      <PopoverPreview {showIpa} {markStyle} />
+    <!-- One height, with the popover pinned at its top, so changing what the popover shows moves nothing else. -->
+    <div class="relative h-[27rem] max-[1199px]:hidden">
+      <PopoverPreview class="absolute top-0 left-1/2 -translate-x-1/2" {showIpa} {markStyle} />
     </div>
   </div>
 </section>
