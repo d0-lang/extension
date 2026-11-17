@@ -17,8 +17,9 @@
   text-wrap: balance;
   word-break: auto-phrase;
   color: #fff;
+  /* Chrome paints a looked-up word's mark as tall as the line, so the line is only as tall as its dark background. */
   font:
-    500 var(--dadict-caption-size, 22px) / 1.4 "YouTube Noto",
+    500 var(--dadict-caption-size, 22px) / normal "YouTube Noto",
     Roboto,
     Arial,
     sans-serif;
@@ -26,7 +27,7 @@
 
 [data-dadict-captions] > span {
   pointer-events: auto;
-  padding: 0.05em 0.3em;
+  padding: 0 0.3em;
   border-radius: 0.15em;
   background: rgb(8 8 8 / 0.75);
   box-decoration-break: clone;
