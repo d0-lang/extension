@@ -9,7 +9,7 @@
   import ServerIcon from "@lucide/svelte/icons/server"
   import { reportPagePath } from "$lib/report-page"
   import { cn } from "$lib/utils"
-  import { blockedNote, serversNote } from "./notes"
+  import { blockedNote, serversNote, type Note } from "./notes"
   import { sectionGroups, type SectionId } from "./sections"
   import { Summary } from "./summary.svelte"
 
@@ -31,11 +31,12 @@
   const version = browser.runtime.getManifest().version
   const summary = new Summary()
 
-  /** The line under a section's name, where it has one. Only Servers' line is a warning. */
-  const notes = $derived<Partial<Record<SectionId, string>>>({
-    servers: serversNote(summary.servers, summary.issues),
-    sites: blockedNote(summary.blocked),
-  })
+  /** The line under a section's name, where it has one. None until the counts load, so "Add one to start" does not flash. */
+  const notes = $derived<Partial<Record<SectionId, Note>>>(
+    summary.loaded
+      ? { servers: serversNote(summary.servers, summary.issues), sites: blockedNote(summary.blocked) }
+      : {},
+  )
 
   onMount(() => {
     void summary.load()
@@ -44,13 +45,13 @@
 </script>
 
 <nav
-  class={cn("flex flex-col gap-5 px-4 py-5 md:gap-4 md:border-r md:bg-sidebar md:px-3 md:py-5", className)}
+  class={cn("flex flex-col gap-5 px-4 py-5 md:gap-3 md:border-r md:bg-sidebar md:px-2.5 md:py-4", className)}
   aria-label="Settings"
 >
   <h1 class="px-1 text-2xl font-semibold tracking-tight md:hidden">Settings</h1>
   {#each groups as { group, sections } (group)}
-    <div class="flex flex-col gap-1.5 md:gap-0.5">
-      <p class="text-muted-foreground px-1 text-xs font-medium md:px-2.5 md:pb-1">{group}</p>
+    <div class="flex flex-col gap-1.5 md:gap-px">
+      <p class="text-muted-foreground px-1 text-xs font-medium md:px-2 md:pb-0.5">{group}</p>
       <ul
         class="divide-y overflow-hidden rounded-xl border md:divide-y-0 md:overflow-visible md:rounded-none md:border-0"
       >
@@ -63,17 +64,26 @@
               href="#{section.id}"
               aria-current={current ? "page" : undefined}
               class={[
-                "focus-visible:ring-ring flex min-h-14 items-center gap-3 px-3 py-2 outline-none focus-visible:ring-2 md:min-h-11 md:rounded-lg md:px-2.5 md:py-1.5",
+                "focus-visible:ring-ring flex min-h-14 items-center gap-3 px-3 py-2 outline-none focus-visible:ring-2 md:min-h-9 md:gap-2.5 md:rounded-md md:px-2 md:py-1",
                 current ? "md:bg-accent" : "md:hover:bg-accent/60",
               ]}
             >
               <span
                 class={[
-                  "bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg md:bg-background md:border md:size-7.5",
+                  "bg-muted relative flex size-8 shrink-0 items-center justify-center rounded-lg md:size-6.5 md:rounded-md md:border md:bg-background",
                   current ? "md:text-foreground" : "md:text-muted-foreground",
                 ]}
               >
-                <Icon class="size-4" />
+                <Icon class="size-4 md:size-3.5" />
+                {#if note?.tone !== undefined}
+                  <span
+                    class={[
+                      "ring-background absolute -top-0.5 -right-0.5 size-2 rounded-full ring-2 md:ring-sidebar",
+                      note.tone === "alert" ? "bg-destructive" : "bg-primary",
+                    ]}
+                    aria-hidden="true"
+                  ></span>
+                {/if}
               </span>
               <span class="flex min-w-0 flex-1 flex-col leading-tight">
                 <span class="text-sm font-medium">{section.label}</span>
@@ -81,10 +91,14 @@
                   <span
                     class={[
                       "truncate text-xs",
-                      section.id === "servers" ? "text-destructive" : "text-muted-foreground",
+                      note.tone === "alert"
+                        ? "text-destructive"
+                        : note.tone === "start"
+                          ? "text-link"
+                          : "text-muted-foreground",
                     ]}
                   >
-                    {note}
+                    {note.text}
                   </span>
                 {/if}
               </span>
@@ -95,7 +109,7 @@
       </ul>
     </div>
   {/each}
-  <div class="text-muted-foreground mt-auto flex items-center justify-between gap-4 px-1 text-xs md:px-2.5">
+  <div class="text-muted-foreground mt-auto flex items-center justify-between gap-4 px-1 text-xs md:px-2">
     <a
       href={browser.runtime.getURL(reportPagePath(undefined))}
       target="_blank"

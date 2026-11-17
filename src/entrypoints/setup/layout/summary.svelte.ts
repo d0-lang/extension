@@ -5,12 +5,14 @@ export class Summary {
   servers = $state(0)
   issues = $state(0)
   blocked = $state(0)
+  loaded = $state(false)
 
   load = async () => {
     const [servers, issues, sites] = await Promise.all([getServers(), getServerIssues(), getContextSites()])
     this.servers = Object.keys(servers).length
     this.issues = Object.keys(issues).length
     this.blocked = Object.values(sites).filter((on) => on === false).length
+    this.loaded = true
   }
 
   watch = (): (() => void) => {

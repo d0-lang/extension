@@ -20,7 +20,7 @@
 <div class="bg-background min-h-svh">
   <Header inSection={route.section !== undefined} />
 
-  <div class="md:grid md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+  <div class="md:grid md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[15.5rem_minmax(0,1fr)]">
     <Sidebar
       active={open}
       class="min-h-[calc(100svh-3.5rem)] md:sticky md:top-14 md:h-[calc(100svh-3.5rem)] md:min-h-0 md:overflow-y-auto {route.section ===
