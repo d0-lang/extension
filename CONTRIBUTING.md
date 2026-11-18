@@ -38,6 +38,18 @@ Some tests run in headless Chromium: install it once with `bunx playwright insta
 - One change per PR.
 - Fill in the PR template and keep the description that short. Say what you checked and what you did not.
 
+## Releasing
+
+For maintainers.
+
+1. Open a release PR that only bumps `version` in `package.json`, for example to `0.7.0`, and merge it.
+2. Tag the merge commit and push the tag: `git tag v0.7.0 origin/main && git push origin v0.7.0`.
+3. The release workflow builds the Chrome zip, the Firefox zip and the sources zip from that commit, and publishes them as a GitHub Release with the PRs merged since the last tag. It fails if the tag does not match `package.json` or is not on `main`.
+4. Load both zips in their browser and try them.
+5. Upload the Chrome zip to the Chrome Web Store, and the Firefox zip with the sources zip to addons.mozilla.org. The release notes are the starting point for the stores' "what's new".
+
+CI does not upload to the stores: a store key in the repo's secrets could publish a version every user auto-updates to, if it leaked.
+
 ## AI-written changes
 
 Fine. You answer for them: run the checks, read the diff yourself, and keep the description short. `AGENTS.md` has the rules agents follow in this repo.
