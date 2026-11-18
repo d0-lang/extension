@@ -102,7 +102,8 @@
         </p>
       {/if}
     </div>
-    <ol class="flex list-decimal flex-col gap-1 pl-5">
+    <!-- Two-digit numbers need the wider indent, or they run into the bar beside the whole word's entries. -->
+    <ol class={["flex list-decimal flex-col gap-1", entry.senses.length < 10 ? "pl-5" : "pl-7"]}>
       {#each entry.senses as sense, senseIndex (senseIndex)}
         {@const linked = linkSense(sense.glosses.join("; "), sense.see ?? [])}
         <li
