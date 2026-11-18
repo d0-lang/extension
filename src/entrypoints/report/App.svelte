@@ -6,14 +6,16 @@
   import { parseReportTab } from "$lib/report-page"
   import { getLastLookup, getServers } from "$lib/storage"
   import { describeBrowser } from "./browser-name"
-  import { pageIssueLink, wordReport, type WordReport } from "./links"
+  import { buildName, pageIssueLink, wordReport, type WordReport } from "./links"
 
   const version = browser.runtime.getManifest().version
+  // The page form takes the commit too; the word report's `client` stays as the protocol spells it.
+  const build = buildName(version, import.meta.env.BUILD_COMMIT)
   const tabId = parseReportTab(location.search)
 
   let loaded = $state(false)
   let report = $state<WordReport | undefined>()
-  let issueHref = $state(pageIssueLink(undefined, version))
+  let issueHref = $state(pageIssueLink(undefined, build))
 
   const loadReport = async () => {
     const [lookup, servers] = await Promise.all([
@@ -28,7 +30,7 @@
       loaded = true
     })
     void describeBrowser().then((browserName) => {
-      issueHref = pageIssueLink(browserName, version)
+      issueHref = pageIssueLink(browserName, build)
     })
   })
 

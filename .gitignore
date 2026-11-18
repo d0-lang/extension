@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 .output
+# Written by the release workflow; see wxt.config.ts
+BUILD_COMMIT
 stats.html
 stats-*.json
 .wxt

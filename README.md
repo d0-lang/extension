@@ -103,6 +103,8 @@ Dependencies are pinned by `bun.lock`. npm does not read it, so use Bun. Node.js
    bun run build:firefox
    ```
 
+`BUILD_COMMIT` in the source folder names the commit the add-on was built from, which the report page shows next to the version. Keep it: without it the build names no commit, and the report page's script differs from the submitted one.
+
 The add-on is in `.output/firefox-mv2`. Its files match the submitted zip. `bun run zip:firefox` packs it into `.output/dadict-<version>-firefox.zip`.
 
 ## Contributing and licence

@@ -1,5 +1,27 @@
+import { execFileSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { defineConfig } from "wxt"
 import tailwindcss from "@tailwindcss/vite"
+
+/**
+ * The first 7 characters of the commit the build is made from, or empty when nothing says. The
+ * release workflow writes it to `BUILD_COMMIT` before zipping, so a build from the sources zip,
+ * which has no `.git`, names the same commit as the build that was uploaded.
+ */
+const buildCommit = (): string => {
+  try {
+    return readFileSync("BUILD_COMMIT", "utf8").trim().slice(0, 7)
+  } catch {}
+  try {
+    const head = execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+    return head.trim().slice(0, 7)
+  } catch {
+    return ""
+  }
+}
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -10,6 +32,7 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
+    define: { "import.meta.env.BUILD_COMMIT": JSON.stringify(buildCommit()) },
   }),
   manifest: ({ browser }) => ({
     name: "DaDict",

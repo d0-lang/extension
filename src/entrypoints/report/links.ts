@@ -42,6 +42,10 @@ export const wordReport = (
   return url === undefined ? undefined : { href: url.href, word: lookup.word, host: url.host }
 }
 
+/** The version as a page report names it: `0.6.0 (a1b2c3d)`, or just `0.6.0` when the commit is not known. */
+export const buildName = (version: string, commit: string | undefined): string =>
+  commit ? `${version} (${commit})` : version
+
 /** This repo's "Doesn't work on a page" form, with the browser and the extension version filled in. */
 export const pageIssueLink = (browserName: string | undefined, version: string): string => {
   const url = new URL(PAGE_ISSUE_FORM)
