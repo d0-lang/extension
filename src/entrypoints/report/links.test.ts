@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { BoundServer, LastLookup } from "$lib/storage"
-import { pageIssueLink, wordReport, wordReportLink } from "./links"
+import { buildName, pageIssueLink, wordReport, wordReportLink } from "./links"
 
 const SERVER = "https://dict.example"
 const lookup: LastLookup = { word: "Mutter", lang: "de_en", server: SERVER }
@@ -64,10 +64,27 @@ describe("wordReport", () => {
   })
 })
 
+describe("buildName", () => {
+  it("adds the commit to the version", () => {
+    expect(buildName("0.6.0", "a1b2c3d")).toBe("0.6.0 (a1b2c3d)")
+  })
+
+  it("is the bare version when the commit is not known", () => {
+    expect(buildName("0.6.0", "")).toBe("0.6.0")
+    expect(buildName("0.6.0", undefined)).toBe("0.6.0")
+  })
+})
+
 describe("pageIssueLink", () => {
   it("fills in the browser and the version", () => {
     expect(pageIssueLink("Firefox 158.0 on Linux", "0.6.0")).toBe(
       "https://github.com/d0-lang/extension/issues/new?template=page.yml&browser=Firefox+158.0+on+Linux&version=0.6.0",
+    )
+  })
+
+  it("carries the commit in the version field", () => {
+    expect(pageIssueLink(undefined, buildName("0.6.0", "a1b2c3d"))).toBe(
+      "https://github.com/d0-lang/extension/issues/new?template=page.yml&version=0.6.0+%28a1b2c3d%29",
     )
   })
 
