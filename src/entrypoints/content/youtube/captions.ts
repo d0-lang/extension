@@ -1,6 +1,6 @@
 /** YouTube's subtitles, shown by the extension up to two lines at a time, each word clickable. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
-import { getLookupEnabled, getPauseOnLookup, getYoutubeCaptions } from "$lib/storage"
+import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { cueAt } from "./cues"
@@ -36,7 +36,6 @@ export const showYouTubeCaptions = (
 ) => {
   const tracks = new Map<string, Track>()
   let showing = true
-  let pauses = true
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
@@ -45,18 +44,13 @@ export const showYouTubeCaptions = (
   let running = false
 
   const loadSettings = async () => {
-    const [youtube, pause, lookup] = await Promise.all([
-      getYoutubeCaptions(),
-      getPauseOnLookup(),
-      getLookupEnabled(),
-    ])
+    const [youtube, lookup] = await Promise.all([getYoutubeCaptions(), getLookupEnabled()])
     showing = youtube
-    pauses = pause
     document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
   void loadSettings()
   browser.storage.onChanged.addListener((changes) => {
-    if ("youtubeCaptions" in changes || "pauseOnLookup" in changes || "lookupEnabled" in changes) {
+    if ("youtubeCaptions" in changes || "lookupEnabled" in changes) {
       void loadSettings()
     }
   })
@@ -80,7 +74,7 @@ export const showYouTubeCaptions = (
     lookUp(hit, track.lang)
     // After the lookup, since opening it can close the one before, which plays the video again.
     const video = videoIn(overlay.player)
-    if (pauses && video !== null && !video.paused) {
+    if (video !== null && !video.paused) {
       video.pause()
       pausedVideo = video
     }

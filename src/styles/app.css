@@ -4,6 +4,7 @@
 @import "shadcn-svelte/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "./tokens.css";
+@import "../lib/popover/entries.css";
 
 @custom-variant dark (&:is(.dark *));
 @plugin '@tailwindcss/typography';
@@ -21,4 +22,9 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Chrome gives extension pages an unlayered body font, which beats anything in a layer. */
+html body {
+  font-family: var(--font-sans);
 }

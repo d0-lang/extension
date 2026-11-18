@@ -1,35 +1,62 @@
 <script lang="ts">
   import Keycap from "$lib/components/Keycap.svelte"
   import { KbdGroup } from "$lib/components/ui/kbd"
+  import SectionTitle from "../layout/SectionTitle.svelte"
 
-  /** `combo` keys are pressed together. Otherwise each key is one direction, like W for up and S for down. */
-  const hotkeys = [
-    { keys: ["Alt"], action: "Hold to look up the word under the cursor" },
-    { keys: ["Alt", "Wheel"], action: "Scroll the popover wherever the cursor is", combo: true },
-    { keys: ["W", "S"], action: "Scroll the popover" },
-    { keys: ["A", "D"], action: "Switch the popover language" },
-    { keys: ["E"], action: "Play the pronunciation" },
-    { keys: ["Esc"], action: "Close the popover" },
+  /**
+   * `combo` keys are pressed together. Otherwise each key is one direction, like W for up and S for down.
+   * `hold` keys are held down, and `text` is said in words instead of keys.
+   */
+  type Hotkey = { action: string; keys?: Array<string>; combo?: boolean; hold?: boolean; text?: string }
+
+  const groups: Array<{ name: string; hotkeys: Array<Hotkey> }> = [
+    {
+      name: "Look up",
+      hotkeys: [
+        { action: "Look up the word under the cursor", keys: ["Alt"], hold: true },
+        { action: "Look up a selected word or phrase", text: "Right-click, Look up" },
+      ],
+    },
+    {
+      name: "In the popover",
+      hotkeys: [
+        { action: "Scroll the popover wherever the cursor is", keys: ["Alt", "Wheel"], combo: true },
+        { action: "Scroll the popover", keys: ["W", "S"] },
+        { action: "Switch the popover language", keys: ["A", "D"] },
+        { action: "Play the pronunciation", keys: ["E"] },
+        { action: "Close the popover", keys: ["Esc"] },
+      ],
+    },
   ]
 </script>
 
-<section class="flex flex-col gap-4">
-  <h2 class="text-lg font-semibold">Hotkeys</h2>
-  <dl class="flex flex-col divide-y rounded-lg border">
-    {#each hotkeys as hotkey (hotkey.action)}
-      <div class="flex items-center justify-between gap-4 px-4 py-2.5">
-        <dt class="text-sm">{hotkey.action}</dt>
-        <dd>
-          <KbdGroup>
-            {#each hotkey.keys as key, index (key)}
-              {#if index > 0}
-                <span class="text-muted-foreground text-xs">{hotkey.combo ? "+" : "/"}</span>
+<section class="flex max-w-2xl flex-col gap-5">
+  <SectionTitle title="Hotkeys" />
+  {#each groups as group (group.name)}
+    <div class="flex flex-col gap-2">
+      <h2 class="text-muted-foreground text-sm font-medium">{group.name}</h2>
+      <dl class="flex flex-col divide-y rounded-lg border">
+        {#each group.hotkeys as hotkey (hotkey.action)}
+          <div class="flex items-center justify-between gap-4 px-4 py-2.5">
+            <dt class="text-sm">{hotkey.action}</dt>
+            <dd class="text-muted-foreground shrink-0 text-sm">
+              {#if hotkey.text !== undefined}
+                {hotkey.text}
+              {:else}
+                {#if hotkey.hold}<span class="mr-1">Hold</span>{/if}
+                <KbdGroup>
+                  {#each hotkey.keys ?? [] as key, index (key)}
+                    {#if index > 0}
+                      <span class="text-xs">{hotkey.combo ? "+" : "/"}</span>
+                    {/if}
+                    <Keycap>{key}</Keycap>
+                  {/each}
+                </KbdGroup>
               {/if}
-              <Keycap>{key}</Keycap>
-            {/each}
-          </KbdGroup>
-        </dd>
-      </div>
-    {/each}
-  </dl>
+            </dd>
+          </div>
+        {/each}
+      </dl>
+    </div>
+  {/each}
 </section>
