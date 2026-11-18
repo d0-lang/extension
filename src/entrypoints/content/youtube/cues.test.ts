@@ -254,8 +254,12 @@ describe("cuesOf on recorded tracks", () => {
 })
 
 describe("cuesOf on a long track", () => {
-  /** Tracks are cut while the player loads the video, on the page's own thread. */
-  const BUDGET_MS = 100
+  /**
+   * Tracks are cut while the player loads the video, on the page's own thread.
+   * Measured against segmenting the same text, which the cut does once anyway, so a slow machine slows both.
+   * Cutting takes 4 to 10 times as long as that, and took 80 to 400 times before each word's width and score were kept.
+   */
+  const MAX_SLOWDOWN = 30
   const MINUTES = 60
   const FIXTURE_MINUTES = 5
 
@@ -272,17 +276,22 @@ describe("cuesOf on a long track", () => {
     }
   }
 
-  it.each(names)("cuts an hour of %s in time", (name) => {
-    const json3 = long(name)
-    // The fastest of a few runs, so a pause in the test runner does not fail it.
-    const fastest = Math.min(
+  /** The fastest of a few runs, so a pause in the test runner does not fail it. */
+  const fastest = (run: () => unknown): number =>
+    Math.min(
       ...Array.from({ length: 5 }, () => {
         const start = performance.now()
-        cuesOf(json3, true)
+        run()
         return performance.now() - start
       }),
     )
-    expect(fastest).toBeLessThan(BUDGET_MS)
+
+  it.each(names)("cuts an hour of %s in time", (name) => {
+    const json3 = long(name)
+    const text = json3.events.flatMap(({ segs = [] }) => segs.map(({ utf8 }) => utf8)).join("")
+    const segmenter = new Intl.Segmenter(undefined, { granularity: "word" })
+    const reference = fastest(() => Array.from(segmenter.segment(text)))
+    expect(fastest(() => cuesOf(json3, true)) / reference).toBeLessThan(MAX_SLOWDOWN)
   })
 })
 
