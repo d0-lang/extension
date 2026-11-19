@@ -171,7 +171,7 @@
           class={[
             "flex flex-col",
             languages.length >= FILTER_FROM
-              ? "h-80 overflow-y-auto overscroll-contain rounded-md border px-1 pb-1"
+              ? "h-54 overflow-y-auto overscroll-contain rounded-md border px-1 pb-1"
               : "-mx-2",
           ]}
           role="group"
