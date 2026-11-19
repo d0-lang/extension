@@ -18,10 +18,7 @@
   let issueHref = $state(pageIssueLink(undefined, build))
 
   const loadReport = async () => {
-    const [lookup, servers] = await Promise.all([
-      tabId === undefined ? undefined : getLastLookup(tabId),
-      getServers(),
-    ])
+    const [lookup, servers] = await Promise.all([getLastLookup(tabId), getServers()])
     report = wordReport(lookup, servers, version)
   }
 

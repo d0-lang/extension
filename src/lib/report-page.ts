@@ -1,4 +1,7 @@
-/** The report page's address. It carries the tab the popup was opened over, whose last lookup it reports. */
+/**
+ * The report page's address. It carries the tab the popup was opened over, whose last lookup it reports.
+ * Without a tab, as from settings, it reports the last lookup in any tab.
+ */
 
 const REPORT_PAGE = "/report.html" as const
 
