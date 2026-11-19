@@ -17,26 +17,28 @@
   const open = $derived(route.section ?? FIRST_SECTION)
 </script>
 
-<!-- From `md` up, the whole page is one card in the middle of the window. The sidebar and the section each scroll inside it. -->
-<div class="bg-background md:bg-backdrop min-h-svh md:flex md:h-svh md:p-6 lg:p-8">
+<!-- From `xl` up, with room to spare, the whole page is one card in the middle of the window. -->
+<!-- The sidebar and the section each scroll inside it. Below that the page fills the window and scrolls. -->
+<div class="bg-background xl:bg-backdrop min-h-svh xl:flex xl:h-svh xl:p-8">
   <div
-    class="md:bg-background md:mx-auto md:flex md:w-full md:max-w-[68rem] md:flex-col md:overflow-hidden md:rounded-xl md:border md:shadow-sm"
+    class="xl:bg-background xl:mx-auto xl:flex xl:w-full xl:max-w-[68rem] xl:flex-col xl:overflow-hidden xl:rounded-xl xl:border xl:shadow-sm"
   >
     <Header inSection={route.section !== undefined} back={route.toList} />
 
     <div
-      class="md:grid md:min-h-0 md:flex-1 md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[15.5rem_minmax(0,1fr)]"
+      class="md:grid md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[15.5rem_minmax(0,1fr)] xl:min-h-0 xl:flex-1"
     >
       <Sidebar
         active={open}
-        class="min-h-[calc(100svh-3.5rem)] md:min-h-0 md:overflow-y-auto {route.section === undefined
+        class="min-h-[calc(100svh-3.5rem)] md:sticky md:top-14 md:h-[calc(100svh-3.5rem)] md:min-h-0 md:overflow-y-auto xl:static xl:h-auto {route.section ===
+        undefined
           ? ''
           : 'max-md:hidden'}"
       />
 
       <main
         class={[
-          "min-w-0 px-4 pt-5 pb-10 md:min-h-0 md:overflow-y-auto md:px-8 md:pt-8",
+          "min-w-0 px-4 pt-5 pb-10 md:px-8 md:pt-8 xl:min-h-0 xl:overflow-y-auto",
           route.section === undefined && "max-md:hidden",
         ]}
       >

@@ -1,6 +1,6 @@
 import { sectionOf, type SectionId } from "./sections"
 
-/** The window scrolls on a phone. From `md` up the section scrolls inside the page's card instead. */
+/** The window scrolls, except from `xl` up, where the section scrolls inside the page's card. */
 const scrollToTop = () => {
   window.scrollTo({ top: 0 })
   document.querySelector("main")?.scrollTo({ top: 0 })

@@ -155,9 +155,10 @@
       </div>
       <LanguageOrder onload={() => (orderLoaded = true)} />
     </div>
-    <!-- Stuck at the height it starts at, under the title and gaps, so scrolling never moves it. -->
+    <!-- Stuck at the height it starts at, so scrolling never moves it: under the header, title and gaps while the
+         window scrolls, and under the title and gaps once the section scrolls inside the page's card. -->
     <div class="self-stretch @max-[48rem]:hidden">
-      <div class="sticky top-[4.75rem]">
+      <div class="sticky top-[8.25rem] xl:top-[4.75rem]">
         <PopoverPreview class={["mx-auto", !loaded && "invisible"]} {showIpa} {markStyle} />
       </div>
     </div>
