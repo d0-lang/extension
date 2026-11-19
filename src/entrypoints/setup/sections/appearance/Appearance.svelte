@@ -98,7 +98,8 @@
     </Button>
   </SectionTitle>
   <!-- The preview only fits beside the settings on a wide screen. -->
-  <div class="grid items-start gap-8 @min-[48rem]:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+  <!-- The preview's column is as wide as the preview, so the settings get the rest. -->
+  <div class="grid items-start gap-5 @min-[48rem]:grid-cols-[minmax(0,1fr)_minmax(0,21.25rem)]">
     <div class={["flex flex-col divide-y rounded-lg border", !(loaded && orderLoaded) && "invisible"]}>
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">

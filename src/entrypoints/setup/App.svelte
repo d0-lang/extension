@@ -38,7 +38,7 @@
 
       <main
         class={[
-          "min-w-0 px-4 pt-5 pb-10 md:px-8 md:pt-8 xl:min-h-0 xl:overflow-y-auto",
+          "min-w-0 px-4 pt-5 pb-10 md:px-8 md:pt-8 xl:min-h-0 xl:overflow-y-auto xl:px-6",
           route.section === undefined && "max-md:hidden",
         ]}
       >
