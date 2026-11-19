@@ -26,6 +26,7 @@
     marks,
     search,
     follow,
+    shown,
     paint = highlightRanges,
   }: {
     word: string
@@ -48,6 +49,8 @@
     search: ((language?: string, target?: string) => Promise<LookupReply>) | undefined
     /** Look up a `see` word in `language`. */
     follow: (target: string, language: string | undefined) => Promise<LookupReply>
+    /** Called with each reply once it is the one on screen, cached or not. */
+    shown: (word: string, reply: LookupReply) => void
     /** Marks the word and the sentence's matched parts. Text the extension draws itself marks them its own way. */
     paint?: Paint
   } = $props()
@@ -211,6 +214,20 @@
       scrollTop: undefined,
     }
   }
+
+  // Only while this view is up, since a replaced view's reply can land after the new one's.
+  $effect(() => {
+    const { word: target, reply } = view
+    let current = true
+    void reply?.then((result) => {
+      if (current) {
+        shown(target, result)
+      }
+    })
+    return () => {
+      current = false
+    }
+  })
 
   $effect(() => {
     const reply = view.reply

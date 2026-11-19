@@ -1,4 +1,4 @@
-import { isAudioRequestMessage, isLookupRequestMessage } from "$lib/messages"
+import { isAudioRequestMessage, isLookupRequestMessage, isShownLookupMessage } from "$lib/messages"
 import { clearLastLookup } from "$lib/storage"
 import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./action"
 import { fetchAudio } from "./audio"
@@ -6,6 +6,7 @@ import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
 import { answer } from "./lookup"
 import { createMenuItem, openFromMenu, showMenuItem } from "./menu"
 import { isServerNotification, notify } from "./notifications"
+import { rememberShown } from "./shown"
 
 const setUp = () => {
   void syncAction()
@@ -75,10 +76,16 @@ export default defineBackground(() => {
       void fetchAudio(message.url).then(sendResponse)
       return true
     }
+    if (isShownLookupMessage(message)) {
+      rememberShown(message, sender.tab?.id).catch((error) =>
+        console.warn("Could not keep the last lookup", error),
+      )
+      return
+    }
     if (!isLookupRequestMessage(message)) {
       return
     }
-    void answer(message, sender.url, sender.tab?.id).then(sendResponse)
+    void answer(message, sender.url).then(sendResponse)
     // Chrome only keeps the channel open for `sendResponse` when the listener returns true.
     return true
   })
