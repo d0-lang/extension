@@ -1,4 +1,4 @@
-import { isOpenLookupMessage, type OpenLookupMessage } from "$lib/messages"
+import { isOpenLookupMessage, sendShownLookup, type OpenLookupMessage } from "$lib/messages"
 import { getLookupEnabled, getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import { watchAltHold } from "./hold"
@@ -73,6 +73,7 @@ export default defineContentScript({
                   ),
           follow: (target: string, language: string | undefined) =>
             session.search(target, element, language, undefined, known),
+          shown: sendShownLookup,
           paint: element === null ? undefined : captions?.markFor(element),
         }
       })

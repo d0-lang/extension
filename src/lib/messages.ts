@@ -25,6 +25,9 @@ export type LookupReply = { languages: Array<string>; paused: Array<string>; tri
   ({ ok: true } & LookupOutcome) | { ok: false; error: DictError }
 )
 
+/** Content to background: the popover shows the answer to `word` in `lang`, which the report page then offers. */
+export type ShownLookupMessage = { type: "lookup:shown"; word: string; lang: string }
+
 /** Content to background: fetch the recording at `url`, so the request carries nothing of the page. */
 export type AudioRequestMessage = { type: "audio:request"; url: string }
 
@@ -38,6 +41,11 @@ export const isLookupRequestMessage = (message: unknown): message is LookupReque
   (message as LookupRequestMessage | undefined)?.type === "lookup:request" &&
   typeof (message as LookupRequestMessage).word === "string" &&
   isLookupContext((message as LookupRequestMessage).context)
+
+export const isShownLookupMessage = (message: unknown): message is ShownLookupMessage =>
+  (message as ShownLookupMessage | undefined)?.type === "lookup:shown" &&
+  typeof (message as ShownLookupMessage).word === "string" &&
+  typeof (message as ShownLookupMessage).lang === "string"
 
 const isLookupContext = (value: unknown): value is LookupContext | undefined =>
   value === undefined ||
@@ -72,6 +80,16 @@ export const requestLookup = (
       },
     (error): LookupReply => ({ ok: false, languages: [], paused: [], tried: [], error }),
   )
+
+/** Tell the background which answer the popover shows. Sends nothing when no language answered. */
+export const sendShownLookup = (word: string, reply: LookupReply): void => {
+  if (!reply.ok || reply.lang === undefined) {
+    return
+  }
+  browser.runtime
+    .sendMessage({ type: "lookup:shown", word, lang: reply.lang } satisfies ShownLookupMessage)
+    .catch((error: unknown) => console.warn("Could not keep the shown lookup", error))
+}
 
 export const isAudioRequestMessage = (message: unknown): message is AudioRequestMessage =>
   (message as AudioRequestMessage | undefined)?.type === "audio:request" &&

@@ -1,9 +1,9 @@
 /**
- * The last lookup in each tab that got an answer, kept so the report page can report it.
+ * The answer each tab's popover showed last, kept so the report page can report it.
  * In session storage, because Chrome can stop the background at any time. One key per tab, so tabs do not race.
  */
 
-/** `word` and `lang` as sent in the lookup, and the URL of the server that answered. */
+/** `word` and `lang` as shown in the popover, and the URL of the server bound to `lang`. */
 export type LastLookup = { word: string; lang: string; server: string }
 
 const lastLookupKey = (tabId: number) => `lastLookup:${tabId}`
