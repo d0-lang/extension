@@ -38,8 +38,6 @@ export class ServerSetup {
   removeError = $state("")
   /** Set while the add dialog reconnects to a bound server to change its languages. */
   editUrl = $state<string | undefined>(undefined)
-  /** An address the add dialog connects to as soon as it opens. */
-  connectTo = $state<string | undefined>(undefined)
   /** The policies the user last accepted for the draft's server. Unset when it is not bound yet. */
   accepted = $state.raw<AcceptedLegal | null | undefined>(undefined)
   /** Holds back saving a server without policies. */
@@ -184,16 +182,14 @@ export class ServerSetup {
     this.privacyUnderstood = false
     this.accepted = undefined
     this.editUrl = undefined
-    this.connectTo = undefined
     this.draft = null
     this.selected = {}
     this.genericError = ""
     this.dialogState = "closed"
   }
 
-  openAdd = (url?: string) => {
+  openAdd = () => {
     this.editUrl = undefined
-    this.connectTo = url
     this.draft = null
     this.selected = {}
     this.genericError = ""
