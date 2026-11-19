@@ -92,13 +92,14 @@
 <section class="flex flex-col gap-5">
   <SectionTitle title="Appearance">
     <!-- Where the preview does not fit beside the settings. -->
-    <Button variant="outline" size="sm" class="min-[1200px]:hidden" onclick={() => (previewOpen = true)}>
+    <Button variant="outline" size="sm" class="@min-[48rem]:hidden" onclick={() => (previewOpen = true)}>
       <EyeIcon />
       Preview
     </Button>
   </SectionTitle>
   <!-- The preview only fits beside the settings on a wide screen. -->
-  <div class="grid items-start gap-8 min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+  <!-- The preview's column is as wide as the preview, so the settings get the rest. -->
+  <div class="grid items-start gap-5 @min-[48rem]:grid-cols-[minmax(0,1fr)_minmax(0,21.25rem)]">
     <div class={["flex flex-col divide-y rounded-lg border", !(loaded && orderLoaded) && "invisible"]}>
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
@@ -155,9 +156,10 @@
       </div>
       <LanguageOrder onload={() => (orderLoaded = true)} />
     </div>
-    <!-- Stuck at the height it starts at, under the header, title and gaps, so scrolling never moves it. -->
-    <div class="self-stretch max-[1200px]:hidden">
-      <div class="sticky top-[8.25rem]">
+    <!-- Stuck at the height it starts at, so scrolling never moves it: under the header, title and gaps while the
+         window scrolls, and under the title and gaps once the section scrolls inside the page's card. -->
+    <div class="self-stretch @max-[48rem]:hidden">
+      <div class="sticky top-[8.25rem] xl:top-[4.75rem]">
         <PopoverPreview class={["mx-auto", !loaded && "invisible"]} {showIpa} {markStyle} />
       </div>
     </div>

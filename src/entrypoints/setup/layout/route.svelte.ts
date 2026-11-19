@@ -1,5 +1,11 @@
 import { sectionOf, type SectionId } from "./sections"
 
+/** The window scrolls, except from `xl` up, where the section scrolls inside the page's card. */
+const scrollToTop = () => {
+  window.scrollTo({ top: 0 })
+  document.querySelector("main")?.scrollTo({ top: 0 })
+}
+
 /** The section the address's hash names, kept in step as it changes. */
 export class Route {
   section = $state<SectionId | undefined>(sectionOf(location.hash))
@@ -12,7 +18,7 @@ export class Route {
       this.#fromList = this.section === undefined && next !== undefined
       this.section = next
       // A section opens at its top, not where the last one was scrolled to.
-      window.scrollTo({ top: 0 })
+      scrollToTop()
     }
     window.addEventListener("hashchange", onHashChange)
     return () => window.removeEventListener("hashchange", onHashChange)
@@ -29,6 +35,6 @@ export class Route {
     }
     history.replaceState(null, "", location.pathname + location.search)
     this.section = undefined
-    window.scrollTo({ top: 0 })
+    scrollToTop()
   }
 }

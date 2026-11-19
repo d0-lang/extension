@@ -1,11 +1,15 @@
 <script lang="ts">
-  import { onMount } from "svelte"
+  import { onMount, type Component } from "svelte"
   import SearchIcon from "@lucide/svelte/icons/search"
   import { Input } from "$lib/components/ui/input"
   import { Switch } from "$lib/components/ui/switch"
   import { getLookupEnabled } from "$lib/storage"
   import SectionTitle from "../../layout/SectionTitle.svelte"
   import { groupIntegrations, integrations, SEARCH_FROM } from "./integrations"
+  import YouTubeIcon from "./YouTubeIcon.svelte"
+
+  /** The site's own icon, by integration name. Others show their first letter. */
+  const icons: Record<string, Component<{ class?: string }>> = { YouTube: YouTubeIcon }
 
   /** Integration name → whether it is on. Unset until storage answers, so no switch flips after showing. */
   let on = $state<Record<string, boolean>>()
@@ -66,12 +70,17 @@
       <ul class="flex flex-col divide-y rounded-lg border">
         {#each items as integration (integration.name)}
           {@const id = `integration-${integration.name}`}
+          {@const Icon = icons[integration.name]}
           <li class="flex items-center gap-3 px-4 py-3">
             <span
               class="bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
               aria-hidden="true"
             >
-              {integration.name[0]}
+              {#if Icon === undefined}
+                {integration.name[0]}
+              {:else}
+                <Icon class="size-5" />
+              {/if}
             </span>
             <label for={id} class="flex min-w-0 flex-1 flex-col">
               <span class="text-sm font-medium">{integration.name}</span>

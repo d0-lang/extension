@@ -72,6 +72,15 @@ const scenarios: Record<string, Scenario> = {
     expect:
       'The list scrolls with the buttons still visible, and Select all shows. Polish reads "Used by Test Polish", then "Moves from Test Polish" once ticked.',
   },
+  seven: {
+    name: "Seven Languages",
+    languages: ["de_en", "fr_en", "es_en", "it_en", "pt_en", "nl_en", "sv_en"],
+    verificationUrls: [`${ORIGIN}/seven/news`],
+    section: "adds",
+    summary: "Seven languages, one short of the filter.",
+    expect:
+      "Select all shows, but no filter. The list has no scroll or border of its own and is only as tall as its languages.",
+  },
   huge: {
     name: "Huge Dictionary",
     languages: [

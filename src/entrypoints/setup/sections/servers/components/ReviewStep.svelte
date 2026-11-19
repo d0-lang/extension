@@ -15,7 +15,7 @@
 
   /** Past this many languages, ticking them one by one gets tedious. */
   const SELECT_ALL_FROM = 6
-  /** From this many languages, the list gets a filter and its own scroll, so what follows stays in view. */
+  /** From this many languages, the list gets a filter and its own scroll. */
   const FILTER_FROM = 8
 
   let { setup }: { setup: ServerSetup } = $props()
@@ -132,24 +132,37 @@
     {#if languages.length === 0}
       <p class="text-muted-foreground">This server doesn't offer any languages yet.</p>
     {:else}
-      <!-- Only a list with its own scroll shrinks when the dialog is short, so the choices after it stay in view. -->
-      <!-- Its minimum fits the heading, the filter and the list's own minimum. A shorter list keeps its height. -->
-      <div class={["flex flex-col gap-2", languages.length >= FILTER_FROM ? "min-h-56" : "shrink-0"]}>
+      {#snippet selectAll(className: string)}
+        <Button
+          variant="link"
+          size="xs"
+          class={className}
+          onclick={() => setup.selectAll(!setup.allSelected)}
+        >
+          {setup.allSelected ? "Clear all" : "Select all"}
+        </Button>
+      {/snippet}
+      <!-- The dialog scrolls, so the list keeps its height when the dialog is short. -->
+      <div class="flex shrink-0 flex-col gap-2">
         <div class="flex items-center justify-between gap-2">
           <p class="font-medium">Languages</p>
-          {#if languages.length >= SELECT_ALL_FROM}
-            <Button
-              variant="link"
-              size="xs"
-              class="-mr-1 px-1"
-              onclick={() => setup.selectAll(!setup.allSelected)}
-            >
-              {setup.allSelected ? "Clear all" : "Select all"}
-            </Button>
+          {#if languages.length >= SELECT_ALL_FROM && languages.length < FILTER_FROM}
+            {@render selectAll("-mr-1 px-1")}
           {/if}
         </div>
         {#if languages.length >= FILTER_FROM}
-          <Input bind:value={filter} placeholder="Filter languages" aria-label="Filter languages" />
+          <!-- Most people want a few languages, so typing one comes first and Select all after it. -->
+          <div class="flex items-center gap-2">
+            <!-- svelte-ignore a11y_autofocus -->
+            <Input
+              bind:value={filter}
+              placeholder="Filter languages"
+              aria-label="Filter languages"
+              autofocus
+              class="flex-1"
+            />
+            {@render selectAll("-mr-1 shrink-0 px-1")}
+          </div>
         {/if}
         <!-- A fixed height, so filtering does not resize the dialog. No top padding, since rows would show above the sticky heading. -->
         <!-- Only delegates arrow keys between the checkboxes inside. -->
@@ -158,7 +171,7 @@
           class={[
             "flex flex-col",
             languages.length >= FILTER_FROM
-              ? "h-72 min-h-36 overflow-y-auto overscroll-contain rounded-md border px-1 pb-1"
+              ? "h-54 overflow-y-auto overscroll-contain rounded-md border px-1 pb-1"
               : "-mx-2",
           ]}
           role="group"
