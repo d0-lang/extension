@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
-  <img src="docs/screenshot-light.png" alt="DaDict's popover over a German news article: Kraft, clicked in 'Das Gesetz tritt morgen in Kraft', opens on the phrase 'in Kraft treten', to come into force, with 'tritt' and 'in Kraft' highlighted on the page">
+  <img src="docs/screenshot-light.png" alt="Two browser windows with DaDict's popover open. On a German recipe page, geht in 'Der Teig geht … in etwa drei Stunden auf' opens on aufgehen, to rise (of dough), with geht and auf highlighted. On a Japanese blog, the click on 食 in 食べました opens on 食べる, to eat.">
 </picture>
 
 A browser extension for looking up words on any page, using dictionary servers you choose.
@@ -73,7 +73,6 @@ bun run dev:firefox    # Firefox, with live reload
 | `bun run test`          | Unit tests, and layout tests in Chromium               |
 | `bun run format`        | Format with Prettier                                   |
 | `bun run mock-server`   | Test dictionary servers on `http://localhost:8787`     |
-| `bun scripts/screenshot.ts` | Retake the README's screenshots, after `bun run build` |
 
 Tests named `*.browser.test.ts` need real layout, so they run in headless Chromium. Install it once with `bunx playwright install chromium`.
 
