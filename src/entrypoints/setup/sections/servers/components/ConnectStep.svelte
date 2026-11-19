@@ -6,6 +6,7 @@
   import { Input } from "$lib/components/ui/input"
   import { Label } from "$lib/components/ui/label"
   import { HandshakeSession } from "../HandshakeSession.svelte"
+  import { PUBLIC_SERVER } from "../public-server"
   import { ServerSetup } from "../ServerSetup.svelte"
 
   let {
@@ -19,6 +20,12 @@
     url: string
     onConnect: () => void
   } = $props()
+
+  const usePublic = () => {
+    url = PUBLIC_SERVER.url
+    session.clearWarnings()
+    onConnect()
+  }
 
   const editName = $derived(setup.editUrl === undefined ? undefined : setup.servers[setup.editUrl]?.name)
 </script>
@@ -87,6 +94,16 @@
         bind:value={url}
         oninput={session.clearWarnings}
       />
+      {#if setup.offersPublic}
+        <p class="text-muted-foreground text-sm">
+          Or use <button
+            type="button"
+            class="text-foreground cursor-pointer font-medium underline underline-offset-4 disabled:cursor-default disabled:opacity-50"
+            disabled={session.connecting}
+            onclick={usePublic}>{PUBLIC_SERVER.name}</button
+          >, at {PUBLIC_SERVER.host}.
+        </p>
+      {/if}
     </div>
     {@render failure()}
     <DialogFooter>
