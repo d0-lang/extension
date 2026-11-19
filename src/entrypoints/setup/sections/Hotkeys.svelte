@@ -4,10 +4,10 @@
   import SectionTitle from "../layout/SectionTitle.svelte"
 
   /**
-   * `combo` keys are pressed together. Otherwise each key is one direction, like W for up and S for down.
+   * Each of `keys` is one direction, like W for up and S for down.
    * `hold` keys are held down, and `text` is said in words instead of keys.
    */
-  type Hotkey = { action: string; keys?: Array<string>; combo?: boolean; hold?: boolean; text?: string }
+  type Hotkey = { action: string; keys?: Array<string>; hold?: boolean; text?: string }
 
   const groups: Array<{ name: string; hotkeys: Array<Hotkey> }> = [
     {
@@ -20,7 +20,6 @@
     {
       name: "In the popover",
       hotkeys: [
-        { action: "Scroll the popover wherever the cursor is", keys: ["Alt", "Wheel"], combo: true },
         { action: "Scroll the popover", keys: ["W", "S"] },
         { action: "Move between the parts of a word", keys: ["A", "D"] },
         { action: "Play the pronunciation", keys: ["E"] },
@@ -47,7 +46,7 @@
                 <KbdGroup>
                   {#each hotkey.keys ?? [] as key, index (key)}
                     {#if index > 0}
-                      <span class="text-xs">{hotkey.combo ? "+" : "/"}</span>
+                      <span class="text-xs">/</span>
                     {/if}
                     <Keycap>{key}</Keycap>
                   {/each}
