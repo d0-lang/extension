@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Keycap from "$lib/components/Keycap.svelte"
   import { pairName, shortNames } from "$lib/languages"
 
   let {
@@ -57,7 +56,7 @@
   /** Set once the bar has scrolled to the language it opened on. */
   let placed = false
 
-  // On open, and after A or D, the language in use can be scrolled out of view. Sliding to it shows where it went.
+  // On open, the language in use can be scrolled out of view. A pick under a faded end slides clear of it.
   $effect(() => {
     const button = shown === undefined ? null : strip?.querySelector(`[data-code="${CSS.escape(shown)}"]`)
     if (strip !== undefined && button instanceof HTMLElement) {
@@ -81,7 +80,6 @@
 </script>
 
 <div class="mt-auto flex shrink-0 items-center gap-2 border-t p-2">
-  <Keycap class="shrink-0" title="Previous language">A</Keycap>
   <div
     bind:this={strip}
     {@attach wheelScrolls}
@@ -116,5 +114,4 @@
       </button>
     {/each}
   </div>
-  <Keycap class="shrink-0" title="Next language">D</Keycap>
 </div>

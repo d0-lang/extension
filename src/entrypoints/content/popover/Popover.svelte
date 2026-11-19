@@ -11,7 +11,16 @@
   import LanguageBar from "$lib/popover/LanguageBar.svelte"
   import { placePopover, type Side } from "./position"
   import { highlightRanges, type Paint } from "./highlight"
-  import { errorText, pausedText, shownEntries, shownLanguage, shownSplit, wholeOnTop } from "./reply"
+  import {
+    errorText,
+    pausedText,
+    shownEntries,
+    shownLanguage,
+    shownSplit,
+    steppedTab,
+    wholeOnTop,
+    type Split,
+  } from "./reply"
   import SegmentTabs from "./SegmentTabs.svelte"
   import SourceList from "$lib/popover/SourceList.svelte"
   import SourcesButton from "$lib/popover/SourcesButton.svelte"
@@ -72,6 +81,8 @@
   let history = $state.raw<Array<View>>([])
   /** The split word's tab picked in this view. Kept out of `view`, which would rebuild the reply on every pick. */
   let tab = $state<number>()
+  /** The shown view's split word, for A and D. The template splits the reply it renders on its own. */
+  let keySplit = $state.raw<Split>()
   /** The parts of the sentence the first context entry covers, while the looked-up word is shown. */
   let matched = $state.raw<Array<Range>>([])
 
@@ -111,9 +122,8 @@
   let wide = $state(false)
   /** Set by the first followed link, so the popover no longer moves away from the cursor. It only grows from then on. */
   let lock = $state<{ side: Side; minHeight: number }>()
-  /** Bound languages from the last reply, and the one shown or being looked up. */
+  /** Bound languages from the last reply. */
   let languages = $state.raw<Array<string>>([])
-  let language = $state<string>()
   /** The language the footer marks: the one being looked up, then the one that answered. */
   let footerLanguage = $state<string>()
   const audio = new AudioPlayer()
@@ -205,7 +215,6 @@
   }
 
   const switchLanguage = (target: string) => {
-    language = target
     footerLanguage = target
     tab = undefined
     view = {
@@ -236,29 +245,38 @@
         return
       }
       languages = result.languages
-      language = shownLanguage(result) ?? language
       footerLanguage = shownLanguage(result)
     })
   })
 
-  /** Wraps around. Without a current language, D starts at the first and A at the last. */
-  const stepLanguage = (step: 1 | -1): boolean => {
-    // The sources belong to the answer they were opened from.
-    if (search === undefined || languages.length < 2 || view.sources !== undefined) {
+  $effect(() => {
+    const { reply, word: target, followed } = view
+    keySplit = undefined
+    let current = true
+    void reply?.then((result) => {
+      if (current) {
+        keySplit = shownSplit(result, target, followed, marks?.offsetIn)
+      }
+    })
+    return () => {
+      current = false
+    }
+  })
+
+  /** Wraps around, skipping parts without entries. */
+  const stepSegment = (step: 1 | -1): boolean => {
+    if (keySplit === undefined || view.sources !== undefined) {
       return false
     }
-    const index = language === undefined ? -1 : languages.indexOf(language)
-    const next =
-      index === -1
-        ? step === 1
-          ? 0
-          : languages.length - 1
-        : (index + step + languages.length) % languages.length
-    switchLanguage(languages[next]!)
+    const next = steppedTab(keySplit, tab ?? keySplit.opens, step)
+    if (next === undefined) {
+      return false
+    }
+    pickTab(next)
     return true
   }
 
-  $effect(() => listenForKeys({ scroller: shownScroller, stepLanguage, play: audio.play }))
+  $effect(() => listenForKeys({ scroller: shownScroller, stepSegment, play: audio.play }))
 </script>
 
 <div

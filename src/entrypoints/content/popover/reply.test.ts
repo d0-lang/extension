@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { LookupReply } from "$lib/messages"
-import { shownSplit, wholeOnTop } from "./reply"
+import { shownSplit, steppedTab, wholeOnTop } from "./reply"
 
 const entry = (lemma: string) => ({ lemma, pos: "X", senses: [{ glosses: [lemma] }] })
 
@@ -96,5 +96,29 @@ describe("wholeOnTop", () => {
   it("leaves them alone when the tab holds nothing else", () => {
     const shown = split(["Haupt"], [{ text: "Haupt" }, { text: "bahnhof" }], "Hauptbahnhof")
     expect(wholeOnTop(shown, 0)).toBe(0)
+  })
+})
+
+describe("steppedTab", () => {
+  const rettungsfonds = () =>
+    split(
+      ["Rettung", "Fonds"],
+      [{ text: "Rettung", entries: [0] }, { text: "s" }, { text: "fonds", entries: [1] }],
+      "Rettungsfonds",
+    )
+
+  it("skips parts without entries", () => {
+    expect(steppedTab(rettungsfonds(), 0, 1)).toBe(2)
+    expect(steppedTab(rettungsfonds(), 2, -1)).toBe(0)
+  })
+
+  it("wraps around at the ends", () => {
+    expect(steppedTab(rettungsfonds(), 2, 1)).toBe(0)
+    expect(steppedTab(rettungsfonds(), 0, -1)).toBe(2)
+  })
+
+  it("is unset with only one part to pick", () => {
+    const shown = split(["食べる"], [{ text: "食べ", entries: [0] }, { text: "ました" }], "食べました")
+    expect(steppedTab(shown, 0, 1)).toBeUndefined()
   })
 })

@@ -22,7 +22,7 @@
       hotkeys: [
         { action: "Scroll the popover wherever the cursor is", keys: ["Alt", "Wheel"], combo: true },
         { action: "Scroll the popover", keys: ["W", "S"] },
-        { action: "Switch the popover language", keys: ["A", "D"] },
+        { action: "Move between the parts of a word", keys: ["A", "D"] },
         { action: "Play the pronunciation", keys: ["E"] },
         { action: "Close the popover", keys: ["Esc"] },
       ],

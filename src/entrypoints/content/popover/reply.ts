@@ -33,6 +33,21 @@ const mainSegment = (segments: ReadonlyArray<LookupSegment>): number => {
   )
 }
 
+/** The parts that have entries, which are the ones that can be picked. */
+export const pickableParts = (split: Split): Array<number> =>
+  split.parts.flatMap((part, index) => (part.entries.length > 0 ? [index] : []))
+
+/** The part to pick after `tab` in the direction of `step`, wrapping around. Unset with fewer than two parts to pick. */
+export const steppedTab = (split: Split, tab: number, step: 1 | -1): number | undefined => {
+  const pickable = pickableParts(split)
+  if (pickable.length < 2) {
+    return undefined
+  }
+  return step === 1
+    ? (pickable.find((index) => index > tab) ?? pickable[0])
+    : (pickable.findLast((index) => index < tab) ?? pickable.at(-1))
+}
+
 /** The language that answered, or the only one asked when it did not. Unset when several were asked and none answered. */
 export const shownLanguage = (result: LookupReply): string | undefined =>
   (result.ok ? result.lang : undefined) ?? (result.tried.length === 1 ? result.tried[0] : undefined)

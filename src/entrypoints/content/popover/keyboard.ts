@@ -1,9 +1,12 @@
-/** Popover keys: W/S scroll, A/D switch language, E plays the topmost pronunciation in view. */
+/**
+ * Popover keys: W/S scroll, A/D move between the parts of a split word, E plays the topmost pronunciation in view.
+ * Arrow keys stay the page's, because Alt + Left and Alt + Right are the browser's Back and Forward.
+ */
 import { isTyping } from "../hold"
 import { suspendAccessKeys } from "./accesskeys"
 
 // Physical keys, so they stay under the same fingers on any layout.
-const languageSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 }
+const segmentSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 }
 const scrollSteps: Record<string, 1 | -1> = { KeyW: -1, KeyS: 1 }
 const PLAY_KEY = "KeyE"
 
@@ -14,13 +17,13 @@ const SCROLL_TAP_PX = 48
 export type KeyActions = {
   /** The shown reply's scroller, unset while there is none. */
   scroller: () => HTMLElement | undefined
-  /** False when there is no other language to switch to. */
-  stepLanguage: (step: 1 | -1) => boolean
+  /** False when there is no other part to pick, so the key reaches the page. */
+  stepSegment: (step: 1 | -1) => boolean
   play: (url: string) => void
 }
 
 /** Listen on the page until the returned function is called. Keys the popover uses do not reach the page. */
-export const listenForKeys = ({ scroller, stepLanguage, play }: KeyActions): (() => void) => {
+export const listenForKeys = ({ scroller, stepSegment, play }: KeyActions): (() => void) => {
   /** Scrolling frame by frame, because repeated smooth `scrollBy` calls move at different speeds in Chrome and Firefox. */
   let scrolling:
     { code: string; step: 1 | -1; held: boolean; moved: number; last: number; frame: number } | undefined
@@ -90,9 +93,9 @@ export const listenForKeys = ({ scroller, stepLanguage, play }: KeyActions): (()
   }
 
   const handleKey = (event: KeyboardEvent): boolean => {
-    const languageStep = languageSteps[event.code]
-    if (languageStep !== undefined) {
-      return !event.repeat && stepLanguage(languageStep)
+    const segmentStep = segmentSteps[event.code]
+    if (segmentStep !== undefined) {
+      return !event.repeat && stepSegment(segmentStep)
     }
     const scrollStep = scrollSteps[event.code]
     if (scrollStep !== undefined) {
@@ -129,7 +132,7 @@ export const listenForKeys = ({ scroller, stepLanguage, play }: KeyActions): (()
   // The key-up goes unseen once focus leaves the page.
   window.addEventListener("blur", stopScroll)
   const restoreAccessKeys = suspendAccessKeys([
-    ...Object.keys(languageSteps),
+    ...Object.keys(segmentSteps),
     ...Object.keys(scrollSteps),
     PLAY_KEY,
   ])
