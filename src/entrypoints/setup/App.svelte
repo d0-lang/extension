@@ -21,7 +21,7 @@
 <!-- The sidebar and the section each scroll inside it. Below that the page fills the window and scrolls. -->
 <div class="bg-background xl:bg-backdrop min-h-svh xl:flex xl:h-svh xl:p-8">
   <div
-    class="xl:bg-background xl:mx-auto xl:flex xl:w-full xl:max-w-[68rem] xl:flex-col xl:overflow-hidden xl:rounded-xl xl:border xl:shadow-sm"
+    class="xl:bg-background xl:mx-auto xl:flex xl:w-full xl:max-w-[72rem] xl:flex-col xl:overflow-hidden xl:rounded-xl xl:border xl:shadow-sm"
   >
     <Header inSection={route.section !== undefined} back={route.toList} />
 
