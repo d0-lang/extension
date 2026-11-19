@@ -1,15 +1,28 @@
-# DaDict
+<p align="center"><img src="public/icon/logo.svg" width="96" height="96" alt="DaDict logo"></p>
+
+<h1 align="center">DaDict</h1>
+
+<p align="center">
+<a href="https://github.com/d0-lang/extension/releases/latest">Download</a> · <a href="#privacy">Privacy</a> · <a href="https://github.com/d0-lang/dict-server-ts">The server</a> · <a href="https://github.com/d0-lang/protocol">Protocol</a>
+</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+  <img src="docs/screenshot-light.png" alt="Two browser windows with DaDict's popover open. On a German recipe page, geht in 'Der Teig geht … in etwa drei Stunden auf' opens on aufgehen, to rise (of dough), with geht and auf highlighted. On a Japanese blog, the click on 食 in 食べました opens on 食べる, to eat.">
+</picture>
 
 A browser extension for looking up words on any page, using dictionary servers you choose.
 
 Hold <kbd>Alt</kbd> over a word, or right-click it and choose **Look up**. A popover shows the dictionary entries: meanings, part of speech, grammar labels, IPA and pronunciation. Works in Chrome and Firefox.
 
-DaDict has no dictionary of its own. You add servers that speak the [DaDict protocol](https://github.com/d0-lang/protocol) and pick which of their languages to use. Each language is answered by one server.
+DaDict has no dictionary of its own. You add servers that speak the [d0 lookup protocol](https://github.com/d0-lang/protocol) and pick which of their languages to use. Each language is answered by one server.
+
+To start, add **DaDict public**, `https://server.dadict.com`: German, Spanish, French, Italian, Japanese, Polish, Russian and Ukrainian, explained in English. Or [run your own](https://github.com/d0-lang/dict-server-ts#run-your-own).
 
 ## Features
 
 - **Lookup on any page.** Hold <kbd>Alt</kbd> over a word, or use the context menu on a word or selection.
-- **Phrases.** With the sentence around the word, a server can find the phrase it belongs to, like _in Kraft treten_ for _Kraft_ or _stattfinden_ for _fand … statt_. The phrase is listed first and underlined on the page.
+- **Phrases.** With the sentence around the word, a server can find the phrase it belongs to, like _in Kraft treten_ for _Kraft_ or _stattfinden_ for _fand … statt_. The phrase is listed first and highlighted on the page.
 - **Several languages.** The page's language is detected, so the right server answers. <kbd>A</kbd> / <kbd>D</kbd> switch languages, and the one you pick stays the default for that page.
 - **Keyboard.** <kbd>W</kbd> / <kbd>S</kbd> scroll the popover, <kbd>E</kbd> plays the pronunciation, <kbd>Esc</kbd> closes it.
 - **Grammar labels explained.** Hover or tab to a label like _pf_ to see what it stands for, when the server explains its labels. Parts of speech are named, not shown as tags.
