@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { onMount, type Snippet } from "svelte"
+  import { onMount } from "svelte"
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis"
   import PencilIcon from "@lucide/svelte/icons/pencil"
   import PlusIcon from "@lucide/svelte/icons/plus"
-  import ServerIcon from "@lucide/svelte/icons/server"
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
   import Trash2Icon from "@lucide/svelte/icons/trash-2"
   import { Button } from "$lib/components/ui/button"
@@ -94,42 +93,38 @@
   {#if !servers.loaded}
     <!-- Nothing until storage answers, so the screen for no servers does not flash. -->
   {:else if servers.rows.length === 0}
-    <!-- One card across the section: what to do on the left, the steps it takes on the right. -->
-    <div class="bg-card grid overflow-hidden rounded-xl border sm:grid-cols-[1.15fr_1fr]">
-      <div class="bg-primary/5 flex flex-col items-start gap-5 p-6 sm:p-8">
-        <div class="bg-primary/10 text-link flex size-11 items-center justify-center rounded-lg">
-          <ServerIcon class="size-5" />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <h2 class="text-xl font-semibold tracking-tight">Add a dictionary server to start</h2>
-          <p class="text-muted-foreground text-sm">
-            Words are looked up on servers you choose. Nothing is sent anywhere until you add one.
-          </p>
-        </div>
-        <Button class="mt-auto" onclick={servers.openAdd}>
-          <PlusIcon />
-          Add server
-        </Button>
+    <div class="flex flex-col items-center gap-4 rounded-xl border border-dashed p-6 text-center">
+      <div class="flex flex-col gap-1">
+        <h2 class="text-lg font-semibold">Add a dictionary server to start</h2>
+        <p class="text-muted-foreground text-sm">
+          Words are looked up on servers you choose. Nothing is sent anywhere until you add one.
+        </p>
       </div>
-      {#snippet step(number: number, title: string, text: Snippet)}
-        <li class="flex gap-3">
-          <span
-            class="text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums"
-            >{number}</span
-          >
-          <span class="flex flex-col gap-0.5">
-            <span class="text-sm font-medium">{title}</span>
-            <span class="text-muted-foreground text-sm">{@render text()}</span>
-          </span>
+      <Button onclick={servers.openAdd}>
+        <PlusIcon />
+        Add server
+      </Button>
+      <ol class="mt-2 grid w-full gap-3 text-left sm:grid-cols-3">
+        <li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
+          <p class="flex items-baseline gap-2 text-sm font-medium">
+            <span class="text-muted-foreground tabular-nums">1</span>Connect
+          </p>
+          <p class="text-muted-foreground text-sm">Pick {PUBLIC_SERVER.name}, or paste a server's address.</p>
         </li>
-      {/snippet}
-      {#snippet connectText()}Pick {PUBLIC_SERVER.name}, or paste a server's address.{/snippet}
-      {#snippet languagesText()}Choose which pairs this server answers.{/snippet}
-      {#snippet lookUpText()}Hold <Keycap>Alt</Keycap> over a word, or right-click and choose Look up.{/snippet}
-      <ol class="flex flex-col justify-center gap-5 border-t p-6 sm:border-t-0 sm:border-l sm:p-8">
-        {@render step(1, "Connect", connectText)}
-        {@render step(2, "Pick languages", languagesText)}
-        {@render step(3, "Look up", lookUpText)}
+        <li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
+          <p class="flex items-baseline gap-2 text-sm font-medium">
+            <span class="text-muted-foreground tabular-nums">2</span>Pick languages
+          </p>
+          <p class="text-muted-foreground text-sm">Choose which pairs this server answers.</p>
+        </li>
+        <li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
+          <p class="flex items-baseline gap-2 text-sm font-medium">
+            <span class="text-muted-foreground tabular-nums">3</span>Look up
+          </p>
+          <p class="text-muted-foreground text-sm">
+            Hold <Keycap>Alt</Keycap> over a word, or right-click and choose Look up.
+          </p>
+        </li>
       </ol>
     </div>
   {:else}
