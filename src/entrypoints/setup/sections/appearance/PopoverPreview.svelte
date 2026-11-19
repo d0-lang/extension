@@ -16,7 +16,8 @@
 
   /**
    * The lookup popover over a sample word, drawn by its own parts with the current settings.
-   * Its footer has the bound languages in their order, and A, D and E work as on a page. The words stay English.
+   * Its footer has the bound languages in their order, and Shift + A, Shift + D and E work as on a page.
+   * The sample word has no parts, so A and D without Shift do nothing. The words stay English.
    * A `see` link, Back and Sources move between views as the popover does, within the sample.
    */
   let {
@@ -51,7 +52,7 @@
     languages = active.length < 2 ? SAMPLE_LANGUAGES : active
   }
 
-  /** Wraps around, like the popover's A and D. */
+  /** Wraps around, like the popover's Shift + A and Shift + D. */
   const step = (by: 1 | -1) => {
     const index = shown === undefined ? -1 : languages.indexOf(shown)
     picked = languages[(index + by + languages.length) % languages.length]
@@ -91,8 +92,8 @@
       return
     }
     const action = {
-      KeyA: () => step(-1),
-      KeyD: () => step(1),
+      KeyA: event.shiftKey ? () => step(-1) : undefined,
+      KeyD: event.shiftKey ? () => step(1) : undefined,
       KeyE: () => view.sources === undefined && playFirst(),
     }[event.code]
     if (action !== undefined) {
