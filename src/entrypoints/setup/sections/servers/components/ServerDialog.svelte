@@ -28,7 +28,8 @@
   }
 
   onMount(() => {
-    if (setup.editUrl !== undefined) {
+    url = setup.connectTo ?? ""
+    if (setup.editUrl !== undefined || setup.connectTo !== undefined) {
       void connect()
     }
   })

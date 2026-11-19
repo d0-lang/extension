@@ -21,6 +21,7 @@
   } from "$lib/components/ui/dropdown-menu"
   import { pairName } from "$lib/languages"
   import { groupByTarget, sourceName } from "../languages"
+  import { PUBLIC_SERVER } from "../public-server"
   import type { ContextSending, ServerIssue } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import RemoveDialog from "./RemoveDialog.svelte"
@@ -83,7 +84,7 @@
 <section class="flex max-w-2xl flex-col gap-5">
   <SectionTitle title="Servers">
     {#if servers.loaded && servers.rows.length > 0}
-      <Button size="sm" onclick={servers.openAdd}>
+      <Button size="sm" onclick={() => servers.openAdd()}>
         <PlusIcon />
         Add
       </Button>
@@ -99,16 +100,22 @@
           Words are looked up on servers you choose. Nothing is sent anywhere until you add one.
         </p>
       </div>
-      <Button onclick={servers.openAdd}>
-        <PlusIcon />
-        Add server
-      </Button>
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="flex flex-wrap justify-center gap-2">
+          <Button onclick={() => servers.openAdd(PUBLIC_SERVER.url)}>
+            <PlusIcon />
+            Add {PUBLIC_SERVER.name}
+          </Button>
+          <Button variant="outline" onclick={() => servers.openAdd()}>Add another server</Button>
+        </div>
+        <p class="text-muted-foreground font-mono text-xs">{PUBLIC_SERVER.host}</p>
+      </div>
       <ol class="mt-2 grid w-full gap-3 text-left sm:grid-cols-3">
         <li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
           <p class="flex items-baseline gap-2 text-sm font-medium">
             <span class="text-muted-foreground tabular-nums">1</span>Connect
           </p>
-          <p class="text-muted-foreground text-sm">Paste the server URL.</p>
+          <p class="text-muted-foreground text-sm">Pick {PUBLIC_SERVER.name}, or paste a server's address.</p>
         </li>
         <li class="bg-muted/50 flex flex-col gap-1 rounded-lg p-3">
           <p class="flex items-baseline gap-2 text-sm font-medium">
