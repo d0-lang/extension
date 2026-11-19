@@ -23,7 +23,7 @@ To start, add **DaDict public**, `https://server.dadict.com`: German, Spanish, F
 
 - **Lookup on any page.** Hold <kbd>Alt</kbd> over a word, or use the context menu on a word or selection.
 - **Phrases.** With the sentence around the word, a server can find the phrase it belongs to, like _in Kraft treten_ for _Kraft_ or _stattfinden_ for _fand … statt_. The phrase is listed first and highlighted on the page.
-- **Several languages.** The page's language is detected, so the right server answers. <kbd>Shift</kbd>+<kbd>A</kbd> / <kbd>Shift</kbd>+<kbd>D</kbd> switch languages, and the one you pick stays the default for that page.
+- **Several languages.** The page's language is detected, so the right server answers. The language you pick in the popover stays the default for that page.
 - **Keyboard.** <kbd>W</kbd> / <kbd>S</kbd> scroll the popover, <kbd>A</kbd> / <kbd>D</kbd> move between the parts of a split word, like _Rettung_ and _Fonds_ in _Rettungsfonds_, <kbd>E</kbd> plays the pronunciation, <kbd>Esc</kbd> closes it.
 - **Grammar labels explained.** Hover or tab to a label like _pf_ to see what it stands for, when the server explains its labels. Parts of speech are named, not shown as tags.
 - **Sources.** The settings credit the material a server's answers are built from, and the popover links each entry and recording to its page.

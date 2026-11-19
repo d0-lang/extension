@@ -9,32 +9,20 @@ const press = (code: string, init: KeyboardEventInit = {}): boolean =>
 describe("listenForKeys", () => {
   let stop: () => void
 
-  /** Listens with every part and language there to step to, unless `hasPart` says otherwise. */
+  /** Listens with another part to step to, unless `hasPart` says otherwise. */
   const listen = (hasPart = true) => {
-    const keys = {
-      stepSegment: vi.fn((_step: 1 | -1) => hasPart),
-      stepLanguage: vi.fn((_step: 1 | -1) => true),
-    }
-    stop = listenForKeys({ ...keys, scroller: () => undefined, play: () => {} })
-    return keys
+    const stepSegment = vi.fn((_step: 1 | -1) => hasPart)
+    stop = listenForKeys({ stepSegment, scroller: () => undefined, play: () => {} })
+    return stepSegment
   }
 
   afterEach(() => stop())
 
-  it("moves between parts on A and D", () => {
-    const { stepSegment, stepLanguage } = listen()
+  it("moves between parts on A and D, with Alt held too", () => {
+    const stepSegment = listen()
     expect(press("KeyA")).toBe(false)
-    expect(press("KeyD")).toBe(false)
+    expect(press("KeyD", { altKey: true })).toBe(false)
     expect(stepSegment.mock.calls).toEqual([[-1], [1]])
-    expect(stepLanguage).not.toHaveBeenCalled()
-  })
-
-  it("switches language on Shift + A and D, with Alt held too", () => {
-    const { stepSegment, stepLanguage } = listen()
-    expect(press("KeyA", { shiftKey: true })).toBe(false)
-    expect(press("KeyD", { shiftKey: true, altKey: true })).toBe(false)
-    expect(stepLanguage.mock.calls).toEqual([[-1], [1]])
-    expect(stepSegment).not.toHaveBeenCalled()
   })
 
   it("lets A and D reach the page when there is no other part", () => {
@@ -44,10 +32,9 @@ describe("listenForKeys", () => {
   })
 
   it("leaves the arrow keys to the page", () => {
-    const { stepSegment, stepLanguage } = listen()
+    const stepSegment = listen()
     expect(press("ArrowLeft", { altKey: true })).toBe(true)
     expect(press("ArrowRight")).toBe(true)
     expect(stepSegment).not.toHaveBeenCalled()
-    expect(stepLanguage).not.toHaveBeenCalled()
   })
 })

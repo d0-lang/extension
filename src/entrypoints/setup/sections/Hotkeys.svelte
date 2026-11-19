@@ -5,17 +5,9 @@
 
   /**
    * `combo` keys are pressed together. Otherwise each key is one direction, like W for up and S for down.
-   * `with` is held while pressing each of `keys`, like Shift for Shift + A and Shift + D.
    * `hold` keys are held down, and `text` is said in words instead of keys.
    */
-  type Hotkey = {
-    action: string
-    keys?: Array<string>
-    combo?: boolean
-    with?: string
-    hold?: boolean
-    text?: string
-  }
+  type Hotkey = { action: string; keys?: Array<string>; combo?: boolean; hold?: boolean; text?: string }
 
   const groups: Array<{ name: string; hotkeys: Array<Hotkey> }> = [
     {
@@ -31,7 +23,6 @@
         { action: "Scroll the popover wherever the cursor is", keys: ["Alt", "Wheel"], combo: true },
         { action: "Scroll the popover", keys: ["W", "S"] },
         { action: "Move between the parts of a word", keys: ["A", "D"] },
-        { action: "Switch the popover language", keys: ["A", "D"], with: "Shift" },
         { action: "Play the pronunciation", keys: ["E"] },
         { action: "Close the popover", keys: ["Esc"] },
       ],
@@ -54,10 +45,6 @@
               {:else}
                 {#if hotkey.hold}<span class="mr-1">Hold</span>{/if}
                 <KbdGroup>
-                  {#if hotkey.with !== undefined}
-                    <Keycap>{hotkey.with}</Keycap>
-                    <span class="text-xs">+</span>
-                  {/if}
                   {#each hotkey.keys ?? [] as key, index (key)}
                     {#if index > 0}
                       <span class="text-xs">{hotkey.combo ? "+" : "/"}</span>

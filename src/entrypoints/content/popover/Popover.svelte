@@ -122,9 +122,8 @@
   let wide = $state(false)
   /** Set by the first followed link, so the popover no longer moves away from the cursor. It only grows from then on. */
   let lock = $state<{ side: Side; minHeight: number }>()
-  /** Bound languages from the last reply, and the one shown or being looked up. */
+  /** Bound languages from the last reply. */
   let languages = $state.raw<Array<string>>([])
-  let language = $state<string>()
   /** The language the footer marks: the one being looked up, then the one that answered. */
   let footerLanguage = $state<string>()
   const audio = new AudioPlayer()
@@ -216,7 +215,6 @@
   }
 
   const switchLanguage = (target: string) => {
-    language = target
     footerLanguage = target
     tab = undefined
     view = {
@@ -247,7 +245,6 @@
         return
       }
       languages = result.languages
-      language = shownLanguage(result) ?? language
       footerLanguage = shownLanguage(result)
     })
   })
@@ -279,24 +276,7 @@
     return true
   }
 
-  /** Wraps around. Without a current language, D starts at the first and A at the last. */
-  const stepLanguage = (step: 1 | -1): boolean => {
-    // The sources belong to the answer they were opened from.
-    if (search === undefined || languages.length < 2 || view.sources !== undefined) {
-      return false
-    }
-    const index = language === undefined ? -1 : languages.indexOf(language)
-    const next =
-      index === -1
-        ? step === 1
-          ? 0
-          : languages.length - 1
-        : (index + step + languages.length) % languages.length
-    switchLanguage(languages[next]!)
-    return true
-  }
-
-  $effect(() => listenForKeys({ scroller: shownScroller, stepSegment, stepLanguage, play: audio.play }))
+  $effect(() => listenForKeys({ scroller: shownScroller, stepSegment, play: audio.play }))
 </script>
 
 <div
