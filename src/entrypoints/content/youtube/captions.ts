@@ -69,8 +69,8 @@ export const showYouTubeCaptions = (
     if (track === undefined || overlay === undefined) {
       return
     }
-    // Clicking the word again closes its lookup, which plays the video again.
-    if (isShown(hit)) {
+    // Clicking the word again, or another word its match covers, closes its lookup, which plays the video again.
+    if (isShown(hit) || overlay.isMarked(hit)) {
       close()
       return
     }

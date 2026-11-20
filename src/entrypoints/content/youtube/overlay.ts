@@ -36,6 +36,8 @@ export type Overlay = {
    * baseline in any font.
    */
   mark: Paint
+  /** Whether the word `hit` is under the mark now. */
+  isMarked: (hit: WordHit) => boolean
   remove: () => void
 }
 
@@ -95,6 +97,19 @@ const coveredParts = (root: HTMLElement, ranges: ReadonlyArray<Range>): Array<HT
     )
   })
 
+/** Tints the words `ranges` cover in `root` until the returned function is called. */
+const tint = (root: HTMLElement, ranges: ReadonlyArray<Range>): (() => void) => {
+  const parts = coveredParts(root, ranges)
+  for (const part of parts) {
+    part.dataset.mark = "tint"
+  }
+  return () => {
+    for (const part of parts) {
+      delete part.dataset.mark
+    }
+  }
+}
+
 const hitOn = (word: HTMLElement): WordHit | undefined => {
   const text = word.firstChild
   if (!(text instanceof Text)) {
@@ -150,6 +165,7 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
   })
 
   let shown = ""
+  let marked: ReadonlyArray<Range> = []
   return {
     player,
     show: (text, lang) => {
@@ -175,19 +191,21 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
     holds: (node) => root.contains(node),
     // Always over the dark background. The next cue's text drops the tint with the spans.
     mark: (ranges, style) => {
-      if (style === "underline") {
-        return highlightRanges(ranges, style, true)
-      }
-      const parts = coveredParts(root, ranges)
-      for (const part of parts) {
-        part.dataset.mark = style
-      }
+      marked = ranges
+      const unpaint = style === "underline" ? highlightRanges(ranges, style, true) : tint(root, ranges)
       return () => {
-        for (const part of parts) {
-          delete part.dataset.mark
+        if (marked === ranges) {
+          marked = []
         }
+        unpaint()
       }
     },
+    // Ranges left on an earlier cue cannot be compared with this one's text.
+    isMarked: (hit) =>
+      isCovered(
+        hit.element ?? undefined,
+        marked.filter((range) => root.contains(range.commonAncestorContainer)),
+      ),
     remove: () => {
       resize.disconnect()
       root.remove()
