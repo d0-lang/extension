@@ -104,7 +104,12 @@ export const showYouTubeCaptions = (
     // YouTube changes video without loading a new page.
     if (location.href !== href) {
       href = location.href
-      videoId = videoIdOf(new URL(href))
+      const next = videoIdOf(new URL(href))
+      // A drag places the subtitles for one video.
+      if (next !== videoId) {
+        overlay?.resetPosition()
+      }
+      videoId = next
     }
     const player = findPlayer()
     const video = player === null ? null : videoIn(player)
@@ -123,7 +128,7 @@ export const showYouTubeCaptions = (
     }
     if (overlay?.player !== player) {
       removeOverlay()
-      overlay = createOverlay(player, onWord)
+      overlay = createOverlay(ctx, player, onWord)
     }
     const cue = adShowing(player) ? undefined : cueAt(track.cues, video.currentTime * 1000)
     overlay.show(cue?.text, track.lang)
