@@ -39,6 +39,8 @@ export const showYouTubeCaptions = (
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
+  /** Ends the wait for `pausedVideo` to play by other means, like the space key. */
+  let stopWatchingPlay: AbortController | undefined
   let href: string | undefined
   let videoId: string | undefined
   let running = false
@@ -77,7 +79,24 @@ export const showYouTubeCaptions = (
     if (video !== null && !video.paused) {
       video.pause()
       pausedVideo = video
+      watchPlay(video)
     }
+  }
+
+  /** Closes the lookup once `video` plays again, since the lookup is what paused it. */
+  const watchPlay = (video: HTMLVideoElement) => {
+    stopWatchingPlay?.abort()
+    stopWatchingPlay = new AbortController()
+    video.addEventListener(
+      "play",
+      () => {
+        // A `play` queued just before the pause arrives after it, with the video paused again.
+        if (!video.paused) {
+          close()
+        }
+      },
+      { signal: AbortSignal.any([stopWatchingPlay.signal, ctx.signal]) },
+    )
   }
 
   const update = () => {
@@ -134,6 +153,8 @@ export const showYouTubeCaptions = (
   return {
     /** Plays the video again if a lookup paused it. */
     popoverClosed: () => {
+      stopWatchingPlay?.abort()
+      stopWatchingPlay = undefined
       void pausedVideo?.play().catch(() => {})
       pausedVideo = undefined
     },
