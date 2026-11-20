@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { WordHit } from "../page/pick"
 import { sentenceAround } from "../page/sentence"
-import { createOverlay } from "./overlay"
+import { createOverlay, removeLeftovers } from "./overlay"
 
 /** Stands in for YouTube's player: a positioned box the overlay goes into. */
 const player = () => {
@@ -99,5 +99,14 @@ describe("createOverlay", () => {
     overlay.show("Mamy gościa.", "pl")
     overlay.show(undefined, "pl")
     expect(document.querySelector<HTMLElement>("[data-dadict-captions]")?.hidden).toBe(true)
+  })
+})
+
+describe("removeLeftovers", () => {
+  it("removes an earlier run's overlay and style", () => {
+    createOverlay(player(), () => {}).show("Mamy gościa.", "pl")
+    removeLeftovers()
+    expect(document.querySelector("[data-dadict-captions]")).toBeNull()
+    expect(document.getElementById("dadict-captions-style")).toBeNull()
   })
 })

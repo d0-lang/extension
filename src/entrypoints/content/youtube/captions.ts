@@ -5,7 +5,7 @@ import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { cueAt } from "./cues"
 import type { Paint } from "../popover/highlight"
-import { createOverlay, type Overlay } from "./overlay"
+import { createOverlay, removeLeftovers, type Overlay } from "./overlay"
 import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn } from "./player"
 import { keepPressFromPage } from "./press"
 import { watchTracks, type Track } from "./track"
@@ -62,6 +62,7 @@ export const showYouTubeCaptions = (
     overlay = undefined
   }
   // An overlay left behind by a reloaded extension would keep YouTube's own captions hidden.
+  removeLeftovers()
   ctx.onInvalidated(removeOverlay)
 
   const onWord = (hit: WordHit) => {

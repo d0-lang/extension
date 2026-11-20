@@ -107,6 +107,17 @@ const hitOn = (word: HTMLElement): WordHit | undefined => {
   return { word: text.data, anchor: { top, bottom, left, right }, element: word, range }
 }
 
+/**
+ * Removes the overlays and style an earlier run of the content script left on the page, so the style is this run's.
+ * Firefox drops a reloaded extension's scripts without running their cleanup.
+ */
+export const removeLeftovers = () => {
+  for (const root of document.querySelectorAll("[data-dadict-captions]")) {
+    root.remove()
+  }
+  document.getElementById(STYLE_ID)?.remove()
+}
+
 /** Adds the overlay to `player`, which hides YouTube's own captions while it is there. */
 export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => void): Overlay => {
   addStyle()
