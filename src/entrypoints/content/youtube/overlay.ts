@@ -1,7 +1,10 @@
 /** The cue shown inside the player, in the page's own DOM so a word's sentence and Alt work on it as on any text. */
+import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { segmentsOf } from "../page/tokenize"
 import { highlightRanges, type Paint } from "../popover/highlight"
+import { safeArea, shiftInto } from "./area"
+import { dragToMove } from "./drag"
 import css from "./overlay.css?inline"
 
 const STYLE_ID = "dadict-captions-style"
@@ -36,6 +39,8 @@ export type Overlay = {
    * baseline in any font.
    */
   mark: Paint
+  /** Puts the subtitles back where they start, after a drag. */
+  resetPosition: () => void
   /** Whether the word `hit` is under the mark now. */
   isMarked: (hit: WordHit) => boolean
   remove: () => void
@@ -133,13 +138,46 @@ export const removeLeftovers = () => {
   document.getElementById(STYLE_ID)?.remove()
 }
 
-/** Adds the overlay to `player`, which hides YouTube's own captions while it is there. */
-export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => void): Overlay => {
+/**
+ * Adds the overlay to `player`, which hides YouTube's own captions while it is there.
+ * Dragging its text moves it around the player's safe area.
+ */
+export const createOverlay = (
+  ctx: ContentScriptContext,
+  player: HTMLElement,
+  onWord: (hit: WordHit) => void,
+): Overlay => {
   addStyle()
   const root = document.createElement("div")
   root.dataset.dadictCaptions = ""
   root.hidden = true
   player.append(root)
+
+  /** Where the viewer dragged the subtitles, in fractions of the player's size from where they start. */
+  let chosen = { x: 0, y: 0 }
+  /** Where they are: `chosen`, moved as little as keeps the cue in the safe area. */
+  let placed = chosen
+  const moveTo = (offset: { x: number; y: number }) => {
+    placed = offset
+    root.style.setProperty("--dadict-caption-x", String(offset.x))
+    root.style.setProperty("--dadict-caption-y", String(offset.y))
+  }
+  const place = () => {
+    moveTo(chosen)
+    // Where they start is clear of the controls already, and measuring a hidden overlay gives nothing.
+    if (root.hidden || (chosen.x === 0 && chosen.y === 0)) {
+      return
+    }
+    const shift = shiftInto(root.getBoundingClientRect(), safeArea(player))
+    moveTo({ x: chosen.x + shift.x / player.clientWidth, y: chosen.y + shift.y / player.clientHeight })
+  }
+  dragToMove(ctx, root, () => {
+    const from = placed
+    return (dx, dy) => {
+      chosen = { x: from.x + dx / player.clientWidth, y: from.y + dy / player.clientHeight }
+      place()
+    }
+  })
 
   const resize = new ResizeObserver(() => {
     const size = Math.min(MAX_SIZE_PX, Math.max(MIN_SIZE_PX, player.clientHeight * SIZE_RATIO))
@@ -150,6 +188,7 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
       const lift = player.getBoundingClientRect().bottom - controls.getBoundingClientRect().top
       root.style.setProperty("--dadict-caption-lift", `${Math.max(0, lift)}px`)
     }
+    place()
   })
   resize.observe(player)
 
@@ -169,23 +208,27 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
   return {
     player,
     show: (text, lang) => {
+      const appearing = root.hidden && text !== undefined
       root.hidden = text === undefined
       const key = `${lang}\n${text}`
-      if (text === undefined || key === shown) {
+      if (text !== undefined && key !== shown) {
+        shown = key
+        root.lang = lang
+        // A line break in the text, which `pre-line` shows. A `<br>` or a block per line would end the text
+        // a word's sentence is read from, and the server should get the whole cue.
+        root.replaceChildren(
+          ...text
+            .split("\n")
+            .flatMap((line, index): Array<string | Node> => [
+              ...(index === 0 ? [] : ["\n"]),
+              lineOf(line, lang),
+            ]),
+        )
+      } else if (!appearing) {
         return
       }
-      shown = key
-      root.lang = lang
-      // A line break in the text, which `pre-line` shows. A `<br>` or a block per line would end the text
-      // a word's sentence is read from, and the server should get the whole cue.
-      root.replaceChildren(
-        ...text
-          .split("\n")
-          .flatMap((line, index): Array<string | Node> => [
-            ...(index === 0 ? [] : ["\n"]),
-            lineOf(line, lang),
-          ]),
-      )
+      // A cue of another size can reach out of the safe area where the last one did not.
+      place()
     },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),
@@ -206,6 +249,10 @@ export const createOverlay = (player: HTMLElement, onWord: (hit: WordHit) => voi
         hit.element ?? undefined,
         marked.filter((range) => root.contains(range.commonAncestorContainer)),
       ),
+    resetPosition: () => {
+      chosen = { x: 0, y: 0 }
+      place()
+    },
     remove: () => {
       resize.disconnect()
       root.remove()
