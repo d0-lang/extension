@@ -22,12 +22,11 @@ To start, add **DaDict public**, `https://server.dadict.com`: German, Spanish, F
 ## Features
 
 - **Lookup on any page.** Hold <kbd>Alt</kbd> over a word, or use the context menu on a word or selection.
-- **Phrases.** With the sentence around the word, a server can find the phrase it belongs to, like _in Kraft treten_ for _Kraft_ or _stattfinden_ for _fand … statt_. The phrase is listed first and highlighted on the page.
+- **Phrases.** With the sentence around the word, a server can find the phrase it belongs to and highlight its pieces.
 - **Several languages.** The page's language is detected, so the right server answers. The language you pick in the popover stays the default for that page.
 - **Keyboard.** <kbd>W</kbd> / <kbd>S</kbd> scroll the popover, <kbd>A</kbd> / <kbd>D</kbd> move between the parts of a split word, like _Rettung_ and _Fonds_ in _Rettungsfonds_, <kbd>E</kbd> plays the pronunciation, <kbd>Esc</kbd> closes it.
-- **Grammar labels explained.** Hover or tab to a label like _pf_ to see what it stands for, when the server explains its labels. Parts of speech are named, not shown as tags.
+- **Grammar labels explained.** Hover or tab to a label like _pf_ to see what it stands for, when the server explains its labels.
 - **Sources.** The settings credit the material a server's answers are built from, and the popover links each entry and recording to its page.
-- **Russian and Ukrainian stress marks** drawn over the right letter, whatever the font.
 - **Light and dark themes**, following the system or set by hand.
 
 ## Privacy
@@ -38,7 +37,6 @@ DaDict only talks to the servers you add.
 - **Blocked sites:** sites like mail or documents can be listed in Settings. Their sentences only go to servers set to get sentences from all sites.
 - **Pronunciation audio** is played only when you ask, over HTTPS, from the answering server's own host or `upload.wikimedia.org`.
 - **Source links** in the popover go only to the sites a server credits in its signed metadata, like Wiktionary, and open without telling that site which page you were reading.
-- **Reports** from the toolbar popup open only when you click them. A wrong meaning opens the answering server's report page with the word, its language and the DaDict version. Neither report carries the sentence or the page you are on.
 - **Nothing else** leaves the browser. There is no analytics or tracking. Settings are kept in the browser's extension storage.
 
 Servers sign what they send with an Ed25519 key. DaDict keeps the key from when you added the server and warns you if it changes.
