@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { WordHit } from "../page/pick"
 import { sentenceAround } from "../page/sentence"
-import { createOverlay } from "./overlay"
+import { createOverlay, removeLeftovers } from "./overlay"
 
 /** Stands in for YouTube's player: a positioned box the overlay goes into. */
 const player = () => {
@@ -94,10 +94,49 @@ describe("createOverlay", () => {
     expect(document.querySelector("[data-mark]")).toBeNull()
   })
 
+  it("knows which words are under the mark", () => {
+    let hit: WordHit | undefined
+    const overlay = createOverlay(player(), (picked) => (hit = picked))
+    overlay.show("Wir senden heute live.", "de")
+    const range = document.createRange()
+    range.setStart(wordSpan("senden").firstChild!, 0)
+    range.setEnd(wordSpan("heute").firstChild!, 5)
+    const unmark = overlay.mark([range], "underline", true)
+    const clicked = (text: string) => {
+      wordSpan(text).click()
+      return hit!
+    }
+    expect(overlay.isMarked(clicked("heute"))).toBe(true)
+    expect(overlay.isMarked(clicked("live"))).toBe(false)
+    unmark()
+    expect(overlay.isMarked(clicked("heute"))).toBe(false)
+  })
+
+  it("leaves a mark on an earlier cue out", () => {
+    let hit: WordHit | undefined
+    const overlay = createOverlay(player(), (picked) => (hit = picked))
+    overlay.show("Mamy gościa.", "pl")
+    const range = document.createRange()
+    range.selectNodeContents(wordSpan("gościa").firstChild!)
+    overlay.mark([range], "tint", true)
+    overlay.show("Mamy gościa!", "pl")
+    wordSpan("gościa").click()
+    expect(overlay.isMarked(hit!)).toBe(false)
+  })
+
   it("hides until the next cue", () => {
     const overlay = createOverlay(player(), () => {})
     overlay.show("Mamy gościa.", "pl")
     overlay.show(undefined, "pl")
     expect(document.querySelector<HTMLElement>("[data-dadict-captions]")?.hidden).toBe(true)
+  })
+})
+
+describe("removeLeftovers", () => {
+  it("removes an earlier run's overlay and style", () => {
+    createOverlay(player(), () => {}).show("Mamy gościa.", "pl")
+    removeLeftovers()
+    expect(document.querySelector("[data-dadict-captions]")).toBeNull()
+    expect(document.getElementById("dadict-captions-style")).toBeNull()
   })
 })
