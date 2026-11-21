@@ -159,6 +159,28 @@ describe("cuesOf for auto captions", () => {
     expect(texts(cuesOf(json3, true))).toEqual(["模型を作っていき", "ます Co to jest"])
   })
 
+  it("puts punctuation sent as a piece of its own right after its word, even at a line's start", () => {
+    const json3 = asr(
+      [
+        ["field", 0],
+        ["—", 200],
+        ["that", 300],
+        [" is", 500],
+      ],
+      [
+        [",", 700],
+        [" in", 800],
+        [" short", 1000],
+      ],
+    )
+    expect(texts(cuesOf(json3, true))).toEqual(["field—that is, in short"])
+  })
+
+  it("keeps punctuation with its word across a pause", () => {
+    const json3 = asr([...spoken("Quick recipes and simple ingredients"), [".", 3000]])
+    expect(texts(cuesOf(json3, true))).toEqual(["Quick recipes and simple ingredients."])
+  })
+
   it("shows a cue until the next one, or a while after its last word", () => {
     const json3 = asr([
       ...spoken("Nie wiem, co mam teraz na to powiedzieć."),
@@ -170,6 +192,33 @@ describe("cuesOf for auto captions", () => {
       [2400, 4700],
       [10_000, 12_300],
     ])
+  })
+})
+
+describe("cuesOf for auto captions without word timings", () => {
+  it("keeps YouTube's cues and lines, each until the next", () => {
+    const json3 = creator(
+      ["Ala ma kota, a kot ma\nAlę i dwa psy", 0, 5000],
+      ["które biegają\ncały dzień", 3000, 8000],
+    )
+    expect(cuesOf(json3, true)).toEqual([
+      { startMs: 0, endMs: 3000, text: "Ala ma kota, a kot ma\nAlę i dwa psy" },
+      { startMs: 3000, endMs: 8000, text: "które biegają\ncały dzień" },
+    ])
+  })
+
+  it("drops speaker markers and sounds, which a creator's cues keep", () => {
+    const json3: Json3 = {
+      events: [
+        {
+          tStartMs: 0,
+          dDurationMs: 4000,
+          segs: [{ utf8: ">> Tak, tak." }, { utf8: " [śmiech]\n>> Dobrze." }],
+        },
+      ],
+    }
+    expect(texts(cuesOf(json3, true))).toEqual(["Tak, tak.\nDobrze."])
+    expect(texts(cuesOf(json3, false))).toEqual([">> Tak, tak.\n>> Dobrze."])
   })
 })
 
@@ -217,11 +266,13 @@ describe("cuesOf for creator captions", () => {
 
 describe("cuesOf on recorded tracks", () => {
   const directory = new URL("./fixtures/", import.meta.url)
-  const tracks = readdirSync(directory).map((name) => ({
-    name,
-    asr: name.includes(".asr."),
-    json3: parseJson3(JSON.parse(readFileSync(new URL(name, directory), "utf8")))!,
-  }))
+  const tracks = readdirSync(directory).map((name) => {
+    const json3 = parseJson3(JSON.parse(readFileSync(new URL(name, directory), "utf8")))!
+    const asr = name.includes(".asr.")
+    const timed = json3.events.some(({ segs = [] }) => segs.some(({ tOffsetMs }) => tOffsetMs !== undefined))
+    // Only timed auto captions are cut here. The rest keep YouTube's cues.
+    return { name, asr, cut: asr && timed, json3 }
+  })
   /** All the letters in a track, to compare without spacing, speaker markers or sounds. */
   const letters = (text: string) => text.replace(/\s|>>|\[[^\]]*\]|♪|\([^)]*\)/gu, "")
 
@@ -242,7 +293,7 @@ describe("cuesOf on recorded tracks", () => {
     expect(letters(texts(cuesOf(json3, asr)).join(""))).toBe(letters(source))
   })
 
-  it.each(tracks.filter(({ asr }) => asr))("$name fits each cue in two lines", ({ json3 }) => {
+  it.each(tracks.filter(({ cut }) => cut))("$name fits each cue in two lines", ({ json3 }) => {
     for (const { text } of cuesOf(json3, true)) {
       const lines = text.split("\n")
       expect(lines.length, text).toBeLessThanOrEqual(2)
@@ -251,6 +302,19 @@ describe("cuesOf on recorded tracks", () => {
       }
     }
   })
+
+  it.each(tracks.filter(({ asr, cut }) => asr && !cut))(
+    "$name shows each of YouTube's cues until the next or its own end",
+    ({ json3 }) => {
+      const ends = new Map(
+        json3.events.map(({ tStartMs, dDurationMs }) => [tStartMs, tStartMs + dDurationMs]),
+      )
+      const cues = cuesOf(json3, true)
+      for (const [index, cue] of cues.entries()) {
+        expect(cue.endMs).toBe(Math.min(ends.get(cue.startMs)!, cues[index + 1]?.startMs ?? Infinity))
+      }
+    },
+  )
 })
 
 describe("cuesOf on a long track", () => {

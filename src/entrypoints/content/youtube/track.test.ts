@@ -35,7 +35,7 @@ describe("trackOf", () => {
 
   it("reads a translation as the language it was translated into", () => {
     const track = trackOf({ url: `${BASE}&kind=asr&lang=ja&tlang=pl`, body: creatorBody })
-    expect(track).toMatchObject({ lang: "pl", translatedFrom: "ja", asr: false })
+    expect(track).toMatchObject({ lang: "pl", translatedFrom: "ja", asr: true })
   })
 
   it("leaves out answers that are not a track", () => {

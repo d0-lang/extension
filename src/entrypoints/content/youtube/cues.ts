@@ -13,7 +13,10 @@ type Word = Spoken & {
   /** Where the word starts and ends with the whole track on one line, in `width` units. */
   left: number
   right: number
-  /** Whether the word starts inside what the segmenter reads as one word, like `方` after `使い`. No cut goes before it. */
+  /**
+   * Whether the word starts inside what the segmenter reads as one word, like `方` after `使い`,
+   * or is punctuation that belongs to the word before. No cut goes before it.
+   */
   inSegment: boolean
   /** How good a place it is to cut before the word, in milliseconds of silence it is worth. */
   cutWorth: number
@@ -53,6 +56,12 @@ const TAIL_MS = 2000
 const SENTENCE_END = /(?:[.!?…。！？]["'»”)]*|です|ます|ました|でした|ません|ください)$/u
 const CLAUSE_END = /[,;:、，]["'»”)]*$/u
 
+/** Punctuation that belongs to the word before. Some tracks send it as a piece of its own, even at the start of a line. */
+const ATTACHED = /^[.,!?;:…)\]}、。，．！？：；]/u
+
+/** Where auto captions mark a new speaker, at the start of a word or a line. */
+const SPEAKER = /^(\s*)>>\s*/u
+
 /** Sounds and bleeps, like `[Musik]`, `[ __ ]` or `♪`, which have nothing to look up. */
 const SOUND = /\[[^\]]*\]|♪/gu
 
@@ -90,7 +99,7 @@ const layOut = (words: ReadonlyArray<Spoken>): Array<Omit<Word, "inSegment" | "c
     const shown = tidy(joinLines(word.text))
     const gap = before === undefined ? "" : /\s*$/u.exec(before.text)![0] + /^\s*/u.exec(word.text)![0]
     const joinsWide = gap.includes("\n") && WIDE.test(before?.shown.at(-1) ?? "") && WIDE.test(shown[0] ?? "")
-    const spaced = gap !== "" && !joinsWide
+    const spaced = gap !== "" && !joinsWide && !ATTACHED.test(shown)
     const left = (before?.right ?? 0) + (spaced ? 1 : 0)
     before = { text: word.text, shown, right: left + width(shown) }
     return { ...word, shown, spaced, left, right: before.right }
@@ -118,7 +127,7 @@ const asrWords = (json3: Json3): Array<Word> => {
           : segs.map(({ utf8, tOffsetMs = 0, isSpeakerChange }, index) => ({
               // An event's first word has no space before it, so it starts a line like in a creator track.
               // The speaker marker becomes a cut, so it would only get in the way of picking the word.
-              text: (index === 0 ? "\n" : "") + utf8.replace(/^(\s*)>>\s*/u, "$1").replace(SOUND, ""),
+              text: (index === 0 ? "\n" : "") + utf8.replace(SPEAKER, "$1").replace(SOUND, ""),
               startMs: tStartMs + tOffsetMs,
               speakerChange: isSpeakerChange === 1,
             })),
@@ -128,7 +137,7 @@ const asrWords = (json3: Json3): Array<Word> => {
   const inSegment = startsInSegment(words)
   return words.map((word, index) => ({
     ...word,
-    inSegment: inSegment[index]!,
+    inSegment: inSegment[index]! || ATTACHED.test(word.shown),
     cutWorth: index === 0 ? 0 : cutScore(words[index - 1]!, word),
   }))
 }
@@ -248,15 +257,15 @@ const asrCues = (json3: Json3): Array<Cue> => {
   })
 }
 
-/** A creator's cues stay as they are, lines and all. */
-const creatorCues = (json3: Json3): Array<Cue> => {
+/** The track's own cues, lines and all. Auto captions also lose their speaker markers. */
+const keptCues = (json3: Json3, asr: boolean): Array<Cue> => {
   const cues = json3.events.flatMap(({ tStartMs, dDurationMs, segs = [] }) => {
     const lines = segs
       .map(({ utf8 }) => utf8)
       .join("")
       .replace(SOUND, "")
       .split("\n")
-      .map(tidy)
+      .map((line) => tidy(asr ? line.replace(SPEAKER, "$1") : line))
       .filter((line) => line !== "")
     return lines.length === 0 || SOUND_ONLY.test(lines.join(" "))
       ? []
@@ -269,8 +278,17 @@ const creatorCues = (json3: Json3): Array<Cue> => {
   }))
 }
 
-/** Cues in the order they show, none overlapping. `asr` is whether the track is YouTube's auto captions. */
-export const cuesOf = (json3: Json3, asr: boolean): Array<Cue> => (asr ? asrCues(json3) : creatorCues(json3))
+/** Whether any word has a time of its own. */
+const timed = (json3: Json3): boolean =>
+  json3.events.some(({ segs = [] }) => segs.some(({ tOffsetMs }) => tOffsetMs !== undefined))
+
+/**
+ * Cues in the order they show, none overlapping. `asr` is whether the track is YouTube's auto captions.
+ * Auto captions are cut here only when their words are timed. Without timings, as in a translation or in
+ * YouTube's newer format of one event per cue, they keep YouTube's cues.
+ */
+export const cuesOf = (json3: Json3, asr: boolean): Array<Cue> =>
+  asr && timed(json3) ? asrCues(json3) : keptCues(json3, asr)
 
 const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
   let low = 0
