@@ -11,7 +11,7 @@ export type Track = {
   lang: string
   /** The track's own language, when YouTube machine-translated it. */
   translatedFrom: string | undefined
-  /** Whether the cues come from YouTube's auto captions, cut by us. */
+  /** Whether the track is YouTube's auto captions, or a translation of them. */
   asr: boolean
   cues: Array<Cue>
 }
@@ -36,8 +36,7 @@ export const trackOf = ({ url, body }: Timedtext): Track | undefined => {
     return undefined
   }
   const tlang = params?.get("tlang") ?? undefined
-  // A translation has no word timings, so it keeps YouTube's lines like a creator track.
-  const asr = params?.get("kind") === "asr" && tlang === undefined
+  const asr = params?.get("kind") === "asr"
   return {
     videoId,
     lang: tlang ?? lang,
