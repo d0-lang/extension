@@ -1,6 +1,6 @@
 name: Doesn't work on a page
 description: Looking up a word fails, or the popover looks wrong, on some site.
-labels: [bug]
+labels: [bug, report]
 body:
   - type: input
     id: browser
