@@ -55,7 +55,9 @@
         <CircleHelpIcon />
         <span class="flex flex-col gap-1">
           <span class="text-base font-medium">Something {report === undefined ? "" : "else "}went wrong</span>
-          <span class="text-muted-foreground text-sm">Opens DaDict's form on github.com</span>
+          <span class="text-muted-foreground text-sm"
+            >Opens DaDict's report form, no GitHub account needed</span
+          >
         </span>
       </a>
     {/if}

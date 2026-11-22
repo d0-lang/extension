@@ -78,20 +78,18 @@ describe("buildName", () => {
 describe("pageIssueLink", () => {
   it("fills in the browser and the version", () => {
     expect(pageIssueLink("Firefox 158.0 on Linux", "0.6.0")).toBe(
-      "https://github.com/d0-lang/extension/issues/new?template=page.yml&browser=Firefox+158.0+on+Linux&version=0.6.0",
+      "https://report.dadict.com/extension/page?browser=Firefox+158.0+on+Linux&version=0.6.0",
     )
   })
 
   it("carries the commit in the version field", () => {
     expect(pageIssueLink(undefined, buildName("0.6.0", "a1b2c3d"))).toBe(
-      "https://github.com/d0-lang/extension/issues/new?template=page.yml&version=0.6.0+%28a1b2c3d%29",
+      "https://report.dadict.com/extension/page?version=0.6.0+%28a1b2c3d%29",
     )
   })
 
   it("leaves the browser for the reporter when it is not known", () => {
-    expect(pageIssueLink(undefined, "0.6.0")).toBe(
-      "https://github.com/d0-lang/extension/issues/new?template=page.yml&version=0.6.0",
-    )
+    expect(pageIssueLink(undefined, "0.6.0")).toBe("https://report.dadict.com/extension/page?version=0.6.0")
   })
 })
 
@@ -109,6 +107,6 @@ describe("privacy", () => {
       expect(decodeURIComponent(href)).not.toContain("mail.example")
     }
     expect([...new URL(report?.href ?? "").searchParams.keys()]).toEqual(["word", "lang", "client"])
-    expect([...new URL(issue).searchParams.keys()]).toEqual(["template", "browser", "version"])
+    expect([...new URL(issue).searchParams.keys()]).toEqual(["browser", "version"])
   })
 })
