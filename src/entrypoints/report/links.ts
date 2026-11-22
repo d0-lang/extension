@@ -7,7 +7,8 @@ import type { LastLookup, Servers } from "$lib/storage"
 /** The client name in `client`, as the protocol spells it: `dadict/0.6.0`. */
 const CLIENT_NAME = "dadict"
 
-const PAGE_ISSUE_FORM = "https://github.com/d0-lang/extension/issues/new?template=page.yml"
+/** The report form for this repo, which opens the issue here without a GitHub account (d0-lang/report). */
+const PAGE_ISSUE_FORM = "https://report.dadict.com/extension/page"
 
 /** `reportUrl` with `word`, `lang` and `client` added to the query it already has. Unset unless it is `https`. */
 export const wordReportLink = (
@@ -46,7 +47,7 @@ export const wordReport = (
 export const buildName = (version: string, commit: string | undefined): string =>
   commit ? `${version} (${commit})` : version
 
-/** This repo's "Doesn't work on a page" form, with the browser and the extension version filled in. */
+/** The "Doesn't work on a page" form, with the browser and the extension version filled in. */
 export const pageIssueLink = (browserName: string | undefined, version: string): string => {
   const url = new URL(PAGE_ISSUE_FORM)
   if (browserName !== undefined) {
