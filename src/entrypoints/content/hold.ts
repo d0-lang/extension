@@ -43,10 +43,14 @@ const sameHit = (a: WordHit | undefined, b: WordHit): boolean =>
   a.range.startContainer === b.range.startContainer &&
   a.range.startOffset === b.range.startOffset
 
+/** Whether the word in `hit` is no longer drawn, like one on a subtitle line that ended. */
+const isGone = (hit: WordHit): boolean => hit.range.collapsed || hit.range.getClientRects().length === 0
+
 /**
  * While left Alt is held, show the word under the cursor.
  * Only left Alt counts, because AltGr types letters like `ą` and `ß` on many layouts.
  * Releasing closes the popover, unless the cursor is on it.
+ * When the shown word leaves the screen, the word under the cursor replaces it, or the popover closes.
  * During a hold the wheel scrolls the popover wherever the cursor is, because Alt + wheel goes through history in Firefox.
  */
 export const watchAltHold = (
@@ -56,6 +60,7 @@ export const watchAltHold = (
   let pointer: { x: number; y: number } | undefined
   let holding = false
   let frameQueued = false
+  let watching = false
   let shown: WordHit | undefined
   let pending: WordHit | undefined
   let timer: number | undefined
@@ -96,6 +101,33 @@ export const watchAltHold = (
       pending = hit
       timer = ctx.setTimeout(() => showNow(hit), SETTLE_MS)
     }
+  }
+
+  const dropGone = () => {
+    if (shown === undefined || !isGone(shown)) {
+      return
+    }
+    shown = undefined
+    if (pointer === undefined || isOverPopover(pointer.x, pointer.y)) {
+      return
+    }
+    const hit = wordAt(pointer.x, pointer.y)
+    if (hit === undefined) {
+      cancelPending()
+      close()
+    } else {
+      showNow(hit)
+    }
+  }
+
+  /** Text can go without the cursor moving, so this runs every frame of a hold. */
+  const watchShown = () => {
+    if (!holding) {
+      watching = false
+      return
+    }
+    dropGone()
+    ctx.requestAnimationFrame(watchShown)
   }
 
   const release = (keepIfOverPopover: boolean) => {
@@ -149,6 +181,10 @@ export const watchAltHold = (
         window.addEventListener("wheel", onWheel, { capture: true, passive: false, signal: ctx.signal })
         shown = undefined
         update(true)
+        if (!watching) {
+          watching = true
+          ctx.requestAnimationFrame(watchShown)
+        }
       }
     },
     { capture: true },

@@ -40,6 +40,8 @@ describe("watchAltHold", () => {
   let aborts: AbortController
   let show: ReturnType<typeof vi.fn<(hit: WordHit) => void>>
 
+  let close: ReturnType<typeof vi.fn<() => void>>
+
   /** Hold with the cursor on whatever `hits` returns for each move, in turn. */
   const hold = (hits: Array<WordHit>) => {
     const queue = [...hits]
@@ -49,7 +51,7 @@ describe("watchAltHold", () => {
       isOverPopover: () => false,
       popoverScroller: () => undefined,
       show,
-      close: () => {},
+      close,
     })
     movePointer(0)
     pressAlt()
@@ -59,12 +61,19 @@ describe("watchAltHold", () => {
     vi.useFakeTimers()
     aborts = new AbortController()
     show = vi.fn<(hit: WordHit) => void>()
+    close = vi.fn<() => void>()
+    // happy-dom lays nothing out, so a range is drawn while its text is in the page and not hidden.
+    vi.spyOn(Range.prototype, "getClientRects").mockImplementation(function (this: Range) {
+      const shown = this.startContainer.isConnected && this.startContainer.parentElement?.hidden === false
+      return (shown ? [new DOMRect()] : []) as unknown as DOMRectList
+    })
     document.body.innerHTML = `<p>Kaiser</p><p>Kaiser</p>`
   })
 
   afterEach(() => {
     aborts.abort()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   const texts = () => [...document.querySelectorAll("p")].map((paragraph) => paragraph.firstChild as Text)
@@ -83,6 +92,23 @@ describe("watchAltHold", () => {
     hold([hitOn(first!, "Kaiser", 10), hitOn(second!, "Kaiser", 10)])
     movePointer(1)
     expect(show).toHaveBeenCalledTimes(2)
+    expect(show.mock.calls[1]![0].range.startContainer).toBe(second)
+  })
+
+  it("closes when the shown word leaves the screen and no word is under the cursor", () => {
+    const [first] = texts()
+    hold([hitOn(first!, "Kaiser", 10)])
+    first!.parentElement!.hidden = true
+    vi.advanceTimersByTime(SETTLED_MS)
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows the word under the cursor when the shown word's text is replaced", () => {
+    const [first, second] = texts()
+    hold([hitOn(first!, "Kaiser", 10), hitOn(second!, "Kaiser", 10)])
+    first!.remove()
+    vi.advanceTimersByTime(SETTLED_MS)
+    expect(close).not.toHaveBeenCalled()
     expect(show.mock.calls[1]![0].range.startContainer).toBe(second)
   })
 })
