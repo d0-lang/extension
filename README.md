@@ -35,6 +35,7 @@ DaDict only talks to the servers you add.
 
 - **What is sent:** the looked up word and its language. A server that supports it can also get the sentence the word is in. You choose this for each server when you add it: from all sites, from all sites except blocked ones, or never.
 - **Blocked sites:** sites like mail or documents can be listed in Settings. Their sentences only go to servers set to get sentences from all sites.
+- **On YouTube**, DaDict reads the caption track the player downloads, to show it with clickable words. Tracks stay in the tab's memory and are never stored or sent anywhere. A lookup sends the word and, if you allow sentences for that server, the subtitle it is in, the same as a sentence on any page. DaDict makes no requests to YouTube itself.
 - **Pronunciation audio** is played only when you ask, over HTTPS, from the answering server's own host or `upload.wikimedia.org`.
 - **Source links** in the popover go only to the sites a server credits in its signed metadata, like Wiktionary, and open without telling that site which page you were reading.
 - **Nothing else** leaves the browser. There is no analytics or tracking. Settings are kept in the browser's extension storage.
