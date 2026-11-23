@@ -1,6 +1,7 @@
 /**
  * Measures what the extension costs a YouTube video's start, against real YouTube.
  * A round loads the video without the extension and with it, back to back and with captions on, so the player downloads a track.
+ * YouTube sends each track only once a run, and later loads get that copy, so the rounds do not get the IP rate-limited.
  * Each round is compared on its own, because YouTube's loads differ from one minute to the next and a slow spell then hits both.
  * `bun run youtube:perf` measures every video. Pass video ids to measure only those, and `--rounds=8` for more rounds of each.
  * `--against=<folder>` compares with another build of the extension rather than with none, to see what a change costs.
@@ -93,6 +94,26 @@ const measure = ({ event, windowMs }: { event: string; windowMs: number }) => {
   }
 }
 
+/** The tracks YouTube sent this run, by what the player asked for. */
+const tracks = new Map<string, string>()
+
+const keepTracks = (context: BrowserContext) =>
+  context.route("**/api/timedtext?**", async (route) => {
+    const params = new URL(route.request().url()).searchParams
+    const key = ["v", "lang", "kind", "tlang", "fmt"].map((name) => params.get(name)).join(" ")
+    const kept = tracks.get(key)
+    if (kept !== undefined) {
+      return route.fulfill({ contentType: "application/json", body: kept })
+    }
+    const response = await route.fetch()
+    const body = await response.text()
+    // The player asks before its token is ready and gets nothing, which is no track to keep.
+    if (response.ok() && body !== "") {
+      tracks.set(key, body)
+    }
+    return route.fulfill({ response, body })
+  })
+
 const url = (video: Video) => `https://www.youtube.com/watch?v=${video.id}`
 
 /** Turns captions on like a viewer, which the player remembers for the loads that follow. */
@@ -150,6 +171,7 @@ const measureVideo = async (video: Video, userAgent: string): Promise<Array<stri
       args: ["--autoplay-policy=no-user-gesture-required"],
     })
     await context.addInitScript(measure, { event: TIMEDTEXT_EVENT, windowMs: WINDOW_MS })
+    await keepTracks(context)
     const page = await context.newPage()
     await turnCaptionsOn(page, video)
     sessions.push({ profile, context, page })

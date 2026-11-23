@@ -6,6 +6,9 @@ export const EXTENSION = new URL("../.output/chrome-mv3", import.meta.url).pathn
 
 const AD_WAIT_MS = 90_000
 
+/** A proxy for the browser, like a VPN's, so a block from too many tracks lands on its IP and not this machine's. */
+const PROXY = process.env.YOUTUBE_PROXY
+
 /** Builds the extension, into `EXTENSION` unless `script` is the build for another browser. Exits when the build fails. */
 export const buildExtension = (script = "build") => {
   const build = Bun.spawnSync(["bun", "run", script], { stdout: "ignore", stderr: "inherit" })
@@ -44,6 +47,7 @@ export const openYouTube = async ({
     // The new headless mode, which loads extensions.
     channel: "chromium",
     headless: true,
+    proxy: PROXY === undefined ? undefined : { server: PROXY },
     userAgent,
     locale,
     args: [
@@ -59,6 +63,13 @@ export const openYouTube = async ({
   })
   // Skips the EU consent page.
   await context.addCookies([{ name: "SOCS", value: "CAI", domain: ".youtube.com", path: "/" }])
+  // Asking again while blocked only keeps the block going.
+  context.on("response", (response) => {
+    if (response.status() === 429 && new URL(response.url()).pathname === "/api/timedtext") {
+      console.log("YouTube rate-limits this IP's tracks. Try again later, or set YOUTUBE_PROXY.")
+      process.exit(1)
+    }
+  })
   return context
 }
 
