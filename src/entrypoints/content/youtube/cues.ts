@@ -331,7 +331,7 @@ const shortTail = (text: string, moved: Array<string> = []): { kept: string; mov
 }
 
 /**
- * Auto captions YouTube cut itself, mended where it cut badly. Short words at a cue's end, like `alors le`, go
+ * Auto captions YouTube cut itself, mended where it cut badly. Short words at a cue's end, like `vers la`, go
  * to the next cue, which starts with what they lead into. A cue left with only a few words joins the one before.
  * The words moved are said right where the cues meet, so they show at about the same time.
  */

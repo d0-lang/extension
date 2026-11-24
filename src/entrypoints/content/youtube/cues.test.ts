@@ -79,8 +79,8 @@ describe("cuesOf for auto captions", () => {
   })
 
   it("keeps a short word with the word after it across a pause", () => {
-    const json3 = asr([...spoken("les chiens ou bien les chats par"), ...spoken(" exemple", 4000)])
-    expect(texts(cuesOf(json3, true))).toEqual(["les chiens ou bien les chats par exemple"])
+    const json3 = asr([...spoken("il a pris le dernier train de la"), ...spoken(" nuit", 4000)])
+    expect(texts(cuesOf(json3, true))).toEqual(["il a pris le dernier train de la nuit"])
   })
 
   it("puts a space between lines, but not between Japanese ones", () => {
@@ -216,41 +216,41 @@ describe("cuesOf for auto captions without word timings", () => {
 
   it("moves the short words a cue ends on to the next cue", () => {
     const json3 = creator(
-      ["j'ai aussi eu deux chiens alors le", 0, 3000],
-      ["premier chien était blanc alors on dit", 3000, 6000],
-      ["pour un mâle on dit un rat", 6000, 9000],
+      ["hier soir nous sommes partis vers la", 0, 3000],
+      ["gare centrale avant minuit puis on a", 3000, 6000],
+      ["attendu le dernier bus sous la pluie", 6000, 9000],
     )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "j'ai aussi eu deux chiens alors",
-      "le premier chien était blanc alors",
-      "on dit pour un mâle on dit un rat",
+      "hier soir nous sommes partis vers",
+      "la gare centrale avant minuit puis",
+      "on a attendu le dernier bus sous la pluie",
     ])
   })
 
   it("keeps the short words a cue ends on before a pause or a new speaker", () => {
     const json3 = creator(
-      ["j'ai aussi eu deux chiens alors le", 0, 3000],
-      ["premier chien était blanc et", 5000, 8000],
-      [">> c'était un chien très gentil", 8000, 9000],
+      ["hier soir nous sommes partis vers la", 0, 3000],
+      ["gare centrale avant minuit et", 5000, 8000],
+      [">> le train était déjà parti", 8000, 9000],
     )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "j'ai aussi eu deux chiens alors le",
-      "premier chien était blanc et",
-      "c'était un chien très gentil",
+      "hier soir nous sommes partis vers la",
+      "gare centrale avant minuit et",
+      "le train était déjà parti",
     ])
   })
 
   it("joins a cue of a few words to the one before", () => {
     const json3 = creator(
-      ["vraiment très petite et elle était toute", 0, 3000],
-      ["blanche", 3000, 4000],
-      ["elle s'appelait comme un pharaon", 4000, 8000],
-      ["Toutankhamon", 10_000, 11_000],
+      ["le café était encore chaud à son retour", 0, 3000],
+      ["ce matin", 3000, 4000],
+      ["nous avons parlé de tout et de rien", 4000, 8000],
+      ["Bonsoir", 10_000, 11_000],
     )
     expect(cuesOf(json3, true)).toEqual([
-      { startMs: 0, endMs: 4000, text: "vraiment très petite et elle était toute blanche" },
-      { startMs: 4000, endMs: 8000, text: "elle s'appelait comme un pharaon" },
-      { startMs: 10_000, endMs: 11_000, text: "Toutankhamon" },
+      { startMs: 0, endMs: 4000, text: "le café était encore chaud à son retour ce matin" },
+      { startMs: 4000, endMs: 8000, text: "nous avons parlé de tout et de rien" },
+      { startMs: 10_000, endMs: 11_000, text: "Bonsoir" },
     ])
   })
 
