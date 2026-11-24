@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { userEvent } from "vitest/browser"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { DEFAULT_SUBTITLE_SETTINGS } from "$lib/storage"
 import type { Shown } from "$lib/subtitles/rows"
@@ -144,6 +145,25 @@ describe("addCopyMenu", () => {
     expect(pause).toHaveBeenCalled()
     expect(tip.use).toHaveBeenCalled()
     expect(onWord).not.toHaveBeenCalled()
+  })
+
+  it("starts a Shift selection at the press, not at a selection elsewhere on the page", async () => {
+    const title = document.createElement("p")
+    title.textContent = "This section explains the principle of relay operation."
+    document.body.prepend(title)
+    getSelection()!.collapse(title.firstChild, 0)
+    setUp({ text: "Pass the salt, please." })
+    await userEvent.click(word("salt"), { modifiers: ["Shift"] })
+    const selection = getSelection()!
+    expect(selection.toString()).not.toContain("relay")
+    expect(word("salt").contains(selection.anchorNode)).toBe(true)
+  })
+
+  it("extends a Shift selection already in the subtitles", async () => {
+    setUp({ text: "Pass the salt, please." })
+    getSelection()!.collapse(word("Pass").firstChild, 0)
+    await userEvent.click(word("salt"), { modifiers: ["Shift"] })
+    expect(getSelection()!.toString()).toMatch(/^Pass the s/u)
   })
 
   it("still keeps a press without Shift from selecting", () => {
