@@ -5,9 +5,8 @@ import QuoteIcon from "@lucide/svelte/icons/quote"
 import { fromThrowable } from "neverthrow"
 import { mount, unmount } from "svelte"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { joinLines } from "./cues"
+import { joinLines } from "./lines"
 import type { Overlay } from "./overlay"
-import { videoIn } from "./player"
 
 /** How long the note on a copy stays. */
 const NOTE_MS = 2500
@@ -136,8 +135,10 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     keepFromPlayer(element)
     element.addEventListener("contextmenu", (event) => event.preventDefault())
     // The player's own menu stays open when the subtitles' opens, so it is hidden the way the player hides it.
-    for (const own of document.querySelectorAll<HTMLElement>(".ytp-contextmenu")) {
-      own.style.display = "none"
+    if (overlay.host.ownMenu !== undefined) {
+      for (const own of document.querySelectorAll<HTMLElement>(overlay.host.ownMenu)) {
+        own.style.display = "none"
+      }
     }
     player.append(element)
     menu = element
@@ -148,7 +149,7 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     element.querySelector("button")?.focus()
 
     // The line stays while the menu is open, as it does for a lookup. A video already stopped, like by one, stays so.
-    const video = videoIn(player)
+    const video = player.querySelector("video")
     if (video !== null && !video.paused) {
       video.pause()
       paused = video

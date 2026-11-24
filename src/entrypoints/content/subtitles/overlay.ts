@@ -7,6 +7,7 @@ import type { WordHit } from "../page/pick"
 import { highlightRanges, type Paint } from "../popover/highlight"
 import { safeArea, shiftInto } from "./area"
 import { dragToMove } from "./drag"
+import type { Host } from "./host"
 import css from "./overlay.css?inline"
 
 const STYLE_ID = "dadict-captions-style"
@@ -30,6 +31,7 @@ const SWALLOWED = [
 
 export type Overlay = {
   player: HTMLElement
+  host: Host
   /** The subtitles' own element in the player. */
   element: HTMLElement
   /**
@@ -56,11 +58,17 @@ export type Overlay = {
   remove: () => void
 }
 
-const addStyle = () => {
+/** Hides what the player draws its own subtitles in, while the overlay is in it. */
+const hostCss = ({ ownSubtitles }: Host): string =>
+  ownSubtitles === undefined
+    ? ""
+    : `:has(> [data-dadict-captions]) :is(${ownSubtitles}) { display: none !important; }`
+
+const addStyle = (host: Host) => {
   if (document.getElementById(STYLE_ID) === null) {
     const style = document.createElement("style")
     style.id = STYLE_ID
-    style.textContent = rowsCss + css
+    style.textContent = rowsCss + css + hostCss(host)
     document.head.append(style)
   }
 }
@@ -132,16 +140,17 @@ export const removeLeftovers = () => {
 }
 
 /**
- * Adds the overlay to `player`, which hides YouTube's own captions while it is there.
+ * Adds the overlay to `player`, which hides the player's own subtitles while it is there.
  * Dragging its text moves it around the player's safe area.
  */
 export const createOverlay = (
   ctx: ContentScriptContext,
   player: HTMLElement,
+  host: Host,
   onWord: (hit: WordHit) => void,
   settings: SubtitleSettings,
 ): Overlay => {
-  addStyle()
+  addStyle(host)
   const root = document.createElement("div")
   root.dataset.dadictCaptions = ""
   root.dataset.position = settings.position
@@ -179,7 +188,7 @@ export const createOverlay = (
     if (root.hidden || (at === undefined && offset.x === 0 && offset.y === 0)) {
       return
     }
-    const shift = shiftInto(root.getBoundingClientRect(), safeArea(player))
+    const shift = shiftInto(root.getBoundingClientRect(), safeArea(player, host))
     moveTo({ x: offset.x + shift.x / player.clientWidth, y: offset.y + shift.y / player.clientHeight })
   }
   dragToMove(ctx, root, () => {
@@ -207,17 +216,9 @@ export const createOverlay = (
   const resize = new ResizeObserver(() => {
     const size = Math.min(MAX_SIZE_PX, Math.max(MIN_SIZE_PX, player.clientHeight * SIZE_RATIO))
     root.style.setProperty("--dadict-caption-size", `${size}px`)
-    // The title bar and controls fade out rather than leave the layout, so they can be measured while hidden.
-    const box = player.getBoundingClientRect()
-    const controls = player.querySelector(".ytp-chrome-bottom")
-    if (controls !== null) {
-      const lift = box.bottom - controls.getBoundingClientRect().top
-      root.style.setProperty("--dadict-caption-lift", `${Math.max(0, lift)}px`)
-    }
-    // Players without a title, like the watch page's, keep the bar empty or hidden.
-    const title = player.querySelector(".ytp-chrome-top")?.getBoundingClientRect()
-    const drop = title === undefined || title.height === 0 ? 0 : title.bottom - box.top
-    root.style.setProperty("--dadict-caption-drop", `${Math.max(0, drop)}px`)
+    const bars = host.bars(player)
+    root.style.setProperty("--dadict-caption-lift", `${bars.bottom}px`)
+    root.style.setProperty("--dadict-caption-drop", `${bars.top}px`)
     place()
   })
   resize.observe(player)
@@ -239,6 +240,7 @@ export const createOverlay = (
 
   return {
     player,
+    host,
     element: root,
     show: (cue, lang) => {
       const visible = !root.hidden

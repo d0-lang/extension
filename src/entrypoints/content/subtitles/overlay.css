@@ -94,6 +94,9 @@
   pointer-events: none;
 }
 
-.html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {
-  display: none !important;
+/* Subtitles the browser draws from the video's own tracks. What a player draws itself is hidden by the host's rule. */
+:has(> [data-dadict-captions]) video::cue {
+  color: transparent !important;
+  background: transparent !important;
+  text-shadow: none !important;
 }

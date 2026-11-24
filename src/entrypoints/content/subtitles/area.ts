@@ -1,4 +1,5 @@
 /** Where in the player the subtitles may be dragged. */
+import type { Host } from "./host"
 
 export type Box = { top: number; bottom: number; left: number; right: number }
 
@@ -21,16 +22,14 @@ export const shiftInto = (box: Box, area: Box): { x: number; y: number } => ({
   y: shiftAlong(box.top, box.bottom, area.top, area.bottom),
 })
 
-/** The player, less its title bar and controls and a margin. Both fade out rather than leave the layout. */
-export const safeArea = (player: HTMLElement): Box => {
+/** The player, less its own bars and a margin. */
+export const safeArea = (player: HTMLElement, host: Host): Box => {
   const box = player.getBoundingClientRect()
   const margin = box.height * MARGIN_RATIO
-  // Players without a title, like the watch page's, keep the bar empty or hidden.
-  const title = player.querySelector(".ytp-chrome-top")?.getBoundingClientRect()
-  const controls = player.querySelector(".ytp-chrome-bottom")?.getBoundingClientRect()
+  const bars = host.bars(player)
   return {
-    top: (title === undefined || title.height === 0 ? box.top : title.bottom) + margin,
-    bottom: (controls === undefined || controls.height === 0 ? box.bottom : controls.top) - margin,
+    top: box.top + bars.top + margin,
+    bottom: box.bottom - bars.bottom - margin,
     left: box.left + margin,
     right: box.right - margin,
   }
