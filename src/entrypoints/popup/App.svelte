@@ -64,23 +64,25 @@
       {issueCount === 1 ? "A server needs" : `${issueCount} servers need`} your attention.
     </button>
   {/if}
-  <Button variant="outline" size="lg" class="text-base" onclick={openPlayer}>
-    <ClapperboardIcon />
-    Watch a video file
-  </Button>
-  <div class="flex gap-2">
-    <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
-      <SettingsIcon />
-      Settings
+  <div class="flex flex-col gap-2">
+    <Button variant="outline" size="lg" class="text-base" onclick={openPlayer}>
+      <ClapperboardIcon />
+      Watch a video file
     </Button>
-    <Button
-      variant="outline"
-      size="icon-lg"
-      aria-label="Report a problem"
-      title="Report a problem"
-      onclick={() => void openReport()}
-    >
-      <BugIcon />
-    </Button>
+    <div class="flex gap-2">
+      <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
+        <SettingsIcon />
+        Settings
+      </Button>
+      <Button
+        variant="outline"
+        size="icon-lg"
+        aria-label="Report a problem"
+        title="Report a problem"
+        onclick={() => void openReport()}
+      >
+        <BugIcon />
+      </Button>
+    </div>
   </div>
 </main>
