@@ -10,7 +10,7 @@ describe("creatorCues", () => {
         {
           tStartMs: 0,
           dDurationMs: 1000,
-          segs: [{ utf8: "Alright, Ben.", pPenId: 1 }, { utf8: "\n" }, { utf8: "Okay. Well...", pPenId: 2 }],
+          segs: [{ utf8: "Pass the salt.", pPenId: 1 }, { utf8: "\n" }, { utf8: "Here you go.", pPenId: 2 }],
         },
       ],
     }
@@ -18,10 +18,10 @@ describe("creatorCues", () => {
       {
         startMs: 0,
         endMs: 1000,
-        text: "Alright, Ben.\nOkay. Well...",
+        text: "Pass the salt.\nHere you go.",
         styles: [
-          { color: "#ffff00", from: 0, to: 13 },
-          { italic: true, bold: true, from: 14, to: 27 },
+          { color: "#ffff00", from: 0, to: 14 },
+          { italic: true, bold: true, from: 15, to: 27 },
         ],
       },
     ])

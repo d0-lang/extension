@@ -234,17 +234,17 @@ describe("createOverlay", () => {
   it("draws a creator's colours, italics and bold", () => {
     createOverlay(ctx(), player(), () => {}, SETTINGS).show(
       {
-        text: "Alright, Ben.\nOkay.",
+        text: "Pass the salt.\nSure.",
         styles: [
-          { color: "#ffff00", from: 0, to: 13 },
-          { italic: true, bold: true, from: 14, to: 19 },
+          { color: "#ffff00", from: 0, to: 14 },
+          { italic: true, bold: true, from: 15, to: 20 },
         ],
       },
       "en",
     )
-    expect(getComputedStyle(wordSpan("Ben")).color).toBe("rgb(255, 255, 0)")
-    expect(getComputedStyle(wordSpan("Okay")).fontStyle).toBe("italic")
-    expect(getComputedStyle(wordSpan("Okay")).fontWeight).toBe("700")
+    expect(getComputedStyle(wordSpan("salt")).color).toBe("rgb(255, 255, 0)")
+    expect(getComputedStyle(wordSpan("Sure")).fontStyle).toBe("italic")
+    expect(getComputedStyle(wordSpan("Sure")).fontWeight).toBe("700")
   })
 
   it("hides until the next cue", () => {

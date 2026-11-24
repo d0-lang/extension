@@ -9,17 +9,21 @@ export type Pace = "slow" | "fast"
  */
 export const SAMPLES: Record<Pace, ReadonlyArray<{ text: string; color: string; ms: number }>> = {
   slow: [
-    { text: "Is this the last train going north tonight?", color: "#ffff00", ms: 2600 },
-    { text: "It is, but it only stops at the bigger stations along the coast.", color: "#00ffff", ms: 2600 },
-    { text: "Then we should buy something to eat first.", color: "#ffff00", ms: 2600 },
-    { text: "There's a bakery right by the exit.", color: "#00ffff", ms: 2600 },
+    { text: "Did you remember to buy flour for the bread?", color: "#ffff00", ms: 2600 },
+    {
+      text: "I did, but the shop only had the expensive kind in small paper bags.",
+      color: "#00ffff",
+      ms: 2600,
+    },
+    { text: "Then we make one loaf instead of two.", color: "#ffff00", ms: 2600 },
+    { text: "Fine, but I'm keeping the crust.", color: "#00ffff", ms: 2600 },
   ],
   fast: [
-    { text: "Left or right?", color: "#ffff00", ms: 900 },
-    { text: "Left!", color: "#00ffff", ms: 500 },
-    { text: "Are you sure? The map says the station is the other way.", color: "#ffff00", ms: 1900 },
-    { text: "No, but go!", color: "#00ffff", ms: 700 },
+    { text: "Salt or sugar?", color: "#ffff00", ms: 900 },
+    { text: "Salt!", color: "#00ffff", ms: 500 },
+    { text: "Are you sure? The recipe says a spoon of sugar goes in first.", color: "#ffff00", ms: 1900 },
+    { text: "No, but stir!", color: "#00ffff", ms: 700 },
     { text: "Okay, okay.", color: "#ffff00", ms: 1200 },
-    { text: "Run, it's leaving!", color: "#00ffff", ms: 600 },
+    { text: "It's boiling over!", color: "#00ffff", ms: 600 },
   ],
 }

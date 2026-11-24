@@ -79,8 +79,8 @@ describe("cuesOf for auto captions", () => {
   })
 
   it("keeps a short word with the word after it across a pause", () => {
-    const json3 = asr([...spoken("il a pris le dernier train de la"), ...spoken(" nuit", 4000)])
-    expect(texts(cuesOf(json3, true))).toEqual(["il a pris le dernier train de la nuit"])
+    const json3 = asr([...spoken("il a mangé le dernier morceau de la"), ...spoken(" tarte", 4000)])
+    expect(texts(cuesOf(json3, true))).toEqual(["il a mangé le dernier morceau de la tarte"])
   })
 
   it("puts a space between lines, but not between Japanese ones", () => {
@@ -216,27 +216,27 @@ describe("cuesOf for auto captions without word timings", () => {
 
   it("moves the short words a cue ends on to the next cue", () => {
     const json3 = creator(
-      ["hier soir nous sommes partis vers la", 0, 3000],
-      ["gare centrale avant minuit puis on a", 3000, 6000],
-      ["attendu le dernier bus sous la pluie", 6000, 9000],
+      ["hier soir nous avons cuisiné pour la", 0, 3000],
+      ["famille entière avant minuit puis on a", 3000, 6000],
+      ["mangé le gâteau sous la lumière", 6000, 9000],
     )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "hier soir nous sommes partis vers",
-      "la gare centrale avant minuit puis",
-      "on a attendu le dernier bus sous la pluie",
+      "hier soir nous avons cuisiné pour",
+      "la famille entière avant minuit puis",
+      "on a mangé le gâteau sous la lumière",
     ])
   })
 
   it("keeps the short words a cue ends on before a pause or a new speaker", () => {
     const json3 = creator(
-      ["hier soir nous sommes partis vers la", 0, 3000],
-      ["gare centrale avant minuit et", 5000, 8000],
-      [">> le train était déjà parti", 8000, 9000],
+      ["hier soir nous avons cuisiné pour la", 0, 3000],
+      ["famille entière avant minuit et", 5000, 8000],
+      [">> le repas était déjà prêt", 8000, 9000],
     )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "hier soir nous sommes partis vers la",
-      "gare centrale avant minuit et",
-      "le train était déjà parti",
+      "hier soir nous avons cuisiné pour la",
+      "famille entière avant minuit et",
+      "le repas était déjà prêt",
     ])
   })
 
