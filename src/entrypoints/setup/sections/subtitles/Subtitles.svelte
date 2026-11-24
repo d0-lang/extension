@@ -115,10 +115,10 @@
       </div>
       <div class="flex items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="subtitle-creator">Creator styles</Label>
+          <Label for="subtitle-creator">Subtitle styles</Label>
           <p class="text-muted-foreground text-sm">
-            Colors, italics and places set by whoever made the subtitles, like a color for each speaker. Auto
-            captions have none.
+            Colors, italics and places that come with the subtitles, like a color for each speaker.
+            Machine-made subtitles have none.
           </p>
         </div>
         <Switch
