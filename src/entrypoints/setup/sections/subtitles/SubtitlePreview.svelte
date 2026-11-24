@@ -16,7 +16,7 @@
   const rows = $derived(
     root === undefined
       ? undefined
-      : createRows(root, { previous: settings.previous, slide: settings.slide }, () => {}),
+      : createRows(root, { previous: settings.previous, fade: settings.fade }, () => {}),
   )
 
   /** The sample line at `at`, in its speaker's colour when creator styles show. */

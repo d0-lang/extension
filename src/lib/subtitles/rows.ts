@@ -23,11 +23,11 @@ export type RowSettings = {
   /** Whether the row the cue before ended on shows above the cue. */
   previous: boolean
   /** Whether the next cue fades in when it starts. */
-  slide: boolean
+  fade: boolean
 }
 
 /** How long the next cue takes to fade in. */
-const FADE_MS = 200
+const FADE_MS = 120
 
 /**
  * A line with each word in its own span, so hovering and clicking a word need no hit testing.
@@ -118,7 +118,7 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
 
   /** Fades the next cue in. Nothing moves, so fast dialogue does not keep the subtitles in motion. */
   const fadeIn = (cue: HTMLElement) => {
-    if (settings.slide && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (settings.fade && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
       cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_MS, easing: "ease-in" })
     }
   }

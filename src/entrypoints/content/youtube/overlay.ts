@@ -32,7 +32,7 @@ export type Overlay = {
   player: HTMLElement
   /**
    * A cue, lines apart with `\n`, with the row the cue before ended on above it. `undefined` hides the overlay until
-   * the next cue. When the cue before is the one showing, that row slides up and keeps its words, so a lookup on one
+   * the next cue. When the cue before is the one showing, that row moves up and keeps its words, so a lookup on one
    * stays open.
    */
   show: (cue: Shown | undefined, lang: string) => void

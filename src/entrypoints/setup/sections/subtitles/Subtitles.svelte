@@ -11,7 +11,7 @@
     setSubtitleCreator,
     setSubtitlePosition,
     setSubtitlePrevious,
-    setSubtitleSlide,
+    setSubtitleFade,
     type SubtitlePosition,
     type SubtitleSettings,
   } from "$lib/storage"
@@ -42,9 +42,9 @@
     await setSubtitleCreator(checked)
   }
 
-  const onSlide = async (checked: boolean) => {
-    settings = { ...settings, slide: checked }
-    await setSubtitleSlide(checked)
+  const onFade = async (checked: boolean) => {
+    settings = { ...settings, fade: checked }
+    await setSubtitleFade(checked)
   }
 
   const onPosition = async (next: string) => {
@@ -79,17 +79,17 @@
       </div>
       <div class="flex items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="subtitle-slide">Fade in</Label>
+          <Label for="subtitle-fade">Fade in</Label>
           <p class="text-muted-foreground text-sm">
             The next subtitle fades in as the line before moves up. Off while your system asks for less
             motion.
           </p>
         </div>
         <Switch
-          id="subtitle-slide"
-          checked={settings.slide}
+          id="subtitle-fade"
+          checked={settings.fade}
           disabled={!settings.previous}
-          onCheckedChange={(checked) => void onSlide(checked)}
+          onCheckedChange={(checked) => void onFade(checked)}
         />
       </div>
       <div class="flex items-center justify-between gap-4 p-4">

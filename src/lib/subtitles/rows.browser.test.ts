@@ -21,7 +21,7 @@ const centred = (): HTMLElement => {
 describe("createRows", () => {
   it("fades the next cue in, with nothing moving", () => {
     const root = centred()
-    const show = createRows(root, { previous: true, slide: true }, () => {})
+    const show = createRows(root, { previous: true, fade: true }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
     show({ text: "Ala ma kota i dwa psy.", previous: { text: "Mamy gościa." } }, "pl", true)
     expect(
@@ -31,7 +31,7 @@ describe("createRows", () => {
 
   it("shows the next cue at once when the fade is off", () => {
     const root = centred()
-    const show = createRows(root, { previous: true, slide: false }, () => {})
+    const show = createRows(root, { previous: true, fade: false }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
     show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
     expect(root.getAnimations({ subtree: true })).toHaveLength(0)
