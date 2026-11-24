@@ -120,7 +120,7 @@
         <div class="flex flex-col gap-0.5">
           <Label for="subtitle-creator">Subtitle styles</Label>
           <p class="text-muted-foreground text-sm">
-            Colors, italics and places that come with the subtitles, like a color for each speaker.
+            Shows colors, italics and places when the subtitles have them, like a color for each speaker.
           </p>
         </div>
         <Switch
