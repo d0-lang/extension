@@ -111,6 +111,15 @@ describe("addCopyMenu", () => {
     expect(document.querySelector("[data-picked]")).toBeNull()
   })
 
+  it("hides the player's own menu", () => {
+    const { player } = setUp()
+    const own = document.createElement("div")
+    own.className = "ytp-popup ytp-contextmenu"
+    player.append(own)
+    rightClick(word("Sure"))
+    expect(own.style.display).toBe("none")
+  })
+
   it("offers only the line between words", () => {
     setUp()
     rightClick(document.querySelector<HTMLElement>("[data-cue]:not([data-previous]) [data-line]")!)

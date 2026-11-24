@@ -135,6 +135,10 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     }
     keepFromPlayer(element)
     element.addEventListener("contextmenu", (event) => event.preventDefault())
+    // The player's own menu stays open when the subtitles' opens, so it is hidden the way the player hides it.
+    for (const own of document.querySelectorAll<HTMLElement>(".ytp-contextmenu")) {
+      own.style.display = "none"
+    }
     player.append(element)
     menu = element
     const box = player.getBoundingClientRect()
