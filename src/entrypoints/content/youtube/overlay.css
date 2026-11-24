@@ -12,6 +12,8 @@
   transform: translateX(-50%);
   /* Only the text takes clicks, so the gaps around it still reach the video. */
   pointer-events: none;
+  /* The player turns selecting off, and a press with Shift selects words. */
+  user-select: text;
 }
 
 /* Under the title bar, so the text stays put when moving the mouse makes it show. */
@@ -39,6 +41,54 @@
 [data-dadict-captions] [data-mark="tint"] {
   border-radius: 0;
   background: oklch(0.785 0.115 274.713 / 0.3);
+}
+
+/* The menu a right-click on the subtitles opens, like the player's own. */
+[data-dadict-menu] {
+  position: absolute;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 12em;
+  padding: 0.4em 0;
+  border-radius: 0.75em;
+  background: rgb(28 28 28 / 0.9);
+  font:
+    500 13px / 1.4 "YouTube Noto",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
+[data-dadict-menu] > button {
+  all: unset;
+  padding: 0.55em 1.2em;
+  color: #eee;
+  cursor: pointer;
+}
+
+[data-dadict-menu] > button:is(:hover, :focus-visible) {
+  background: rgb(255 255 255 / 0.1);
+}
+
+/* The note on a copy, at the top of the player, under the title bar. */
+[data-dadict-note] {
+  position: absolute;
+  top: calc(var(--dadict-caption-drop, 0px) + 4%);
+  left: 50%;
+  z-index: 60;
+  transform: translateX(-50%);
+  padding: 0.5em 1em;
+  border-radius: 0.5em;
+  background: rgb(28 28 28 / 0.9);
+  color: #eee;
+  font:
+    500 13px / 1.4 "YouTube Noto",
+    Roboto,
+    Arial,
+    sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {

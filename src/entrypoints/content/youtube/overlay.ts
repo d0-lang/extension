@@ -30,12 +30,16 @@ const SWALLOWED = [
 
 export type Overlay = {
   player: HTMLElement
+  /** The subtitles' own element in the player. */
+  element: HTMLElement
   /**
    * A cue, lines apart with `\n`, with the row the cue before ended on above it. `undefined` hides the overlay until
    * the next cue. When the cue before is the one showing, that row slides up and keeps its words, so a lookup on one
    * stays open.
    */
   show: (cue: Shown | undefined, lang: string) => void
+  /** The cue showing, with the cue before only while it shows above. */
+  shown: () => Shown | undefined
   contains: (event: Event) => boolean
   /** Whether `node` is in the subtitles. */
   holds: (node: Node) => boolean
@@ -222,6 +226,10 @@ export const createOverlay = (
     root.addEventListener(type, (event) => event.stopPropagation())
   }
   root.addEventListener("click", (event) => {
+    // A click with Shift ends a selection rather than looking a word up.
+    if (event.shiftKey) {
+      return
+    }
     const word = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-word]") : null
     const hit = word === null ? undefined : hitOn(word)
     if (hit !== undefined) {
@@ -231,18 +239,25 @@ export const createOverlay = (
 
   const rows = createRows(root, settings, place)
   let marked: ReadonlyArray<Range> = []
+  let current: Shown | undefined
 
   return {
     player,
+    element: root,
     show: (cue, lang) => {
       const visible = !root.hidden
       root.hidden = cue === undefined
+      current = cue
       creatorPlace = cue?.place
       // A cue of another size can reach out of the safe area where the last one did not.
       if (cue !== undefined && !rows(cue, lang, visible) && !visible) {
         place()
       }
     },
+    shown: () =>
+      current === undefined
+        ? undefined
+        : { ...current, previous: settings.previous ? current.previous : undefined },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),
     // Always over the dark background. The next cue's text drops the tint with the spans.

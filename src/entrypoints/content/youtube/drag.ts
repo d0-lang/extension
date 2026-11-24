@@ -13,12 +13,22 @@ export const dragToMove = (
   root: HTMLElement,
   start: () => (dx: number, dy: number) => void,
 ) => {
-  // A press moves the subtitles rather than selecting their text.
-  root.addEventListener("selectstart", (event) => event.preventDefault(), { signal: ctx.signal })
+  // A press moves the subtitles rather than selecting their text, unless Shift is held.
+  let selecting = false
+  root.addEventListener(
+    "selectstart",
+    (event) => {
+      if (!selecting) {
+        event.preventDefault()
+      }
+    },
+    { signal: ctx.signal },
+  )
   root.addEventListener(
     "pointerdown",
     (down) => {
-      if (down.button !== 0 || !down.isPrimary) {
+      selecting = down.shiftKey
+      if (down.button !== 0 || !down.isPrimary || selecting) {
         return
       }
       const press = new AbortController()
