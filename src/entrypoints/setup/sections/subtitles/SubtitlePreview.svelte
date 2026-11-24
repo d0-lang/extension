@@ -36,13 +36,14 @@
   })
 </script>
 
-<!-- A dusk sky over dark hills, so the subtitles sit on something like a video in either theme. -->
+<!-- A dusk sky over dark hills, so the subtitles sit on something like a video in either theme. Inert, since its words
+     do nothing when clicked or selected. -->
 <div
   class={[
     "relative aspect-video w-full overflow-hidden rounded-lg border bg-[linear-gradient(to_bottom,#1e293b,#475569_55%,#1f2937_56%,#111827)]",
     className,
   ]}
-  aria-hidden="true"
+  inert
 >
   <div
     bind:this={root}
