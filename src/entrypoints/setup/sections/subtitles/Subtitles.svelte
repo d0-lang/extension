@@ -9,7 +9,7 @@
   import {
     DEFAULT_SUBTITLE_SETTINGS,
     getSubtitleSettings,
-    setSubtitleCreator,
+    setSubtitleStyles,
     setSubtitlePosition,
     setSubtitlePrevious,
     setSubtitleCalm,
@@ -41,9 +41,9 @@
     await setSubtitlePrevious(checked)
   }
 
-  const onCreator = async (checked: boolean) => {
-    settings = { ...settings, creator: checked }
-    await setSubtitleCreator(checked)
+  const onStyles = async (checked: boolean) => {
+    settings = { ...settings, styles: checked }
+    await setSubtitleStyles(checked)
   }
 
   const onCalm = async (checked: boolean) => {
@@ -106,7 +106,7 @@
         <div class="flex flex-col gap-0.5">
           <Label for="subtitle-calm">Calm fast subtitles</Label>
           <p class="text-muted-foreground text-sm">
-            Turns the slide off on videos where lines change every second or two.
+            Turns the slide off on videos where lines change rapidly.
           </p>
         </div>
         <Switch
@@ -118,15 +118,15 @@
       </div>
       <div class="flex items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="subtitle-creator">Subtitle styles</Label>
+          <Label for="subtitle-styles">Subtitle styles</Label>
           <p class="text-muted-foreground text-sm">
             Shows colors, italics and places when the subtitles have them, like a color for each speaker.
           </p>
         </div>
         <Switch
-          id="subtitle-creator"
-          checked={settings.creator}
-          onCheckedChange={(checked) => void onCreator(checked)}
+          id="subtitle-styles"
+          checked={settings.styles}
+          onCheckedChange={(checked) => void onStyles(checked)}
         />
       </div>
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">

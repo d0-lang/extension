@@ -153,7 +153,7 @@ export const showYouTubeCaptions = (
       overlaySlides = slide
     }
     overlay.show(
-      adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000, settings.creator),
+      adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000, settings.styles),
       track.lang,
     )
   }

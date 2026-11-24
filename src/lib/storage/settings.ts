@@ -24,8 +24,8 @@ export type SubtitleSettings = {
   /** Whether a track whose cues mostly change within a couple of seconds shows without the slide. */
   calm: boolean
   position: SubtitlePosition
-  /** Whether a creator's colours, italics and places show. */
-  creator: boolean
+  /** Whether the colours, italics and places subtitles come with show. */
+  styles: boolean
 }
 
 const empty = {
@@ -36,7 +36,7 @@ const empty = {
     slide: true,
     calm: true,
     position: "bottom",
-    creator: true,
+    styles: true,
   } as SubtitleSettings,
   showIpa: true,
   theme: "system" as Theme,
@@ -71,11 +71,11 @@ export const SUBTITLE_KEYS = [
   "subtitleSlide",
   "subtitleCalm",
   "subtitlePosition",
-  "subtitleCreator",
+  "subtitleStyles",
 ]
 
 export const getSubtitleSettings = async (): Promise<SubtitleSettings> => {
-  const { subtitlePrevious, subtitleSlide, subtitleCalm, subtitlePosition, subtitleCreator } =
+  const { subtitlePrevious, subtitleSlide, subtitleCalm, subtitlePosition, subtitleStyles } =
     await browser.storage.local.get(SUBTITLE_KEYS)
   return {
     previous: typeof subtitlePrevious === "boolean" ? subtitlePrevious : empty.subtitles.previous,
@@ -85,12 +85,12 @@ export const getSubtitleSettings = async (): Promise<SubtitleSettings> => {
       typeof subtitlePosition === "string" && subtitlePositions.includes(subtitlePosition)
         ? (subtitlePosition as SubtitlePosition)
         : empty.subtitles.position,
-    creator: typeof subtitleCreator === "boolean" ? subtitleCreator : empty.subtitles.creator,
+    styles: typeof subtitleStyles === "boolean" ? subtitleStyles : empty.subtitles.styles,
   }
 }
 
-export const setSubtitleCreator = async (subtitleCreator: boolean): Promise<void> => {
-  await browser.storage.local.set({ subtitleCreator })
+export const setSubtitleStyles = async (subtitleStyles: boolean): Promise<void> => {
+  await browser.storage.local.set({ subtitleStyles })
 }
 
 export const setSubtitlePrevious = async (subtitlePrevious: boolean): Promise<void> => {

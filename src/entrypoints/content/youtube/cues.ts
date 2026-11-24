@@ -418,9 +418,9 @@ export const isFast = (cues: ReadonlyArray<Cue>): boolean => {
 
 /**
  * What shows at `ms`, if anything. The cue before shows above only when it was in the same place.
- * `creator` is whether a creator's styles and places show.
+ * `styled` is whether the styles and places cues come with show.
  */
-export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, creator: boolean): Shown | undefined => {
+export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): Shown | undefined => {
   const index = indexAt(cues, ms)
   if (index === undefined) {
     return undefined
@@ -430,11 +430,11 @@ export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, creator: boolean):
   const follows =
     before !== undefined &&
     startMs - before.endMs <= PREVIOUS_GAP_MS &&
-    (!creator || JSON.stringify(before.place) === JSON.stringify(place))
+    (!styled || JSON.stringify(before.place) === JSON.stringify(place))
   return {
     text,
-    styles: creator ? styles : undefined,
-    place: creator ? place : undefined,
-    previous: follows ? { text: before.text, styles: creator ? before.styles : undefined } : undefined,
+    styles: styled ? styles : undefined,
+    place: styled ? place : undefined,
+    previous: follows ? { text: before.text, styles: styled ? before.styles : undefined } : undefined,
   }
 }

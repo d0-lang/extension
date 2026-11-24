@@ -34,7 +34,7 @@
   /** The sample line at `at`, in its speaker's colour when subtitle styles show. */
   const sample = (at: number): Styled => {
     const { text, color } = cues[(at + cues.length) % cues.length]!
-    return settings.creator ? { text, styles: [{ color, from: 0, to: text.length }] } : { text }
+    return settings.styles ? { text, styles: [{ color, from: 0, to: text.length }] } : { text }
   }
 
   $effect(() => {
