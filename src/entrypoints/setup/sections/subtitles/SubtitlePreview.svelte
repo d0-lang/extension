@@ -15,7 +15,7 @@
   let root = $state<HTMLElement>()
   let pace = $state<Pace>("slow")
   let index = $state(0)
-  const { cues, ms } = $derived(SAMPLES[pace])
+  const cues = $derived(SAMPLES[pace])
 
   /**
    * Drawn again from scratch when a setting or the pace changes, so no slide comes from rows drawn before.
@@ -41,10 +41,11 @@
     rows?.({ ...sample(index), previous: sample(index - 1) }, "en", true)
   })
 
+  // Each line shows for its own time, so the fast ones come at uneven times.
   $effect(() => {
-    const length = cues.length
-    const timer = setInterval(() => (index = (index + 1) % length), ms)
-    return () => clearInterval(timer)
+    const next = (index + 1) % cues.length
+    const timer = setTimeout(() => (index = next), cues[index]!.ms)
+    return () => clearTimeout(timer)
   })
 
   const onPace = (next: string) => {
