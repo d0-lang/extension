@@ -1,10 +1,11 @@
 /** The cue shown inside the player, in the page's own DOM so a word's sentence and Alt work on it as on any text. */
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
+import type { SubtitleSettings } from "$lib/storage"
+import { createRows, type Shown } from "$lib/subtitles/rows"
+import rowsCss from "$lib/subtitles/rows.css?inline"
 import type { WordHit } from "../page/pick"
-import { segmentsOf } from "../page/tokenize"
 import { highlightRanges, type Paint } from "../popover/highlight"
 import { safeArea, shiftInto } from "./area"
-import type { Shown } from "./cues"
 import { dragToMove } from "./drag"
 import css from "./overlay.css?inline"
 
@@ -14,9 +15,6 @@ const STYLE_ID = "dadict-captions-style"
 const SIZE_RATIO = 0.045
 const MIN_SIZE_PX = 14
 const MAX_SIZE_PX = 44
-
-/** How long the cue that ended takes to slide up, and the next one to fade in. */
-const SLIDE_MS = 150
 
 /** Kept from the player, which would take them as play, pause, fullscreen or a drag. */
 const SWALLOWED = [
@@ -58,59 +56,8 @@ const addStyle = () => {
   if (document.getElementById(STYLE_ID) === null) {
     const style = document.createElement("style")
     style.id = STYLE_ID
-    style.textContent = css
+    style.textContent = rowsCss + css
     document.head.append(style)
-  }
-}
-
-/**
- * A line with each word in its own span, so hovering and clicking a word need no hit testing.
- * What is between words gets a span too, so a mark over a phrase has no gaps.
- */
-const lineOf = (text: string, lang: string): HTMLElement => {
-  const line = document.createElement("span")
-  line.dataset.line = ""
-  for (const segment of segmentsOf(text, lang)) {
-    const part = document.createElement("span")
-    if (segment.word) {
-      part.dataset.word = ""
-    }
-    part.textContent = segment.text
-    line.append(part)
-  }
-  return line
-}
-
-/**
- * A cue's lines in one span. A line break in the text, which `pre-line` shows, parts them. A `<br>` or a block per
- * line would end the text a word's sentence is read from, and the server should get the whole cue.
- */
-const cueOf = (text: string, lang: string): HTMLElement => {
-  const cue = document.createElement("span")
-  cue.dataset.cue = ""
-  cue.append(
-    ...text
-      .split("\n")
-      .flatMap((line, index): Array<string | Node> => [...(index === 0 ? [] : ["\n"]), lineOf(line, lang)]),
-  )
-  return cue
-}
-
-/**
- * Hides the words of a cue above the row it ends on, as it shows now. The row left keeps its words and breaks, so
- * becoming the cue before only moves it up.
- */
-const keepLastRow = (cue: HTMLElement) => {
-  const parts = [...cue.querySelectorAll<HTMLElement>("[data-line] > span")]
-  const boxes = parts.map((part) => part.getBoundingClientRect())
-  const lastTop = Math.max(...boxes.map(({ top }) => top))
-  // Half a row of slack, since a fallback font can sit a little higher on the same row.
-  for (const [index, part] of parts.entries()) {
-    part.hidden = boxes[index]!.top < lastTop - boxes[index]!.height / 2
-  }
-  // A line with nothing left would still draw its padding and background.
-  for (const line of cue.querySelectorAll<HTMLElement>("[data-line]")) {
-    line.hidden = [...line.children].every((part) => (part as HTMLElement).hidden)
   }
 }
 
@@ -188,10 +135,12 @@ export const createOverlay = (
   ctx: ContentScriptContext,
   player: HTMLElement,
   onWord: (hit: WordHit) => void,
+  settings: SubtitleSettings,
 ): Overlay => {
   addStyle()
   const root = document.createElement("div")
   root.dataset.dadictCaptions = ""
+  root.dataset.position = settings.position
   root.hidden = true
   player.append(root)
 
@@ -206,7 +155,7 @@ export const createOverlay = (
   }
   const place = () => {
     moveTo(chosen)
-    // Where they start is clear of the controls already, and measuring a hidden overlay gives nothing.
+    // Where they start is clear of the title bar and controls already, and measuring a hidden overlay gives nothing.
     if (root.hidden || (chosen.x === 0 && chosen.y === 0)) {
       return
     }
@@ -224,12 +173,17 @@ export const createOverlay = (
   const resize = new ResizeObserver(() => {
     const size = Math.min(MAX_SIZE_PX, Math.max(MIN_SIZE_PX, player.clientHeight * SIZE_RATIO))
     root.style.setProperty("--dadict-caption-size", `${size}px`)
-    // The controls fade out rather than leave the layout, so they can be measured while hidden.
+    // The title bar and controls fade out rather than leave the layout, so they can be measured while hidden.
+    const box = player.getBoundingClientRect()
     const controls = player.querySelector(".ytp-chrome-bottom")
     if (controls !== null) {
-      const lift = player.getBoundingClientRect().bottom - controls.getBoundingClientRect().top
+      const lift = box.bottom - controls.getBoundingClientRect().top
       root.style.setProperty("--dadict-caption-lift", `${Math.max(0, lift)}px`)
     }
+    // Players without a title, like the watch page's, keep the bar empty or hidden.
+    const title = player.querySelector(".ytp-chrome-top")?.getBoundingClientRect()
+    const drop = title === undefined || title.height === 0 ? 0 : title.bottom - box.top
+    root.style.setProperty("--dadict-caption-drop", `${Math.max(0, drop)}px`)
     place()
   })
   resize.observe(player)
@@ -245,69 +199,18 @@ export const createOverlay = (
     }
   })
 
-  let shown = ""
-  let current: { text: string; lang: string; element: HTMLElement } | undefined
+  const rows = createRows(root, settings, place)
   let marked: ReadonlyArray<Range> = []
-
-  /** Slides everything up from where the cue now above was, and fades the new cue in. */
-  const slide = (from: number, previous: HTMLElement, cue: HTMLElement) => {
-    const distance = from - previous.getBoundingClientRect().bottom
-    if (distance <= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return
-    }
-    // `translate` adds to the `transform` that centres the subtitles.
-    root.animate([{ translate: `0 ${distance}px` }, { translate: "0 0" }], {
-      duration: SLIDE_MS,
-      easing: "ease-out",
-    })
-    cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS, easing: "ease-in" })
-  }
 
   return {
     player,
     show: (cue, lang) => {
-      const wasShown = !root.hidden
+      const visible = !root.hidden
       root.hidden = cue === undefined
-      const key = JSON.stringify([lang, cue?.previous, cue?.text])
-      if (cue === undefined || key === shown) {
-        if (cue !== undefined && !wasShown) {
-          place()
-        }
-        return
-      }
-      shown = key
-      root.lang = lang
-      const element = cueOf(cue.text, lang)
-      const ended = current
-      if (ended !== undefined && ended.lang === lang && ended.text === cue.previous) {
-        // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
-        const from = wasShown ? ended.element.getBoundingClientRect().bottom : undefined
-        keepLastRow(ended.element)
-        ended.element.dataset.previous = ""
-        while (root.firstChild !== ended.element) {
-          root.firstChild!.remove()
-        }
-        root.append("\n", element)
-        current = { text: cue.text, lang, element }
-        place()
-        if (from !== undefined) {
-          slide(from, ended.element, element)
-        }
-        return
-      }
-      if (cue.previous === undefined) {
-        root.replaceChildren(element)
-      } else {
-        // Laid out alone first, as it showed before the seek, to find the row it ended on.
-        const previous = cueOf(cue.previous, lang)
-        root.replaceChildren(previous)
-        keepLastRow(previous)
-        previous.dataset.previous = ""
-        root.append("\n", element)
-      }
-      current = { text: cue.text, lang, element }
       // A cue of another size can reach out of the safe area where the last one did not.
-      place()
+      if (cue !== undefined && !rows(cue, lang, visible) && !visible) {
+        place()
+      }
     },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),

@@ -5,6 +5,7 @@ export const sections = [
   { id: "integrations", label: "Integrations", group: "Sites" },
   { id: "sites", label: "Blocked sites", group: "Sites" },
   { id: "appearance", label: "Appearance", group: "Display" },
+  { id: "subtitles", label: "Subtitles", group: "Display" },
   { id: "hotkeys", label: "Hotkeys", group: "Display" },
 ] as const
 

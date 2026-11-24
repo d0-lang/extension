@@ -1,4 +1,5 @@
 /** Cuts a caption track into cues of up to two lines, which show and go together. */
+import type { Shown } from "$lib/subtitles/rows"
 import type { Json3 } from "./json3"
 
 /** `text` has its lines apart with `\n`. */
@@ -408,9 +409,6 @@ export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => 
 
 /** The previous cue shows above the current one unless it ended longer ago than this before the current one began. */
 const PREVIOUS_GAP_MS = 3000
-
-/** A cue's text, and the text of the cue before it when that one ended just before. */
-export type Shown = { text: string; previous?: string | undefined }
 
 /** What shows at `ms`, if anything. */
 export const shownAt = (cues: ReadonlyArray<Cue>, ms: number): Shown | undefined => {

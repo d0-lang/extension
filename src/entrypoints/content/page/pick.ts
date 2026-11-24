@@ -1,7 +1,7 @@
 /** What the user right-clicked: read on `contextmenu`, because the page may change before the menu item is pressed. */
 import { sentenceAround, type Sentence } from "./sentence"
 import { indexIn, joinedInWord, rangeIn, runAround, textRects } from "./text"
-import { tokensAt } from "./tokenize"
+import { tokensAt } from "$lib/tokenize"
 
 export type AnchorRect = { top: number; bottom: number; left: number; right: number }
 

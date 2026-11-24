@@ -2,6 +2,7 @@
   import { onMount } from "svelte"
   import BanIcon from "@lucide/svelte/icons/ban"
   import BugIcon from "@lucide/svelte/icons/bug"
+  import CaptionsIcon from "@lucide/svelte/icons/captions"
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right"
   import KeyboardIcon from "@lucide/svelte/icons/keyboard"
   import PaletteIcon from "@lucide/svelte/icons/palette"
@@ -24,6 +25,7 @@
     integrations: PlugIcon,
     sites: BanIcon,
     appearance: PaletteIcon,
+    subtitles: CaptionsIcon,
     hotkeys: KeyboardIcon,
   }
 
