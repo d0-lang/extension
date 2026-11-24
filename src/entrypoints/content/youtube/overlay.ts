@@ -33,8 +33,9 @@ const SWALLOWED = [
 export type Overlay = {
   player: HTMLElement
   /**
-   * A cue, lines apart with `\n`, with the cue before it above on one row. `undefined` hides the overlay until the next cue.
-   * When the cue before is the one showing, it slides up and keeps its words, so a lookup on one stays open.
+   * A cue, lines apart with `\n`, with the row the cue before ended on above it. `undefined` hides the overlay until
+   * the next cue. When the cue before is the one showing, that row slides up and keeps its words, so a lookup on one
+   * stays open.
    */
   show: (cue: Shown | undefined, lang: string) => void
   contains: (event: Event) => boolean
@@ -95,10 +96,22 @@ const cueOf = (text: string, lang: string): HTMLElement => {
   return cue
 }
 
-/** Scrolls the cue before to its end, which was said last, and marks it when its start is cut off. */
-const showEnd = (previous: HTMLElement) => {
-  previous.scrollLeft = previous.scrollWidth
-  previous.toggleAttribute("data-clipped", previous.scrollWidth > previous.clientWidth)
+/**
+ * Hides the words of a cue above the row it ends on, as it shows now. The row left keeps its words and breaks, so
+ * becoming the cue before only moves it up.
+ */
+const keepLastRow = (cue: HTMLElement) => {
+  const parts = [...cue.querySelectorAll<HTMLElement>("[data-line] > span")]
+  const boxes = parts.map((part) => part.getBoundingClientRect())
+  const lastTop = Math.max(...boxes.map(({ top }) => top))
+  // Half a row of slack, since a fallback font can sit a little higher on the same row.
+  for (const [index, part] of parts.entries()) {
+    part.hidden = boxes[index]!.top < lastTop - boxes[index]!.height / 2
+  }
+  // A line with nothing left would still draw its padding and background.
+  for (const line of cue.querySelectorAll<HTMLElement>("[data-line]")) {
+    line.hidden = [...line.children].every((part) => (part as HTMLElement).hidden)
+  }
 }
 
 /** Whether `range` covers some of `text`, not only touches it. */
@@ -219,9 +232,6 @@ export const createOverlay = (
       root.style.setProperty("--dadict-caption-lift", `${Math.max(0, lift)}px`)
     }
     place()
-    if (previous !== undefined) {
-      showEnd(previous)
-    }
   })
   resize.observe(player)
 
@@ -238,7 +248,6 @@ export const createOverlay = (
 
   let shown = ""
   let current: { text: string; lang: string; element: HTMLElement } | undefined
-  let previous: HTMLElement | undefined
   let marked: ReadonlyArray<Range> = []
 
   /** Slides everything up from where the cue now above was, and fades the new cue in. */
@@ -274,33 +283,32 @@ export const createOverlay = (
       if (ended !== undefined && ended.lang === lang && ended.text === cue.previous) {
         // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
         const from = wasShown ? ended.element.getBoundingClientRect().bottom : undefined
-        previous = ended.element
-        previous.dataset.previous = ""
-        while (root.firstChild !== previous) {
+        keepLastRow(ended.element)
+        ended.element.dataset.previous = ""
+        while (root.firstChild !== ended.element) {
           root.firstChild!.remove()
         }
         root.append("\n", element)
         current = { text: cue.text, lang, element }
         place()
-        showEnd(previous)
         if (from !== undefined) {
-          slide(from, previous, element)
+          slide(from, ended.element, element)
         }
         return
       }
-      previous = cue.previous === undefined ? undefined : cueOf(cue.previous, lang)
-      if (previous === undefined) {
+      if (cue.previous === undefined) {
         root.replaceChildren(element)
       } else {
+        // Laid out alone first, as it showed before the seek, to find the row it ended on.
+        const previous = cueOf(cue.previous, lang)
+        root.replaceChildren(previous)
+        keepLastRow(previous)
         previous.dataset.previous = ""
-        root.replaceChildren(previous, "\n", element)
+        root.append("\n", element)
       }
       current = { text: cue.text, lang, element }
       // A cue of another size can reach out of the safe area where the last one did not.
       place()
-      if (previous !== undefined) {
-        showEnd(previous)
-      }
     },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),

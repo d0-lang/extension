@@ -135,11 +135,12 @@ describe("createOverlay", () => {
     expect(overlay.isMarked(hit!)).toBe(false)
   })
 
-  it("shows the cue before above, on one row", () => {
+  it("shows the row the cue before ended on above", () => {
     const overlay = createOverlay(ctx(), player(), () => {})
     overlay.show({ text: "Ala ma kota.", previous: "Wczoraj padało\ncały dzień." }, "pl")
     const top = (text: string) => wordSpan(text).getBoundingClientRect().top
-    expect(top("Wczoraj")).toBe(top("dzień"))
+    expect(wordSpan("Wczoraj").getClientRects()).toHaveLength(0)
+    expect(top("cały")).toBe(top("dzień"))
     expect(top("dzień")).toBeLessThan(top("kota"))
   })
 
@@ -163,15 +164,19 @@ describe("createOverlay", () => {
     expect(document.querySelectorAll("[data-previous]")).toHaveLength(1)
   })
 
-  it("shows the end of a long cue before", () => {
+  it("keeps the row a long cue ended on as it showed", () => {
     const overlay = createOverlay(ctx(), player(), () => {})
     const long = Array.from({ length: 30 }, (_, index) => `słowo${index}`).join(" ")
+    overlay.show({ text: long }, "pl")
+    const row = (word: HTMLElement) => word.getBoundingClientRect().top
+    const words = Array.from({ length: 30 }, (_, index) => wordSpan(`słowo${index}`))
+    const lastRow = words.filter((word) => row(word) === row(words.at(-1)!))
+    expect(lastRow.length).toBeLessThan(words.length)
+    const lefts = lastRow.map((word) => word.getBoundingClientRect().left)
     overlay.show({ text: "Ala ma kota.", previous: long }, "pl")
-    const row = document.querySelector<HTMLElement>("[data-previous]")!
-    expect(row.hasAttribute("data-clipped")).toBe(true)
-    expect(wordSpan("słowo29").getBoundingClientRect().right).toBeLessThanOrEqual(
-      row.getBoundingClientRect().right + 1,
-    )
+    expect(lastRow.map((word) => word.getBoundingClientRect().left)).toEqual(lefts)
+    expect(new Set(lastRow.map(row)).size).toBe(1)
+    expect(words.filter((word) => word.getClientRects().length > 0)).toEqual(lastRow)
   })
 
   it("reads a word's sentence across the cue before", () => {
