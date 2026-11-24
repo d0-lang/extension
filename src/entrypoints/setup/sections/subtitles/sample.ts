@@ -1,13 +1,30 @@
+/** How quickly the preview's lines change: like most videos, or like quick back-and-forth dialogue. */
+export type Pace = "slow" | "fast"
+
 /**
  * The made-up lines the subtitle preview plays over and over, two people talking, each in the colour a creator might
- * give them. The second line takes two rows, to show the row it ends on staying.
+ * give them, and how long each shows. The slow lines' second takes two rows, to show the row it ends on staying.
+ * The fast ones change quickly enough that Calm fast subtitles takes their slide out.
  */
-export const SAMPLE_CUES: ReadonlyArray<{ text: string; color: string }> = [
-  { text: "Is this the last train going north tonight?", color: "#ffff00" },
-  { text: "It is, but it only stops at the bigger stations along the coast.", color: "#00ffff" },
-  { text: "Then we should buy something to eat first.", color: "#ffff00" },
-  { text: "There's a bakery right by the exit.", color: "#00ffff" },
-]
-
-/** How long each line shows. */
-export const SAMPLE_CUE_MS = 2600
+export const SAMPLES: Record<Pace, { cues: ReadonlyArray<{ text: string; color: string }>; ms: number }> = {
+  slow: {
+    cues: [
+      { text: "Is this the last train going north tonight?", color: "#ffff00" },
+      { text: "It is, but it only stops at the bigger stations along the coast.", color: "#00ffff" },
+      { text: "Then we should buy something to eat first.", color: "#ffff00" },
+      { text: "There's a bakery right by the exit.", color: "#00ffff" },
+    ],
+    ms: 2600,
+  },
+  fast: {
+    cues: [
+      { text: "Left or right?", color: "#ffff00" },
+      { text: "Left!", color: "#00ffff" },
+      { text: "Are you sure?", color: "#ffff00" },
+      { text: "No, but go!", color: "#00ffff" },
+      { text: "Okay, okay.", color: "#ffff00" },
+      { text: "Run, it's leaving!", color: "#00ffff" },
+    ],
+    ms: 1200,
+  },
+}
