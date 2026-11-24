@@ -25,6 +25,7 @@
     "sites": "bun scripts/sites.ts"
   },
   "dependencies": {
+    "mediabunny": "1.65.2",
     "neverthrow": "^8.2.0",
     "zod": "^4.6.5"
   },
