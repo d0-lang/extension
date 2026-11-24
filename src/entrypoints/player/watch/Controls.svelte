@@ -8,6 +8,7 @@
   import type { FileTrack } from "../open/subtitles"
   import SubtitleMenu from "./SubtitleMenu.svelte"
   import { formatTime } from "./time"
+  import { keepFocus } from "./keys"
 
   /** The bar under the video: playing, seeking, sound, subtitles and fullscreen. */
   let {
@@ -43,9 +44,6 @@
 
   const button =
     "flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-white/15"
-
-  // A click leaves no focus behind, so space and the arrows stay the player's.
-  const keepFocus = (event: MouseEvent) => event.preventDefault()
 </script>
 
 <div

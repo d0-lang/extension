@@ -6,6 +6,7 @@
   import ChooseFiles from "../open/ChooseFiles.svelte"
   import { languageInName } from "../open/language"
   import type { FileTrack } from "../open/subtitles"
+  import { keepFocus } from "./keys"
 
   /**
    * The subtitles button, named after the language showing, with a menu of the subtitle files and a way to open
@@ -40,9 +41,6 @@
 
   const label = (lang: string | undefined): string =>
     lang === undefined ? "Language unknown" : languageName(lang)
-
-  // A click leaves no focus behind, so space and the arrows stay the player's.
-  const keepFocus = (event: MouseEvent) => event.preventDefault()
 
   const item =
     "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-white/15"

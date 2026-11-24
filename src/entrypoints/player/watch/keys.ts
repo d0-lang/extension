@@ -32,3 +32,6 @@ export const actionOf = (event: KeyboardEvent): PlayerAction | undefined => {
   }
   return ACTIONS[key]
 }
+
+/** Keeps a pressed control from taking focus, so space and the arrows stay the player's. */
+export const keepFocus = (event: MouseEvent) => event.preventDefault()

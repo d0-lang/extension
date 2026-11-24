@@ -1,9 +1,7 @@
 import { isOpenLookupMessage, type OpenLookupMessage } from "$lib/messages"
 import { getLookupEnabled } from "$lib/storage"
 import { createLookup } from "$lib/lookup"
-import { watchAltHold } from "$lib/page/hold"
-import { pickAt, pickedContext, pickedUnderCursor, pickedWord, wordAt, type Picked } from "$lib/page/pick"
-import { sentenceAround } from "$lib/page/sentence"
+import { pickAt, pickedContext, pickedUnderCursor, pickedWord, type Picked } from "$lib/page/pick"
 import "$lib/popover/popover.css"
 import { showVideoSubtitles } from "./video/captions"
 import { showYouTubeCaptions } from "./youtube/captions"
@@ -18,7 +16,7 @@ export default defineContentScript({
   main(ctx) {
     let picked: Picked | undefined
     let enabled = false
-    const { open, session, popover, subtitleOptions, useSubtitles } = createLookup(ctx, {
+    const { open, session, subtitleOptions, useSubtitles } = createLookup(ctx, {
       isEnabled: () => enabled,
     })
 
@@ -64,16 +62,6 @@ export default defineContentScript({
       if ("lookupEnabled" in changes) {
         enabled = changes.lookupEnabled?.newValue === true
       }
-    })
-
-    watchAltHold(ctx, {
-      isEnabled: () => enabled,
-      wordAt: (x, y) => wordAt(x, y, session.locale()),
-      isOverPopover: popover.isAt,
-      popoverScroller: popover.scroller,
-      show: ({ word, anchor, element, range }) =>
-        void open(word, anchor, element, range, sentenceAround(range, word, session.locale())),
-      close: popover.close,
     })
   },
 })

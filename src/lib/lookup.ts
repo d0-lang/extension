@@ -3,7 +3,8 @@ import { sendShownLookup } from "$lib/messages"
 import { getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { MAX_WORD_CHARS, type AnchorRect, type WordHit } from "./page/pick"
+import { watchAltHold } from "./page/hold"
+import { MAX_WORD_CHARS, wordAt, type AnchorRect, type WordHit } from "./page/pick"
 import { isDarkBehind } from "./page/scheme"
 import { sentenceAround, type Sentence } from "./page/sentence"
 import { createPopoverHost } from "./popover/mount"
@@ -18,8 +19,8 @@ export type LookupOptions = {
 }
 
 /**
- * Sets up lookup on the page. A press outside the popover or Escape closes it, and a change to the servers or
- * languages drops the answers kept so far.
+ * Sets up lookup on the page, with holding Alt over a word to look it up. A press outside the popover or Escape
+ * closes it, and a change to the servers or languages drops the answers kept so far.
  */
 export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: LookupOptions) => {
   /** Covers the word the popover is open on, when it is the one under the cursor. */
@@ -123,6 +124,15 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
     },
     { capture: true },
   )
+  watchAltHold(ctx, {
+    isEnabled,
+    wordAt: (x, y) => wordAt(x, y, session.locale()),
+    isOverPopover: popover.isAt,
+    popoverScroller: popover.scroller,
+    show: ({ word, anchor, element, range }) =>
+      void open(word, anchor, element, range, sentenceAround(range, word, session.locale())),
+    close: popover.close,
+  })
   browser.storage.onChanged.addListener((changes) => {
     // A server's sentence setting and the blocked sites decide what an answer was based on, the order which
     // language it came from.
@@ -134,7 +144,6 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
   return {
     open,
     session,
-    popover,
     /** What subtitles need to open lookups from their words. */
     subtitleOptions,
     /** Lets `shown` mark the looked-up word and play its video again once the popover closes. */
