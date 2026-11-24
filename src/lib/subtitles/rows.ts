@@ -81,10 +81,11 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
     if (!settings.slide || distance <= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return
     }
-    // `translate` adds to any `transform` that centres the subtitles.
+    // Added to whatever centres the subtitles, which may be a `translate` too, as with Tailwind's.
     root.animate([{ translate: `0 ${distance}px` }, { translate: "0 0" }], {
       duration: SLIDE_MS,
       easing: "ease-out",
+      composite: "add",
     })
     cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS, easing: "ease-in" })
   }
