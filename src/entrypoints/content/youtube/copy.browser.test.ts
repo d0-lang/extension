@@ -62,8 +62,23 @@ describe("addCopyMenu", () => {
     const onPlayer = vi.fn()
     player.addEventListener("contextmenu", onPlayer)
     rightClick(word("Sure"))
-    expect(items()).toEqual(["Copy word", "Copy line", "Copy prompt to explain word"])
+    expect(items()).toEqual(["Copy “Sure”", "Copy line", "Copy prompt to explain “Sure”"])
     expect(onPlayer).not.toHaveBeenCalled()
+  })
+
+  it("draws an icon by each item", () => {
+    setUp()
+    rightClick(word("Sure"))
+    const menuItems = [...document.querySelectorAll("[data-dadict-menu] button")]
+    expect(menuItems.map((item) => item.querySelector("svg") !== null)).toEqual([true, true, true])
+  })
+
+  it("marks the word the menu is for until it closes", () => {
+    setUp()
+    rightClick(word("Sure"))
+    expect(word("Sure").dataset.picked).toBe("")
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    expect(word("Sure").dataset.picked).toBeUndefined()
   })
 
   it("offers only the line between words", () => {
@@ -76,7 +91,7 @@ describe("addCopyMenu", () => {
     const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
     setUp()
     rightClick(word("Sure"))
-    pick("Copy word")
+    pick("Copy “Sure”")
     await vi.waitFor(() => expect(write).toHaveBeenCalledWith("Sure"))
   })
 
@@ -102,7 +117,7 @@ describe("addCopyMenu", () => {
     const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
     setUp({ text: "Passe-moi le sel." }, DEFAULT_SUBTITLE_SETTINGS, "fr")
     rightClick(word("sel"))
-    pick("Copy prompt to explain word")
+    pick("Copy prompt to explain “sel”")
     await vi.waitFor(() =>
       expect(write).toHaveBeenCalledWith(
         'Explain the French word "sel" as it is used in this line from a video:\n\n"Passe-moi le sel."',

@@ -1,5 +1,9 @@
 /** Copying subtitles: a menu on right-click for the word, its line, or a prompt to have a chatbot explain the word. */
+import SparklesIcon from "@lucide/svelte/icons/sparkles"
+import TextIcon from "@lucide/svelte/icons/text"
+import WholeWordIcon from "@lucide/svelte/icons/whole-word"
 import { fromThrowable } from "neverthrow"
+import { mount, unmount } from "svelte"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { joinLines } from "./cues"
 import type { Overlay } from "./overlay"
@@ -29,6 +33,9 @@ const explainPrompt = (word: string, line: string, lang: string): string => {
   const language = languageName(lang)
   return `Explain the ${language === undefined ? "" : `${language} `}word "${word}" as it is used in this line from a video:\n\n"${line}"`
 }
+
+/** What a menu item copies, under its label and icon. */
+type Item = { label: string; icon: typeof TextIcon; text: string }
 
 /** A hidden text area the copy command can take the text from. */
 const copyCommand = (text: string): boolean => {
@@ -62,9 +69,21 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     }
   }
 
+  /** The menu's icons, which are components to unmount with it. */
+  let icons: Array<ReturnType<typeof mount>> = []
+
+  /** The word the menu is for, marked while it is open, since the pointer leaves it for the menu. */
+  let picked: HTMLElement | undefined
+
   const close = () => {
     closing?.abort()
     closing = undefined
+    delete picked?.dataset.picked
+    picked = undefined
+    for (const icon of icons) {
+      void unmount(icon)
+    }
+    icons = []
     menu?.remove()
     menu = undefined
   }
@@ -90,16 +109,17 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
   }
 
   /** Opens the menu with `items` at `x` and `y` on screen, moved as little as keeps it in the player. */
-  const open = (x: number, y: number, items: ReadonlyArray<{ label: string; text: string }>) => {
+  const open = (x: number, y: number, items: ReadonlyArray<Item>) => {
     close()
     const element = document.createElement("div")
     element.dataset.dadictMenu = ""
     element.setAttribute("role", "menu")
-    for (const { label, text } of items) {
+    for (const { label, icon, text } of items) {
       const item = document.createElement("button")
       item.type = "button"
       item.setAttribute("role", "menuitem")
-      item.textContent = label
+      icons.push(mount(icon, { target: item, props: { size: 16, "aria-hidden": "true" } }))
+      item.append(label)
       item.addEventListener("click", () => void copy(text))
       element.append(item)
     }
@@ -147,7 +167,8 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
       event.preventDefault()
       event.stopPropagation()
       const target = event.target instanceof Element ? event.target : null
-      const word = target?.closest("[data-word]")?.textContent ?? undefined
+      const wordPart = target?.closest<HTMLElement>("[data-word]") ?? undefined
+      const word = wordPart?.textContent ?? undefined
       const { cue, lang } = shown
       // The line clicked, which is the one before when it is the row above.
       const clicked =
@@ -155,12 +176,22 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
       // YouTube breaks lines to fit its box, so the text goes on one line.
       const line = joinLines(clicked.text)
       open(event.clientX, event.clientY, [
-        ...(word === undefined ? [] : [{ label: "Copy word", text: word }]),
-        { label: "Copy line", text: line },
+        ...(word === undefined ? [] : [{ label: `Copy “${word}”`, icon: WholeWordIcon, text: word }]),
+        { label: "Copy line", icon: TextIcon, text: line },
         ...(word === undefined
           ? []
-          : [{ label: "Copy prompt to explain word", text: explainPrompt(word, line, lang) }]),
+          : [
+              {
+                label: `Copy prompt to explain “${word}”`,
+                icon: SparklesIcon,
+                text: explainPrompt(word, line, lang),
+              },
+            ]),
       ])
+      if (wordPart !== undefined) {
+        picked = wordPart
+        picked.dataset.picked = ""
+      }
     },
     { signal: ctx.signal },
   )
