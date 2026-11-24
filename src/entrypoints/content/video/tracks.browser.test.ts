@@ -48,6 +48,17 @@ describe("activeTrack", () => {
     expect(activeTrack(trackWith([["Raz", 0, 1]], "disabled").video)).toBeUndefined()
     expect(activeTrack(trackWith([["Raz", 0, 1]], "hidden", "metadata").video)).toBeUndefined()
   })
+
+  it("takes ArtPlayer's metadata track while its player shows subtitles", () => {
+    const { video, track } = trackWith([["Raz", 0, 1]], "hidden", "metadata")
+    const player = document.createElement("div")
+    player.className = "art-video-player art-subtitle-show"
+    player.append(video)
+    document.body.append(player)
+    expect(activeTrack(video)).toBe(track)
+    player.classList.remove("art-subtitle-show")
+    expect(activeTrack(video)).toBeUndefined()
+  })
 })
 
 describe("cuesOf", () => {

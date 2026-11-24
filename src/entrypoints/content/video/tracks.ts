@@ -3,6 +3,10 @@ import type { Cue } from "../subtitles/cues"
 
 const SUBTITLE_KINDS = new Set(["subtitles", "captions"])
 
+/** ArtPlayer keeps its subtitles in a metadata track, so the browser does not draw them. They are on while this matches. */
+const ARTPLAYER_ON = ".art-video-player.art-subtitle-show"
+const ARTPLAYER_KINDS = new Set([...SUBTITLE_KINDS, "metadata"])
+
 /** Entities a cue's text may hold, as WebVTT writes them. */
 const ENTITIES: Record<string, string> = {
   "&amp;": "&",
@@ -30,7 +34,8 @@ export const plainText = (text: string): string =>
  * None means subtitles are off.
  */
 export const activeTrack = (video: HTMLVideoElement): TextTrack | undefined => {
-  const tracks = [...video.textTracks].filter(({ kind }) => SUBTITLE_KINDS.has(kind))
+  const kinds = video.closest(ARTPLAYER_ON) === null ? SUBTITLE_KINDS : ARTPLAYER_KINDS
+  const tracks = [...video.textTracks].filter(({ kind }) => kinds.has(kind))
   return tracks.find(({ mode }) => mode === "showing") ?? tracks.find(({ mode }) => mode === "hidden")
 }
 
