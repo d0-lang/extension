@@ -15,7 +15,7 @@ Code lives in the entrypoint folder that uses it. It moves to `lib/` once a seco
 
 An entrypoint's `index.ts` or `main.ts` only wires things up: listeners, mounting, and calls into named modules. Logic goes in those modules.
 
-Inside an entrypoint, group files by job, like `content/page` for reading the page and `content/popover` for the popover. Split a folder once it mixes jobs, and split a component once it renders separate parts. Do not wait for it to get large.
+Inside an entrypoint, group files by job, like `content/youtube` for YouTube and `content/video` for other sites' videos. Split a folder once it mixes jobs, and split a component once it renders separate parts. Do not wait for it to get large.
 
 Tests sit next to the file they test, as `name.test.ts`.
 

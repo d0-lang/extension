@@ -1,5 +1,5 @@
 /** Reads the YouTube player from its DOM, since its API lives in the page's own world. */
-import type { Host } from "../subtitles/host"
+import type { Host } from "$lib/subtitles/host"
 
 const HOSTS = new Set(["www.youtube.com", "m.youtube.com", "www.youtube-nocookie.com"])
 

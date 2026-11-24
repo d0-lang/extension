@@ -1,6 +1,6 @@
 /** Cuts a caption track into cues of up to two lines, which show and go together. */
-import type { Cue } from "../subtitles/cues"
-import { joinLines, joint, WIDE } from "../subtitles/lines"
+import type { Cue } from "$lib/subtitles/cues"
+import { joinLines, joint, WIDE } from "$lib/subtitles/lines"
 import { SOUND, SOUND_ONLY, tidy } from "./clean"
 import { creatorCues } from "./creator"
 import type { Json3 } from "./json3"

@@ -1,5 +1,5 @@
 /** The player around a video on any site: where the subtitles go, and what the player draws its own in. */
-import type { Host } from "../subtitles/host"
+import type { Host } from "$lib/subtitles/host"
 
 /** A player box taller than its video by more than this holds more than the video, like a title under it. */
 const MAX_TALLER = 1.3

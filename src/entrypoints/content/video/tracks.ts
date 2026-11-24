@@ -1,5 +1,5 @@
 /** The subtitle track a video has on, as the browser holds it, whether the page's player or the browser draws it. */
-import type { Cue } from "../subtitles/cues"
+import type { Cue } from "$lib/subtitles/cues"
 
 const SUBTITLE_KINDS = new Set(["subtitles", "captions"])
 
