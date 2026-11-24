@@ -14,9 +14,11 @@
   import {
     getMarkStyle,
     getShowIpa,
+    getSubtitleSlide,
     getTheme,
     setMarkStyle,
     setShowIpa,
+    setSubtitleSlide,
     setTheme,
     type MarkStyle,
     type Theme,
@@ -41,6 +43,7 @@
   /** The preview in a dialog, on screens without room for it beside the settings. */
   let previewOpen = $state(false)
   let showIpa = $state(true)
+  let subtitleSlide = $state(true)
   let markStyle = $state<MarkStyle>("tint")
   /** Without the underline, tint is the only style left, so the choice is not shown. */
   let underlines = $state(false)
@@ -50,14 +53,16 @@
   let orderLoaded = $state(false)
 
   onMount(async () => {
-    const [storedTheme, storedIpa, storedMark, drawsUnderline] = await Promise.all([
+    const [storedTheme, storedIpa, storedMark, storedSlide, drawsUnderline] = await Promise.all([
       getTheme(),
       getShowIpa(),
       getMarkStyle(),
+      getSubtitleSlide(),
       canUnderline(),
     ])
     theme = storedTheme
     showIpa = storedIpa
+    subtitleSlide = storedSlide
     markStyle = storedMark
     underlines = drawsUnderline
     loaded = true
@@ -86,6 +91,11 @@
   const onIpa = async (checked: boolean) => {
     showIpa = checked
     await setShowIpa(checked)
+  }
+
+  const onSlide = async (checked: boolean) => {
+    subtitleSlide = checked
+    await setSubtitleSlide(checked)
   }
 </script>
 
@@ -153,6 +163,19 @@
           </p>
         </div>
         <Switch id="show-ipa" checked={showIpa} onCheckedChange={(checked) => void onIpa(checked)} />
+      </div>
+      <div class="flex items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="subtitle-slide">Slide subtitles</Label>
+          <p class="text-muted-foreground text-sm">
+            A subtitle that ends slides up and stays above the next one, so its words can still be looked up.
+          </p>
+        </div>
+        <Switch
+          id="subtitle-slide"
+          checked={subtitleSlide}
+          onCheckedChange={(checked) => void onSlide(checked)}
+        />
       </div>
       <LanguageOrder onload={() => (orderLoaded = true)} />
     </div>

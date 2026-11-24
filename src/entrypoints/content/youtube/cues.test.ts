@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { cueAt, cuesOf, LINE_WIDTH, width, type Cue } from "./cues"
+import { cueAt, cuesOf, LINE_WIDTH, shownAt, width, type Cue } from "./cues"
 import { parseJson3, type Json3 } from "./json3"
 
 type Seg = { utf8: string; tOffsetMs?: number; isSpeakerChange?: number }
@@ -434,5 +434,23 @@ describe("cueAt", () => {
     expect(cueAt(cues, -1)).toBeUndefined()
     expect(cueAt(cues, 6000)).toBeUndefined()
     expect(cueAt([], 0)).toBeUndefined()
+  })
+})
+
+describe("shownAt", () => {
+  const cues = cuesOf(
+    creator(["Raz", 0, 1000], ["Dwa", 1000, 2000], ["Trzy", 5000, 6000], ["Cztery", 9100, 9500]),
+    false,
+  )
+
+  it("shows the cue before above when it ended just before", () => {
+    expect(shownAt(cues, 1500)).toEqual({ text: "Dwa", previous: "Raz" })
+    expect(shownAt(cues, 5500)).toEqual({ text: "Trzy", previous: "Dwa" })
+  })
+
+  it("leaves out a cue before that ended long before, or none", () => {
+    expect(shownAt(cues, 500)).toEqual({ text: "Raz", previous: undefined })
+    expect(shownAt(cues, 9200)).toEqual({ text: "Cztery", previous: undefined })
+    expect(shownAt(cues, 3000)).toBeUndefined()
   })
 })

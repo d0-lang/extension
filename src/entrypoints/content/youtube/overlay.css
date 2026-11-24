@@ -8,12 +8,12 @@
   bottom: calc(var(--dadict-caption-lift, 54px) + 2% - var(--dadict-caption-y, 0) * 100%);
   z-index: 40;
   width: max-content;
-  max-width: 80%;
+  max-width: 90%;
   transform: translateX(-50%);
   /* Only the text takes clicks, so the gaps around it still reach the video. */
   pointer-events: none;
   text-align: center;
-  /* Shows the line break between a cue's two lines. */
+  /* Shows the line break between a cue's two lines, and after the cue before. */
   white-space: pre-line;
   text-wrap: balance;
   word-break: auto-phrase;
@@ -25,7 +25,8 @@
     sans-serif;
 }
 
-[data-dadict-captions] > span {
+[data-dadict-captions] [data-cue]:not([data-previous]) > [data-line],
+[data-dadict-captions] [data-previous] {
   pointer-events: auto;
   /* A touch drags the subtitles rather than scrolling the page. */
   touch-action: none;
@@ -34,6 +35,27 @@
   background: rgb(8 8 8 / 0.75);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+/*
+ * The cue before, on one row that shows its end, which was said last. An inline box keeps its text in the run a
+ * word's sentence is read from.
+ */
+[data-dadict-captions] [data-previous] {
+  display: inline-block;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  background: rgb(8 8 8 / 0.6);
+  color: rgb(255 255 255 / 0.75);
+  font-size: 0.8em;
+}
+
+/* Fades the start a narrow player cuts off. */
+[data-dadict-captions] [data-previous][data-clipped] {
+  mask-image: linear-gradient(to right, transparent, #000 3em);
 }
 
 /* An inline box like the line's, so the hover is as tall as the dark background. */

@@ -4,6 +4,7 @@ import type { WordHit } from "../page/pick"
 import { segmentsOf } from "../page/tokenize"
 import { highlightRanges, type Paint } from "../popover/highlight"
 import { safeArea, shiftInto } from "./area"
+import type { Shown } from "./cues"
 import { dragToMove } from "./drag"
 import css from "./overlay.css?inline"
 
@@ -13,6 +14,9 @@ const STYLE_ID = "dadict-captions-style"
 const SIZE_RATIO = 0.045
 const MIN_SIZE_PX = 14
 const MAX_SIZE_PX = 44
+
+/** How long the cue that ended takes to slide up, and the next one to fade in. */
+const SLIDE_MS = 150
 
 /** Kept from the player, which would take them as play, pause, fullscreen or a drag. */
 const SWALLOWED = [
@@ -28,8 +32,11 @@ const SWALLOWED = [
 
 export type Overlay = {
   player: HTMLElement
-  /** A cue's text, lines apart with `\n`. `undefined` hides the overlay until the next cue. */
-  show: (text: string | undefined, lang: string) => void
+  /**
+   * A cue, lines apart with `\n`, with the cue before it above on one row. `undefined` hides the overlay until the next cue.
+   * When the cue before is the one showing, it slides up and keeps its words, so a lookup on one stays open.
+   */
+  show: (cue: Shown | undefined, lang: string) => void
   contains: (event: Event) => boolean
   /** Whether `node` is in the subtitles. */
   holds: (node: Node) => boolean
@@ -61,6 +68,7 @@ const addStyle = () => {
  */
 const lineOf = (text: string, lang: string): HTMLElement => {
   const line = document.createElement("span")
+  line.dataset.line = ""
   for (const segment of segmentsOf(text, lang)) {
     const part = document.createElement("span")
     if (segment.word) {
@@ -70,6 +78,27 @@ const lineOf = (text: string, lang: string): HTMLElement => {
     line.append(part)
   }
   return line
+}
+
+/**
+ * A cue's lines in one span. A line break in the text, which `pre-line` shows, parts them. A `<br>` or a block per
+ * line would end the text a word's sentence is read from, and the server should get the whole cue.
+ */
+const cueOf = (text: string, lang: string): HTMLElement => {
+  const cue = document.createElement("span")
+  cue.dataset.cue = ""
+  cue.append(
+    ...text
+      .split("\n")
+      .flatMap((line, index): Array<string | Node> => [...(index === 0 ? [] : ["\n"]), lineOf(line, lang)]),
+  )
+  return cue
+}
+
+/** Scrolls the cue before to its end, which was said last, and marks it when its start is cut off. */
+const showEnd = (previous: HTMLElement) => {
+  previous.scrollLeft = previous.scrollWidth
+  previous.toggleAttribute("data-clipped", previous.scrollWidth > previous.clientWidth)
 }
 
 /** Whether `range` covers some of `text`, not only touches it. */
@@ -90,7 +119,7 @@ const isCovered = (part: Element | undefined, ranges: ReadonlyArray<Range>): boo
 
 /** The words `ranges` cover in `root`, and what is between two of them on a line. */
 const coveredParts = (root: HTMLElement, ranges: ReadonlyArray<Range>): Array<HTMLElement> =>
-  [...root.children].flatMap((line) => {
+  [...root.querySelectorAll("[data-line]")].flatMap((line) => {
     const parts = [...line.children]
     return parts.filter(
       (part, index): part is HTMLElement =>
@@ -140,12 +169,13 @@ export const removeLeftovers = () => {
 
 /**
  * Adds the overlay to `player`, which hides YouTube's own captions while it is there.
- * Dragging its text moves it around the player's safe area.
+ * Dragging its text moves it around the player's safe area. `slides` is whether a cue that ends slides up.
  */
 export const createOverlay = (
   ctx: ContentScriptContext,
   player: HTMLElement,
   onWord: (hit: WordHit) => void,
+  slides: () => boolean = () => true,
 ): Overlay => {
   addStyle()
   const root = document.createElement("div")
@@ -189,6 +219,9 @@ export const createOverlay = (
       root.style.setProperty("--dadict-caption-lift", `${Math.max(0, lift)}px`)
     }
     place()
+    if (previous !== undefined) {
+      showEnd(previous)
+    }
   })
   resize.observe(player)
 
@@ -204,31 +237,70 @@ export const createOverlay = (
   })
 
   let shown = ""
+  let current: { text: string; lang: string; element: HTMLElement } | undefined
+  let previous: HTMLElement | undefined
   let marked: ReadonlyArray<Range> = []
+
+  /** Slides everything up from where the cue now above was, and fades the new cue in. */
+  const slide = (from: number, previous: HTMLElement, cue: HTMLElement) => {
+    const distance = from - previous.getBoundingClientRect().bottom
+    if (distance <= 0 || !slides() || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return
+    }
+    // `translate` adds to the `transform` that centres the subtitles.
+    root.animate([{ translate: `0 ${distance}px` }, { translate: "0 0" }], {
+      duration: SLIDE_MS,
+      easing: "ease-out",
+    })
+    cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS, easing: "ease-in" })
+  }
+
   return {
     player,
-    show: (text, lang) => {
-      const appearing = root.hidden && text !== undefined
-      root.hidden = text === undefined
-      const key = `${lang}\n${text}`
-      if (text !== undefined && key !== shown) {
-        shown = key
-        root.lang = lang
-        // A line break in the text, which `pre-line` shows. A `<br>` or a block per line would end the text
-        // a word's sentence is read from, and the server should get the whole cue.
-        root.replaceChildren(
-          ...text
-            .split("\n")
-            .flatMap((line, index): Array<string | Node> => [
-              ...(index === 0 ? [] : ["\n"]),
-              lineOf(line, lang),
-            ]),
-        )
-      } else if (!appearing) {
+    show: (cue, lang) => {
+      const wasShown = !root.hidden
+      root.hidden = cue === undefined
+      const key = JSON.stringify([lang, cue?.previous, cue?.text])
+      if (cue === undefined || key === shown) {
+        if (cue !== undefined && !wasShown) {
+          place()
+        }
         return
       }
+      shown = key
+      root.lang = lang
+      const element = cueOf(cue.text, lang)
+      const ended = current
+      if (ended !== undefined && ended.lang === lang && ended.text === cue.previous) {
+        // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
+        const from = wasShown ? ended.element.getBoundingClientRect().bottom : undefined
+        previous = ended.element
+        previous.dataset.previous = ""
+        while (root.firstChild !== previous) {
+          root.firstChild!.remove()
+        }
+        root.append("\n", element)
+        current = { text: cue.text, lang, element }
+        place()
+        showEnd(previous)
+        if (from !== undefined) {
+          slide(from, previous, element)
+        }
+        return
+      }
+      previous = cue.previous === undefined ? undefined : cueOf(cue.previous, lang)
+      if (previous === undefined) {
+        root.replaceChildren(element)
+      } else {
+        previous.dataset.previous = ""
+        root.replaceChildren(previous, "\n", element)
+      }
+      current = { text: cue.text, lang, element }
       // A cue of another size can reach out of the safe area where the last one did not.
       place()
+      if (previous !== undefined) {
+        showEnd(previous)
+      }
     },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),

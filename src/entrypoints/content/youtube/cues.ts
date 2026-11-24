@@ -409,11 +409,11 @@ export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => 
 /** The previous cue shows above the current one unless it ended longer ago than this before the current one began. */
 const PREVIOUS_GAP_MS = 3000
 
-/** The text of the cue showing at `ms`, and of the cue before it when that one ended just before. */
-export const shownAt = (
-  cues: ReadonlyArray<Cue>,
-  ms: number,
-): { text: string; previous: string | undefined } | undefined => {
+/** A cue's text, and the text of the cue before it when that one ended just before. */
+export type Shown = { text: string; previous?: string | undefined }
+
+/** What shows at `ms`, if anything. */
+export const shownAt = (cues: ReadonlyArray<Cue>, ms: number): Shown | undefined => {
   const index = indexAt(cues, ms)
   if (index === undefined) {
     return undefined

@@ -1,9 +1,9 @@
-/** YouTube's subtitles, shown by the extension up to two lines at a time, each word clickable. */
+/** YouTube's subtitles, shown by the extension with the one before above, each word clickable. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
-import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
+import { getLookupEnabled, getSubtitleSlide, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
-import { cueAt } from "./cues"
+import { shownAt } from "./cues"
 import type { Paint } from "../popover/highlight"
 import { createOverlay, removeLeftovers, type Overlay } from "./overlay"
 import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn } from "./player"
@@ -36,6 +36,7 @@ export const showYouTubeCaptions = (
 ) => {
   const tracks = new Map<string, Track>()
   let showing = true
+  let slides = true
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
@@ -46,13 +47,18 @@ export const showYouTubeCaptions = (
   let running = false
 
   const loadSettings = async () => {
-    const [youtube, lookup] = await Promise.all([getYoutubeCaptions(), getLookupEnabled()])
+    const [youtube, lookup, slide] = await Promise.all([
+      getYoutubeCaptions(),
+      getLookupEnabled(),
+      getSubtitleSlide(),
+    ])
     showing = youtube
+    slides = slide
     document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
   void loadSettings()
   browser.storage.onChanged.addListener((changes) => {
-    if ("youtubeCaptions" in changes || "lookupEnabled" in changes) {
+    if ("youtubeCaptions" in changes || "lookupEnabled" in changes || "subtitleSlide" in changes) {
       void loadSettings()
     }
   })
@@ -128,10 +134,9 @@ export const showYouTubeCaptions = (
     }
     if (overlay?.player !== player) {
       removeOverlay()
-      overlay = createOverlay(ctx, player, onWord)
+      overlay = createOverlay(ctx, player, onWord, () => slides)
     }
-    const cue = adShowing(player) ? undefined : cueAt(track.cues, video.currentTime * 1000)
-    overlay.show(cue?.text, track.lang)
+    overlay.show(adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000), track.lang)
   }
 
   const tick = () => {
