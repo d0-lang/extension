@@ -1,6 +1,6 @@
 /** YouTube's subtitles, shown by the extension with the one before above, each word clickable. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
-import { getLookupEnabled, getSubtitleSlide, getYoutubeCaptions } from "$lib/storage"
+import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { shownAt } from "./cues"
@@ -36,7 +36,6 @@ export const showYouTubeCaptions = (
 ) => {
   const tracks = new Map<string, Track>()
   let showing = true
-  let slides = true
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
@@ -47,18 +46,13 @@ export const showYouTubeCaptions = (
   let running = false
 
   const loadSettings = async () => {
-    const [youtube, lookup, slide] = await Promise.all([
-      getYoutubeCaptions(),
-      getLookupEnabled(),
-      getSubtitleSlide(),
-    ])
+    const [youtube, lookup] = await Promise.all([getYoutubeCaptions(), getLookupEnabled()])
     showing = youtube
-    slides = slide
     document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
   void loadSettings()
   browser.storage.onChanged.addListener((changes) => {
-    if ("youtubeCaptions" in changes || "lookupEnabled" in changes || "subtitleSlide" in changes) {
+    if ("youtubeCaptions" in changes || "lookupEnabled" in changes) {
       void loadSettings()
     }
   })
@@ -134,7 +128,7 @@ export const showYouTubeCaptions = (
     }
     if (overlay?.player !== player) {
       removeOverlay()
-      overlay = createOverlay(ctx, player, onWord, () => slides)
+      overlay = createOverlay(ctx, player, onWord)
     }
     overlay.show(adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000), track.lang)
   }

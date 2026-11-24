@@ -1,4 +1,4 @@
-/** Lookup toggle, YouTube subtitles and their slide, IPA toggle, theme and how the looked-up word is marked. */
+/** Lookup toggle, YouTube subtitles, IPA toggle, theme and how the looked-up word is marked. */
 
 /** `system` follows the OS colour scheme. */
 export type Theme = "system" | "light" | "dark"
@@ -13,7 +13,6 @@ const markStyles: ReadonlyArray<string> = ["tint", "underline"] satisfies Array<
 const empty = {
   lookupEnabled: true,
   youtubeCaptions: true,
-  subtitleSlide: true,
   showIpa: true,
   theme: "system" as Theme,
   markStyle: "tint" as MarkStyle,
@@ -36,16 +35,6 @@ export const getYoutubeCaptions = async (): Promise<boolean> => {
 
 export const setYoutubeCaptions = async (youtubeCaptions: boolean): Promise<void> => {
   await browser.storage.local.set({ youtubeCaptions })
-}
-
-/** Whether a subtitle that ends slides up above the next one. Reduced motion in the OS turns it off too. */
-export const getSubtitleSlide = async (): Promise<boolean> => {
-  const { subtitleSlide } = await browser.storage.local.get("subtitleSlide")
-  return typeof subtitleSlide === "boolean" ? subtitleSlide : empty.subtitleSlide
-}
-
-export const setSubtitleSlide = async (subtitleSlide: boolean): Promise<void> => {
-  await browser.storage.local.set({ subtitleSlide })
 }
 
 export const getShowIpa = async (): Promise<boolean> => {

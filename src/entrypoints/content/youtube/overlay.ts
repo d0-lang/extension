@@ -182,13 +182,12 @@ export const removeLeftovers = () => {
 
 /**
  * Adds the overlay to `player`, which hides YouTube's own captions while it is there.
- * Dragging its text moves it around the player's safe area. `slides` is whether a cue that ends slides up.
+ * Dragging its text moves it around the player's safe area.
  */
 export const createOverlay = (
   ctx: ContentScriptContext,
   player: HTMLElement,
   onWord: (hit: WordHit) => void,
-  slides: () => boolean = () => true,
 ): Overlay => {
   addStyle()
   const root = document.createElement("div")
@@ -253,7 +252,7 @@ export const createOverlay = (
   /** Slides everything up from where the cue now above was, and fades the new cue in. */
   const slide = (from: number, previous: HTMLElement, cue: HTMLElement) => {
     const distance = from - previous.getBoundingClientRect().bottom
-    if (distance <= 0 || !slides() || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (distance <= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return
     }
     // `translate` adds to the `transform` that centres the subtitles.
