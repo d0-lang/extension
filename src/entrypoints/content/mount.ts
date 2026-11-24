@@ -6,6 +6,27 @@ import "./popover/popover.css"
 
 export type PopoverProps = ComponentProps<typeof Popover>
 
+/** Kept from a fullscreen player the popover is in, which would take them as play, pause or leaving fullscreen. */
+const SWALLOWED = [
+  "pointerdown",
+  "pointerup",
+  "mousedown",
+  "mouseup",
+  "click",
+  "dblclick",
+  "touchstart",
+  "touchend",
+]
+
+/**
+ * Where the popover goes: in the element that is fullscreen, like a player, since nothing outside it shows. Else the
+ * root, not the body: a transform on it would break the popover's fixed position.
+ */
+const anchorNow = (): Element => {
+  const full = document.fullscreenElement
+  return full === null || full instanceof HTMLMediaElement ? document.documentElement : full
+}
+
 export const createPopoverHost = (ctx: ContentScriptContext) => {
   let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined
   // Building the UI is async, so a newer open or a close must cancel an older one.
@@ -25,16 +46,23 @@ export const createPopoverHost = (ctx: ContentScriptContext) => {
     }
   }
 
+  // It stays in the element it opened in, which would hide it behind the new fullscreen element or keep it in the old.
+  ctx.addEventListener(document, "fullscreenchange", () => {
+    if (current !== undefined) {
+      close()
+    }
+  })
+
   /** Replace the open popover with a new one. A later `show` or `close` cancels it while `props` is pending. */
   const show = async (props: () => Promise<PopoverProps>) => {
     remove()
     const thisOpen = latestOpen
     const resolved = await props()
+    const anchor = anchorNow()
     const ui = await createShadowRootUi(ctx, {
       name: "dict-lookup-popover",
       position: "inline",
-      // Not the body: a transform on it would break the popover's fixed position.
-      anchor: document.documentElement,
+      anchor,
       onMount: (target) => mount(Popover, { target, props: resolved }),
       onRemove: (app) => {
         if (app !== undefined) {
@@ -46,6 +74,11 @@ export const createPopoverHost = (ctx: ContentScriptContext) => {
       return
     }
     ui.mount()
+    if (anchor !== document.documentElement) {
+      for (const type of SWALLOWED) {
+        ui.shadowHost.addEventListener(type, (event) => event.stopPropagation())
+      }
+    }
     current = { host: ui.shadowHost, shadow: ui.shadow, remove: ui.remove }
   }
 
