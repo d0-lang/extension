@@ -6,7 +6,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** Subtitles at the bottom of a box, centred with `translate` as Tailwind does. */
+/** Subtitles centred with `translate`, as Tailwind does, at the bottom of a box. */
 const centred = (): HTMLElement => {
   const box = document.createElement("div")
   box.style.cssText = "position: relative; width: 600px; height: 340px"
@@ -19,22 +19,27 @@ const centred = (): HTMLElement => {
 }
 
 describe("createRows", () => {
-  it("fades the next cue in, with nothing moving", () => {
+  it("slides the row before up without moving the subtitles sideways", () => {
     const root = centred()
-    const show = createRows(root, { previous: true, fade: true }, () => {})
+    const show = createRows(root, { previous: true, slide: true }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
     show({ text: "Ala ma kota i dwa psy.", previous: { text: "Mamy gościa." } }, "pl", true)
-    expect(
-      root.getAnimations({ subtree: true }).map(({ effect }) => (effect as KeyframeEffect).target),
-    ).toEqual([root.querySelector("[data-cue]:not([data-previous])")])
+    const [slide] = root.getAnimations()
+    slide!.pause()
+    slide!.currentTime = 0
+    const start = root.getBoundingClientRect()
+    slide!.finish()
+    const end = root.getBoundingClientRect()
+    expect(start.left).toBeCloseTo(end.left, 0)
+    expect(start.top).toBeGreaterThan(end.top)
   })
 
-  it("shows the next cue at once when the fade is off", () => {
+  it("leaves the row before still when the slide is off", () => {
     const root = centred()
-    const show = createRows(root, { previous: true, fade: false }, () => {})
+    const show = createRows(root, { previous: true, slide: false }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
     show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
-    expect(root.getAnimations({ subtree: true })).toHaveLength(0)
+    expect(root.getAnimations()).toHaveLength(0)
     expect(root.querySelector("[data-previous]")?.textContent).toBe("Mamy gościa.")
   })
 })

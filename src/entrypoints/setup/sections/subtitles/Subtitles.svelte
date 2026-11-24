@@ -11,7 +11,8 @@
     setSubtitleCreator,
     setSubtitlePosition,
     setSubtitlePrevious,
-    setSubtitleFade,
+    setSubtitleCalm,
+    setSubtitleSlide,
     type SubtitlePosition,
     type SubtitleSettings,
   } from "$lib/storage"
@@ -42,9 +43,14 @@
     await setSubtitleCreator(checked)
   }
 
-  const onFade = async (checked: boolean) => {
-    settings = { ...settings, fade: checked }
-    await setSubtitleFade(checked)
+  const onCalm = async (checked: boolean) => {
+    settings = { ...settings, calm: checked }
+    await setSubtitleCalm(checked)
+  }
+
+  const onSlide = async (checked: boolean) => {
+    settings = { ...settings, slide: checked }
+    await setSubtitleSlide(checked)
   }
 
   const onPosition = async (next: string) => {
@@ -79,17 +85,32 @@
       </div>
       <div class="flex items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="subtitle-fade">Fade in</Label>
+          <Label for="subtitle-slide">Slide up</Label>
           <p class="text-muted-foreground text-sm">
-            The next subtitle fades in as the line before moves up. Off while your system asks for less
-            motion.
+            The line before slides into place when the next subtitle starts. Off while your system asks for
+            less motion.
           </p>
         </div>
         <Switch
-          id="subtitle-fade"
-          checked={settings.fade}
+          id="subtitle-slide"
+          checked={settings.slide}
           disabled={!settings.previous}
-          onCheckedChange={(checked) => void onFade(checked)}
+          onCheckedChange={(checked) => void onSlide(checked)}
+        />
+      </div>
+      <div class="flex items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="subtitle-calm">Calm fast subtitles</Label>
+          <p class="text-muted-foreground text-sm">
+            Videos whose subtitles mostly change within two seconds, like quick back-and-forth, show them
+            without the slide.
+          </p>
+        </div>
+        <Switch
+          id="subtitle-calm"
+          checked={settings.calm}
+          disabled={!settings.previous || !settings.slide}
+          onCheckedChange={(checked) => void onCalm(checked)}
         />
       </div>
       <div class="flex items-center justify-between gap-4 p-4">

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { cueAt, cuesOf, LINE_WIDTH, shownAt, width, type Cue } from "./cues"
+import { cueAt, cuesOf, isFast, LINE_WIDTH, shownAt, width, type Cue } from "./cues"
 import { parseJson3, type Json3 } from "./json3"
 
 type Seg = { utf8: string; tOffsetMs?: number; isSpeakerChange?: number }
@@ -470,5 +470,41 @@ describe("shownAt", () => {
       { startMs: 1000, endMs: 2000, text: "Dwa", place: { anchor: 4, x: 50, y: 55 } },
     ]
     expect(shownAt(styled, 1500, false)).toEqual({ text: "Dwa", previous: { text: "Raz" } })
+  })
+})
+
+describe("isFast", () => {
+  /** Cues one after another, each on screen for its own time. */
+  const paced = (...shown: Array<number>): Array<Cue> => {
+    let startMs = 0
+    return shown.map((ms, index) => {
+      const cue = { startMs, endMs: startMs + ms, text: `${index}` }
+      startMs += ms
+      return cue
+    })
+  }
+
+  it("is fast when most cues follow one shown under two seconds", () => {
+    expect(isFast(paced(1500, 1800, 1200, 3000, 1600))).toBe(true)
+  })
+
+  it("is not when most cues stay longer", () => {
+    expect(isFast(paced(2500, 1500, 4000, 3000, 6000))).toBe(false)
+  })
+
+  it("leaves out cues after a pause, which nothing slides into", () => {
+    const apart = paced(1500, 1500, 1500).map((cue, index) => ({
+      ...cue,
+      startMs: cue.startMs + index * 5000,
+      endMs: cue.endMs + index * 5000,
+    }))
+    expect(isFast(apart)).toBe(false)
+  })
+
+  it.each(["fr.manual.json", "de.manual.uN1Zx-Ia-SE.json", "fr.asr.json"])("finds %s calm", (name) => {
+    const json3 = parseJson3(
+      JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8")),
+    )!
+    expect(isFast(cuesOf(json3, name.includes(".asr.")))).toBe(false)
   })
 })

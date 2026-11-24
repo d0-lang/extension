@@ -12,11 +12,11 @@
   let root = $state<HTMLElement>()
   let index = $state(0)
 
-  /** Drawn again from scratch when a setting changes, so no fade comes from rows the old settings drew. */
+  /** Drawn again from scratch when a setting changes, so no slide comes from rows the old settings drew. */
   const rows = $derived(
     root === undefined
       ? undefined
-      : createRows(root, { previous: settings.previous, fade: settings.fade }, () => {}),
+      : createRows(root, { previous: settings.previous, slide: settings.slide }, () => {}),
   )
 
   /** The sample line at `at`, in its speaker's colour when creator styles show. */

@@ -147,7 +147,7 @@ describe("createOverlay", () => {
     expect(top("dzień")).toBeLessThan(top("kota"))
   })
 
-  it("moves the cue that ended up, keeping its words", () => {
+  it("slides the cue that ended up, keeping its words", () => {
     const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     const word = wordSpan("gościa")

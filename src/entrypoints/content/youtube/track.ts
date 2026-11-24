@@ -2,7 +2,7 @@
 import { TIMEDTEXT_EVENT, TIMEDTEXT_READY_EVENT, type Timedtext } from "$lib/captions"
 import { fromThrowable } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { cuesOf, type Cue } from "./cues"
+import { cuesOf, isFast, type Cue } from "./cues"
 import { parseJson3 } from "./json3"
 
 export type Track = {
@@ -14,6 +14,8 @@ export type Track = {
   /** Whether the track is YouTube's auto captions, or a translation of them. */
   asr: boolean
   cues: Array<Cue>
+  /** Whether its cues mostly change within a couple of seconds, like quick back-and-forth dialogue. */
+  fast: boolean
 }
 
 const parseJson = fromThrowable((text: string): unknown => JSON.parse(text))
@@ -37,12 +39,14 @@ export const trackOf = ({ url, body }: Timedtext): Track | undefined => {
   }
   const tlang = params?.get("tlang") ?? undefined
   const asr = params?.get("kind") === "asr"
+  const cues = cuesOf(json3, asr)
   return {
     videoId,
     lang: tlang ?? lang,
     translatedFrom: tlang === undefined ? undefined : lang,
     asr,
-    cues: cuesOf(json3, asr),
+    cues,
+    fast: isFast(cues),
   }
 }
 

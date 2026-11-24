@@ -44,6 +44,8 @@ export const showYouTubeCaptions = (
   const tracks = new Map<string, Track>()
   let showing = true
   let settings: SubtitleSettings = DEFAULT_SUBTITLE_SETTINGS
+  /** Whether the overlay slides, which depends on the track as well as the settings. */
+  let overlaySlides: boolean | undefined
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
@@ -143,9 +145,12 @@ export const showYouTubeCaptions = (
       removeOverlay()
       return
     }
-    if (overlay?.player !== player) {
+    // A fast track shows without the slide, so its subtitles do not keep moving.
+    const slide = settings.slide && !(settings.calm && track.fast)
+    if (overlay?.player !== player || overlaySlides !== slide) {
       removeOverlay()
-      overlay = createOverlay(ctx, player, onWord, settings)
+      overlay = createOverlay(ctx, player, onWord, { ...settings, slide })
+      overlaySlides = slide
     }
     overlay.show(
       adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000, settings.creator),
