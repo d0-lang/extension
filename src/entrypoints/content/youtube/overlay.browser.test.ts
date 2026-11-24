@@ -64,6 +64,17 @@ describe("createOverlay", () => {
     expect(onPlayer).not.toHaveBeenCalled()
   })
 
+  it("lets a right press through to the player, which closes its own menu on one", () => {
+    const box = player()
+    const onPlayer = vi.fn()
+    box.addEventListener("pointerdown", onPlayer)
+    createOverlay(ctx(), box, () => {}, SETTINGS).show({ text: "Mamy gościa." }, "pl")
+    wordSpan("gościa").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 2 }))
+    expect(onPlayer).toHaveBeenCalledOnce()
+    wordSpan("gościa").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }))
+    expect(onPlayer).toHaveBeenCalledOnce()
+  })
+
   it("marks the words a range covers and what is between them", () => {
     const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
     overlay.show({ text: "Wir senden heute live." }, "de")
