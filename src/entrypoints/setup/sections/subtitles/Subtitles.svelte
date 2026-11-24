@@ -106,7 +106,7 @@
         <div class="flex flex-col gap-0.5">
           <Label for="subtitle-calm">Calm fast subtitles</Label>
           <p class="text-muted-foreground text-sm">
-            Leaves the slide out on videos full of short, quick lines, so the subtitles don't keep moving.
+            Turns the slide off on videos where lines change every second or two.
           </p>
         </div>
         <Switch
