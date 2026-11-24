@@ -44,10 +44,11 @@ const PARTICLE = /^\p{scx=Hiragana}{1,2}$/u
 const ENDS_IN_KANJI = /[\p{scx=Han}\p{scx=Katakana}]$/u
 const STARTS_WITH_KANJI = /^[\p{scx=Han}\p{scx=Katakana}]/u
 
-/** What a cut after a sentence or a clause is worth, and what one inside a word costs, as silence would be. */
+/** What a cut after a sentence or a clause is worth, and what one inside a word or after a short word costs, as silence would be. */
 const SENTENCE_END_MS = 3000
 const CLAUSE_END_MS = 1500
 const GLUED_COST_MS = 4000
+const SHORT_WORD_COST_MS = 1500
 
 /** How long a cue stays after its last word starts, unless the next cue comes first. */
 const TAIL_MS = 2000
@@ -72,6 +73,13 @@ const SOUND_ONLY = /^\([^)]*\)$/u
 const WIDE =
   /[\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua960-\ua97f\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u
 
+/**
+ * Whether `text` is a word of up to three letters, like `le`, `je` or `j'ai`, which mostly leads into the word after it.
+ * A word with punctuation ends something, and wide scripts have no spaces to tell their words apart.
+ */
+const isShortWord = (text: string): boolean =>
+  /^[\p{L}'’]+$/u.test(text) && !WIDE.test(text) && text.replace(/['’]/gu, "").length <= 3
+
 /** How wide `text` shows, in Latin letters. */
 export const width = (text: string): number =>
   [...text].reduce((sum, char) => sum + (WIDE.test(char) ? 2 : 1), 0)
@@ -86,10 +94,15 @@ const joined = (words: ReadonlyArray<Pick<Word, "shown" | "spaced">>): string =>
 /** One space between words, none at the ends. `\s` takes in no-break spaces, which creator tracks use for padding. */
 const tidy = (text: string): string => text.replace(/\s+/gu, " ").trim()
 
-/** Joins text across a line break with a space, or with nothing between two wide characters. */
+/** What joins two lines: a space, or nothing between two wide characters. */
+const joint = (before: string, after: string): string =>
+  WIDE.test(before.at(-1) ?? "") && WIDE.test(after[0] ?? "") ? "" : " "
+
+/** Joins text across a line break. */
 const joinLines = (text: string): string =>
-  text.replace(/(.?)[^\S\n]*\n\s*(.?)/gu, (_, before: string, after: string) =>
-    WIDE.test(before) && WIDE.test(after) ? before + after : `${before} ${after}`,
+  text.replace(
+    /(.?)[^\S\n]*\n\s*(.?)/gu,
+    (_, before: string, after: string) => before + joint(before, after) + after,
   )
 
 /** Lays the track out on one line: a space between words, or nothing between two wide characters a line break parts. */
@@ -165,6 +178,7 @@ const breaksBefore = (cue: ReadonlyArray<Word>, word: Word): boolean => {
     joinedWidth(cue) >= MIN_WIDTH &&
     !word.inSegment &&
     !glued(last, word) &&
+    !isShortWord(last.text.trim()) &&
     (SENTENCE_END.test(last.text.trim()) || gap >= PAUSE_MS)
   )
 }
@@ -174,7 +188,7 @@ const cutScore = (last: Spoken, next: Spoken): number => {
   const text = last.text.trim()
   const gap = next.startMs - last.startMs
   const ending = SENTENCE_END.test(text) ? SENTENCE_END_MS : CLAUSE_END.test(text) ? CLAUSE_END_MS : 0
-  return gap + ending - (glued(last, next) ? GLUED_COST_MS : 0)
+  return gap + ending - (glued(last, next) ? GLUED_COST_MS : 0) - (isShortWord(text) ? SHORT_WORD_COST_MS : 0)
 }
 
 /** The cue's words on up to two lines, cut where it reads best and the lines come out about even. */
@@ -257,25 +271,99 @@ const asrCues = (json3: Json3): Array<Cue> => {
   })
 }
 
-/** The track's own cues, lines and all. Auto captions also lose their speaker markers. */
-const keptCues = (json3: Json3, asr: boolean): Array<Cue> => {
+/** A cue and whether a new speaker starts it. */
+type Kept = Cue & { speaker: boolean }
+
+/** The track's own cues, lines and all. */
+const keptCues = (json3: Json3, asr: boolean): Array<Kept> => {
   const cues = json3.events.flatMap(({ tStartMs, dDurationMs, segs = [] }) => {
     const lines = segs
       .map(({ utf8 }) => utf8)
       .join("")
       .replace(SOUND, "")
       .split("\n")
-      .map((line) => tidy(asr ? line.replace(SPEAKER, "$1") : line))
-      .filter((line) => line !== "")
-    return lines.length === 0 || SOUND_ONLY.test(lines.join(" "))
+      .map((line) => ({ text: tidy(asr ? line.replace(SPEAKER, "$1") : line), speaker: SPEAKER.test(line) }))
+      .filter(({ text }) => text !== "")
+    return lines.length === 0 || SOUND_ONLY.test(lines.map(({ text }) => text).join(" "))
       ? []
-      : [{ startMs: tStartMs, endMs: tStartMs + dDurationMs, text: lines.join("\n") }]
+      : [
+          {
+            startMs: tStartMs,
+            endMs: tStartMs + dDurationMs,
+            text: asr ? asrLines(lines) : lines.map(({ text }) => text).join("\n"),
+            speaker: asr && lines[0]!.speaker,
+          },
+        ]
   })
   // Only one cue shows at a time, so an overlap ends at the next start.
   return cues.map((cue, index) => ({
     ...cue,
     endMs: Math.min(cue.endMs, cues[index + 1]?.startMs ?? Infinity),
   }))
+}
+
+/** Auto captions break their lines to fit YouTube's own box, so only a new speaker keeps a line of its own. */
+const asrLines = (lines: ReadonlyArray<{ text: string; speaker: boolean }>): string =>
+  lines.reduce(
+    (text, line, index) =>
+      index === 0 ? line.text : text + (line.speaker ? "\n" : joint(text, line.text)) + line.text,
+    "",
+  )
+
+/** How many short words at most leave the end of a cue for the next one. */
+const MAX_MOVED_WORDS = 2
+
+/** A cue of this many words or fewer joins the one before. */
+const MAX_LONE_WORDS = 3
+
+/** Cues further apart than this stay as they are, since joining them would show words long before they are said. */
+const JOIN_GAP_MS = 1000
+
+const wordCount = (text: string): number =>
+  Array.from(SEGMENTER.segment(text)).filter(({ isWordLike }) => isWordLike).length
+
+/** `text` without the short words it ends on, and those words. A word on a line of its own stays. */
+const shortTail = (text: string, moved: Array<string> = []): { kept: string; moved: Array<string> } => {
+  const last = / (\S+)$/u.exec(text)
+  return last === null || moved.length === MAX_MOVED_WORDS || !isShortWord(last[1]!)
+    ? { kept: text, moved }
+    : shortTail(text.slice(0, last.index), [last[1]!, ...moved])
+}
+
+/**
+ * Auto captions YouTube cut itself, mended where it cut badly. Short words at a cue's end, like `vers la`, go
+ * to the next cue, which starts with what they lead into. A cue left with only a few words joins the one before.
+ * The words moved are said right where the cues meet, so they show at about the same time.
+ */
+const mendAsr = (cues: ReadonlyArray<Kept>): Array<Cue> => {
+  const moved = cues.map((cue) => ({ ...cue }))
+  for (const [index, cue] of moved.entries()) {
+    const next = moved[index + 1]
+    if (next === undefined || next.speaker || next.startMs - cue.endMs > JOIN_GAP_MS) {
+      continue
+    }
+    const tail = shortTail(cue.text)
+    if (tail.moved.length > 0) {
+      const words = tail.moved.join(" ")
+      cue.text = tail.kept
+      next.text = words + joint(words, next.text) + next.text
+    }
+  }
+  return moved.reduce<Array<Cue>>((done, { startMs, endMs, text, speaker }) => {
+    const before = done.at(-1)
+    if (
+      before !== undefined &&
+      !speaker &&
+      wordCount(text) <= MAX_LONE_WORDS &&
+      startMs - before.endMs <= JOIN_GAP_MS
+    ) {
+      return [
+        ...done.slice(0, -1),
+        { startMs: before.startMs, endMs, text: before.text + joint(before.text, text) + text },
+      ]
+    }
+    return [...done, { startMs, endMs, text }]
+  }, [])
 }
 
 /** Whether any word has a time of its own. */
@@ -285,10 +373,15 @@ const timed = (json3: Json3): boolean =>
 /**
  * Cues in the order they show, none overlapping. `asr` is whether the track is YouTube's auto captions.
  * Auto captions are cut here only when their words are timed. Without timings, as in a translation or in
- * YouTube's newer format of one event per cue, they keep YouTube's cues.
+ * YouTube's newer format of one event per cue, they keep YouTube's cues, mended on one line each.
+ * A creator's cues stay as they are.
  */
 export const cuesOf = (json3: Json3, asr: boolean): Array<Cue> =>
-  asr && timed(json3) ? asrCues(json3) : keptCues(json3, asr)
+  asr && timed(json3)
+    ? asrCues(json3)
+    : asr
+      ? mendAsr(keptCues(json3, asr))
+      : keptCues(json3, asr).map(({ startMs, endMs, text }) => ({ startMs, endMs, text }))
 
 const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
   let low = 0
@@ -311,4 +404,24 @@ const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
 export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => {
   const index = indexAt(cues, ms)
   return index === undefined ? undefined : cues[index]
+}
+
+/** The previous cue shows above the current one unless it ended longer ago than this before the current one began. */
+const PREVIOUS_GAP_MS = 3000
+
+/** A cue's text, and the text of the cue before it when that one ended just before. */
+export type Shown = { text: string; previous?: string | undefined }
+
+/** What shows at `ms`, if anything. */
+export const shownAt = (cues: ReadonlyArray<Cue>, ms: number): Shown | undefined => {
+  const index = indexAt(cues, ms)
+  if (index === undefined) {
+    return undefined
+  }
+  const cue = cues[index]!
+  const before = cues[index - 1]
+  return {
+    text: cue.text,
+    previous: before !== undefined && cue.startMs - before.endMs <= PREVIOUS_GAP_MS ? before.text : undefined,
+  }
 }

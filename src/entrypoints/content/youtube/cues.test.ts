@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { cueAt, cuesOf, LINE_WIDTH, width, type Cue } from "./cues"
+import { cueAt, cuesOf, LINE_WIDTH, shownAt, width, type Cue } from "./cues"
 import { parseJson3, type Json3 } from "./json3"
 
 type Seg = { utf8: string; tOffsetMs?: number; isSpeakerChange?: number }
@@ -76,6 +76,11 @@ describe("cuesOf for auto captions", () => {
       ...spoken(" und widmet dann", 4000),
     ])
     expect(texts(cuesOf(json3, true))).toEqual(["tötet in kurzer Zeit einen großen Teil", "und widmet dann"])
+  })
+
+  it("keeps a short word with the word after it across a pause", () => {
+    const json3 = asr([...spoken("il a pris le dernier train de la"), ...spoken(" nuit", 4000)])
+    expect(texts(cuesOf(json3, true))).toEqual(["il a pris le dernier train de la nuit"])
   })
 
   it("puts a space between lines, but not between Japanese ones", () => {
@@ -196,14 +201,56 @@ describe("cuesOf for auto captions", () => {
 })
 
 describe("cuesOf for auto captions without word timings", () => {
-  it("keeps YouTube's cues and lines, each until the next", () => {
+  it("puts each of YouTube's cues on one line, until the next", () => {
     const json3 = creator(
-      ["Ala ma kota, a kot ma\nAlę i dwa psy", 0, 5000],
-      ["które biegają\ncały dzień", 3000, 8000],
+      ["Ala ma kota, a kot\nma Alę.", 0, 5000],
+      ["Psy biegają\ncały dzień", 3000, 8000],
+      ["今日は\nいい天気", 8000, 9000],
     )
     expect(cuesOf(json3, true)).toEqual([
-      { startMs: 0, endMs: 3000, text: "Ala ma kota, a kot ma\nAlę i dwa psy" },
-      { startMs: 3000, endMs: 8000, text: "które biegają\ncały dzień" },
+      { startMs: 0, endMs: 3000, text: "Ala ma kota, a kot ma Alę." },
+      { startMs: 3000, endMs: 8000, text: "Psy biegają cały dzień" },
+      { startMs: 8000, endMs: 9000, text: "今日はいい天気" },
+    ])
+  })
+
+  it("moves the short words a cue ends on to the next cue", () => {
+    const json3 = creator(
+      ["hier soir nous sommes partis vers la", 0, 3000],
+      ["gare centrale avant minuit puis on a", 3000, 6000],
+      ["attendu le dernier bus sous la pluie", 6000, 9000],
+    )
+    expect(texts(cuesOf(json3, true))).toEqual([
+      "hier soir nous sommes partis vers",
+      "la gare centrale avant minuit puis",
+      "on a attendu le dernier bus sous la pluie",
+    ])
+  })
+
+  it("keeps the short words a cue ends on before a pause or a new speaker", () => {
+    const json3 = creator(
+      ["hier soir nous sommes partis vers la", 0, 3000],
+      ["gare centrale avant minuit et", 5000, 8000],
+      [">> le train était déjà parti", 8000, 9000],
+    )
+    expect(texts(cuesOf(json3, true))).toEqual([
+      "hier soir nous sommes partis vers la",
+      "gare centrale avant minuit et",
+      "le train était déjà parti",
+    ])
+  })
+
+  it("joins a cue of a few words to the one before", () => {
+    const json3 = creator(
+      ["le café était encore chaud à son retour", 0, 3000],
+      ["ce matin", 3000, 4000],
+      ["nous avons parlé de tout et de rien", 4000, 8000],
+      ["Bonsoir", 10_000, 11_000],
+    )
+    expect(cuesOf(json3, true)).toEqual([
+      { startMs: 0, endMs: 4000, text: "le café était encore chaud à son retour ce matin" },
+      { startMs: 4000, endMs: 8000, text: "nous avons parlé de tout et de rien" },
+      { startMs: 10_000, endMs: 11_000, text: "Bonsoir" },
     ])
   })
 
@@ -304,14 +351,24 @@ describe("cuesOf on recorded tracks", () => {
   })
 
   it.each(tracks.filter(({ asr, cut }) => asr && !cut))(
-    "$name shows each of YouTube's cues until the next or its own end",
+    "$name shows YouTube's cues, or a few joined, until the next or their own end",
     ({ json3 }) => {
-      const ends = new Map(
-        json3.events.map(({ tStartMs, dDurationMs }) => [tStartMs, tStartMs + dDurationMs]),
-      )
+      const starts = new Set(json3.events.map(({ tStartMs }) => tStartMs))
+      const ends = new Set(json3.events.map(({ tStartMs, dDurationMs }) => tStartMs + dDurationMs))
       const cues = cuesOf(json3, true)
       for (const [index, cue] of cues.entries()) {
-        expect(cue.endMs).toBe(Math.min(ends.get(cue.startMs)!, cues[index + 1]?.startMs ?? Infinity))
+        const next = cues[index + 1]?.startMs
+        expect(starts.has(cue.startMs)).toBe(true)
+        expect(cue.endMs === next || (ends.has(cue.endMs) && cue.endMs <= (next ?? Infinity))).toBe(true)
+      }
+    },
+  )
+
+  it.each(tracks.filter(({ asr, cut }) => asr && !cut))(
+    "$name puts each cue on one line, or a line for each speaker",
+    ({ json3 }) => {
+      for (const { text } of cuesOf(json3, true)) {
+        expect(text.split("\n").length).toBeLessThanOrEqual(1 + (/>>/u.test(JSON.stringify(json3)) ? 1 : 0))
       }
     },
   )
@@ -377,5 +434,23 @@ describe("cueAt", () => {
     expect(cueAt(cues, -1)).toBeUndefined()
     expect(cueAt(cues, 6000)).toBeUndefined()
     expect(cueAt([], 0)).toBeUndefined()
+  })
+})
+
+describe("shownAt", () => {
+  const cues = cuesOf(
+    creator(["Raz", 0, 1000], ["Dwa", 1000, 2000], ["Trzy", 5000, 6000], ["Cztery", 9100, 9500]),
+    false,
+  )
+
+  it("shows the cue before above when it ended just before", () => {
+    expect(shownAt(cues, 1500)).toEqual({ text: "Dwa", previous: "Raz" })
+    expect(shownAt(cues, 5500)).toEqual({ text: "Trzy", previous: "Dwa" })
+  })
+
+  it("leaves out a cue before that ended long before, or none", () => {
+    expect(shownAt(cues, 500)).toEqual({ text: "Raz", previous: undefined })
+    expect(shownAt(cues, 9200)).toEqual({ text: "Cztery", previous: undefined })
+    expect(shownAt(cues, 3000)).toBeUndefined()
   })
 })

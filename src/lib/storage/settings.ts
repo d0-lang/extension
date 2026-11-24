@@ -27,7 +27,7 @@ export const setLookupEnabled = async (lookupEnabled: boolean): Promise<void> =>
   await browser.storage.local.set({ lookupEnabled })
 }
 
-/** Whether YouTube's subtitles are shown by the extension, two lines at a time and clickable. */
+/** Whether YouTube's subtitles are shown by the extension, with the one before above and each word clickable. */
 export const getYoutubeCaptions = async (): Promise<boolean> => {
   const { youtubeCaptions } = await browser.storage.local.get("youtubeCaptions")
   return typeof youtubeCaptions === "boolean" ? youtubeCaptions : empty.youtubeCaptions
