@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { MediaQuery } from "svelte/reactivity"
   import ArrowDownToLineIcon from "@lucide/svelte/icons/arrow-down-to-line"
   import ArrowUpToLineIcon from "@lucide/svelte/icons/arrow-up-to-line"
   import { Label } from "$lib/components/ui/label"
@@ -25,6 +26,8 @@
   ] satisfies Array<{ value: SubtitlePosition; label: string; icon: typeof ArrowDownToLineIcon }>
 
   let settings = $state<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
+  /** The slide stays out while this matches, whatever its switch says. */
+  const reducedMotion = new MediaQuery("prefers-reduced-motion: reduce")
   /** Set once the settings are read, so the defaults do not show first and then change. */
   let loaded = $state(false)
 
@@ -87,14 +90,15 @@
         <div class="flex flex-col gap-0.5">
           <Label for="subtitle-slide">Slide up</Label>
           <p class="text-muted-foreground text-sm">
-            The line before slides into place when the next subtitle starts. Off while your system asks for
-            less motion.
+            {reducedMotion.current
+              ? "Off while your system asks for less motion."
+              : "The line before slides into place when the next subtitle starts."}
           </p>
         </div>
         <Switch
           id="subtitle-slide"
-          checked={settings.slide}
-          disabled={!settings.previous}
+          checked={settings.slide && !reducedMotion.current}
+          disabled={!settings.previous || reducedMotion.current}
           onCheckedChange={(checked) => void onSlide(checked)}
         />
       </div>
@@ -102,14 +106,13 @@
         <div class="flex flex-col gap-0.5">
           <Label for="subtitle-calm">Calm fast subtitles</Label>
           <p class="text-muted-foreground text-sm">
-            Videos whose subtitles mostly change within two seconds, like quick back-and-forth, show them
-            without the slide.
+            Leaves the slide out on videos full of short, quick lines, so the subtitles don't keep moving.
           </p>
         </div>
         <Switch
           id="subtitle-calm"
           checked={settings.calm}
-          disabled={!settings.previous || !settings.slide}
+          disabled={!settings.previous || !settings.slide || reducedMotion.current}
           onCheckedChange={(checked) => void onCalm(checked)}
         />
       </div>
@@ -118,7 +121,6 @@
           <Label for="subtitle-creator">Subtitle styles</Label>
           <p class="text-muted-foreground text-sm">
             Colors, italics and places that come with the subtitles, like a color for each speaker.
-            Machine-made subtitles have none.
           </p>
         </div>
         <Switch
