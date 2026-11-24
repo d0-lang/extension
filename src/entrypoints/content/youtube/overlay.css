@@ -45,7 +45,8 @@
 /* The menu a right-click on the subtitles opens, like the player's own. */
 [data-dadict-menu] {
   position: absolute;
-  z-index: 60;
+  /* Over the player's own menu too, in case it stays open. */
+  z-index: 2147483647;
   display: flex;
   flex-direction: column;
   min-width: 12em;
