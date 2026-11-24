@@ -26,10 +26,10 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** A player box with a video in it, which has a Polish track of one cue at the start. */
-const setUp = (mode: TextTrackMode) => {
+/** A player box with a video in it, which has a Polish track of one cue at the start. A bare video has no box. */
+const setUp = (mode: TextTrackMode, bare = false) => {
   const player = document.createElement("div")
-  player.style.cssText = "position: relative; width: 640px; height: 360px"
+  player.style.cssText = `position: ${bare ? "static" : "relative"}; width: 640px; height: 360px`
   const video = document.createElement("video")
   video.style.cssText = "display: block; width: 640px; height: 360px"
   player.append(video)
@@ -54,6 +54,16 @@ describe("showVideoSubtitles", () => {
     const { player } = setUp("hidden")
     await vi.waitFor(() => expect(shown()).toBe("Mamy gościa."))
     expect(player.querySelector("[data-dadict-captions]")).not.toBeNull()
+  })
+
+  it("shows them over a bare video, in a box laid over it that goes when the track does", async () => {
+    const { video, track } = setUp("showing", true)
+    await vi.waitFor(() => expect(shown()).toBe("Mamy gościa."))
+    const stage = document.querySelector<HTMLElement>("[data-dadict-stage]")!
+    expect(stage.previousElementSibling).toBe(video)
+    expect(stage.getBoundingClientRect().toJSON()).toEqual(video.getBoundingClientRect().toJSON())
+    track.mode = "disabled"
+    await vi.waitFor(() => expect(document.querySelector("[data-dadict-stage]")).toBeNull())
   })
 
   it("leaves a video with subtitles off alone", async () => {

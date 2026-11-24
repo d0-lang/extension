@@ -1,9 +1,10 @@
-/** Subtitles on any site whose videos give the browser their tracks, like TED and Vimeo. */
+/** Subtitles on any site whose videos give the browser their tracks, like Vimeo. */
 import { getVideoSubtitles } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isFast, type Cue } from "../subtitles/cues"
 import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "../subtitles/controller"
 import { playerOf, VIDEO_HOST } from "./player"
+import { createStage, removeStages, type Stage } from "./stage"
 import { activeTrack, cuesOf } from "./tracks"
 
 /**
@@ -24,19 +25,39 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
     return read.value
   }
 
+  /** Over a video with no player box around it. */
+  let stage: Stage | undefined
+  const dropStage = () => {
+    stage?.remove()
+    stage = undefined
+  }
+  const stageOver = (over: HTMLVideoElement): HTMLElement => {
+    if (stage?.video !== over) {
+      dropStage()
+      stage = createStage(over)
+    }
+    stage.follow()
+    return stage.element
+  }
+  removeStages()
+  ctx.onInvalidated(dropStage)
+
   const subtitles = showSubtitles(ctx, options, {
     host: VIDEO_HOST,
     isOn: getVideoSubtitles,
     keys: ["videoSubtitles"],
     frame: () => {
-      if (video === undefined || !video.isConnected) {
+      const track = video?.isConnected === true ? activeTrack(video) : undefined
+      // Nothing shows over a video that is itself fullscreen, so the browser draws its subtitles there.
+      if (video === undefined || track === undefined || document.fullscreenElement === video) {
+        dropStage()
         return undefined
       }
-      const track = activeTrack(video)
-      const player = playerOf(video)
-      if (track === undefined || player === undefined) {
-        return undefined
+      const found = playerOf(video)
+      if (found !== undefined) {
+        dropStage()
       }
+      const player = found ?? stageOver(video)
       const value = trackOf(track)
       return value.cues.length === 0
         ? undefined

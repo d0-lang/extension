@@ -13,13 +13,9 @@ const MIN_BAR_PX = 48
 
 /**
  * The box the subtitles go in: the outermost positioned element around `video` that is still about its size. That is
- * the player, with its controls and its own subtitles, and it is what goes fullscreen. Nothing when there is none, or
- * when the video itself is fullscreen, since nothing shows over that.
+ * the player, with its controls and its own subtitles, and it is what goes fullscreen. Nothing when there is none.
  */
 export const playerOf = (video: HTMLVideoElement): HTMLElement | undefined => {
-  if (document.fullscreenElement === video) {
-    return undefined
-  }
   const box = video.getBoundingClientRect()
   let player: HTMLElement | undefined
   let element = video.parentElement
@@ -37,6 +33,6 @@ export const playerOf = (video: HTMLVideoElement): HTMLElement | undefined => {
 /** Any site's player. The selectors are where players we know draw their own subtitles from the video's tracks. */
 export const VIDEO_HOST: Host = {
   bars: (player) => ({ top: 0, bottom: Math.max(MIN_BAR_PX, player.clientHeight * BAR_RATIO) }),
-  // Vimeo and Plyr.
-  ownSubtitles: ".vp-captions, .plyr__captions",
+  // Vimeo, Plyr and ArtPlayer.
+  ownSubtitles: ".vp-captions, .plyr__captions, .art-subtitle",
 }
