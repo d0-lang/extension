@@ -144,3 +144,5 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
     },
   }
 }
+
+export type Lookup = ReturnType<typeof createLookup>
