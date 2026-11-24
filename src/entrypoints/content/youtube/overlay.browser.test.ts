@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import type { SubtitleSettings } from "$lib/storage"
+import { DEFAULT_SUBTITLE_SETTINGS } from "$lib/storage"
 import type { WordHit } from "../page/pick"
 import { sentenceAround } from "../page/sentence"
 import { createOverlay, removeLeftovers } from "./overlay"
@@ -17,7 +17,7 @@ const player = () => {
 const wordSpan = (text: string): HTMLElement =>
   [...document.querySelectorAll<HTMLElement>("[data-word]")].find((word) => word.textContent === text)!
 
-const SETTINGS: SubtitleSettings = { previous: true, slide: true, position: "bottom" }
+const SETTINGS = DEFAULT_SUBTITLE_SETTINGS
 
 let controller = new AbortController()
 
@@ -140,7 +140,7 @@ describe("createOverlay", () => {
 
   it("shows the row the cue before ended on above", () => {
     const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
-    overlay.show({ text: "Ala ma kota.", previous: "Wczoraj padało\ncały dzień." }, "pl")
+    overlay.show({ text: "Ala ma kota.", previous: { text: "Wczoraj padało\ncały dzień." } }, "pl")
     const top = (text: string) => wordSpan(text).getBoundingClientRect().top
     expect(wordSpan("Wczoraj").getClientRects()).toHaveLength(0)
     expect(top("cały")).toBe(top("dzień"))
@@ -153,14 +153,14 @@ describe("createOverlay", () => {
     const word = wordSpan("gościa")
     const range = document.createRange()
     range.selectNodeContents(word.firstChild!)
-    overlay.show({ text: "Wir senden heute.", previous: "Mamy gościa." }, "de")
-    overlay.show({ text: "Wir senden heute live.", previous: "Wir senden heute." }, "de")
-    overlay.show({ text: "Nie wiem.", previous: "Mamy gościa." }, "pl")
+    overlay.show({ text: "Wir senden heute.", previous: { text: "Mamy gościa." } }, "de")
+    overlay.show({ text: "Wir senden heute live.", previous: { text: "Wir senden heute." } }, "de")
+    overlay.show({ text: "Nie wiem.", previous: { text: "Mamy gościa." } }, "pl")
     expect(wordSpan("gościa")).not.toBe(word)
-    overlay.show({ text: "Wir senden heute.", previous: "Nie wiem." }, "de")
+    overlay.show({ text: "Wir senden heute.", previous: { text: "Nie wiem." } }, "de")
     const ended = wordSpan("heute")
     range.selectNodeContents(ended.firstChild!)
-    overlay.show({ text: "Ala ma kota.", previous: "Wir senden heute." }, "de")
+    overlay.show({ text: "Ala ma kota.", previous: { text: "Wir senden heute." } }, "de")
     expect(wordSpan("heute")).toBe(ended)
     expect(range.collapsed).toBe(false)
     expect(ended.closest("[data-previous]")).not.toBeNull()
@@ -176,7 +176,7 @@ describe("createOverlay", () => {
     const lastRow = words.filter((word) => row(word) === row(words.at(-1)!))
     expect(lastRow.length).toBeLessThan(words.length)
     const lefts = lastRow.map((word) => word.getBoundingClientRect().left)
-    overlay.show({ text: "Ala ma kota.", previous: long }, "pl")
+    overlay.show({ text: "Ala ma kota.", previous: { text: long } }, "pl")
     expect(lastRow.map((word) => word.getBoundingClientRect().left)).toEqual(lefts)
     expect(new Set(lastRow.map(row)).size).toBe(1)
     expect(words.filter((word) => word.getClientRects().length > 0)).toEqual(lastRow)
@@ -185,7 +185,10 @@ describe("createOverlay", () => {
   it("reads a word's sentence across the cue before", () => {
     let hit: WordHit | undefined
     const overlay = createOverlay(ctx(), player(), (picked) => (hit = picked), SETTINGS)
-    overlay.show({ text: "gerät völlig außer Kontrolle.", previous: "Eine künstliche Intelligenz" }, "de")
+    overlay.show(
+      { text: "gerät völlig außer Kontrolle.", previous: { text: "Eine künstliche Intelligenz" } },
+      "de",
+    )
     wordSpan("gerät").click()
     expect(sentenceAround(hit!.range, hit!.word, "de")?.text).toBe(
       "Eine künstliche Intelligenz gerät völlig außer Kontrolle.",
@@ -195,7 +198,7 @@ describe("createOverlay", () => {
   it("leaves the cue before out when told to", () => {
     const overlay = createOverlay(ctx(), player(), () => {}, { ...SETTINGS, previous: false })
     overlay.show({ text: "Mamy gościa." }, "pl")
-    overlay.show({ text: "Ala ma kota.", previous: "Mamy gościa." }, "pl")
+    overlay.show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl")
     expect(document.querySelector("[data-previous]")).toBeNull()
     expect(wordSpan("gościa")).toBeUndefined()
   })
@@ -205,6 +208,43 @@ describe("createOverlay", () => {
     createOverlay(ctx(), box, () => {}, { ...SETTINGS, position: "top" }).show({ text: "Mamy gościa." }, "pl")
     const { top } = document.querySelector("[data-dadict-captions]")!.getBoundingClientRect()
     expect(top - box.getBoundingClientRect().top).toBeLessThan(box.clientHeight / 4)
+  })
+
+  it("puts a cue where its creator did", () => {
+    const box = player()
+    const overlay = createOverlay(ctx(), box, () => {}, SETTINGS)
+    overlay.show({ text: "Mamy gościa.", place: { anchor: 4, x: 50, y: 50 } }, "pl")
+    const caption = document.querySelector("[data-dadict-captions]")!.getBoundingClientRect()
+    const frame = box.getBoundingClientRect()
+    expect((caption.top + caption.bottom) / 2).toBeCloseTo((frame.top + frame.bottom) / 2, 0)
+    expect((caption.left + caption.right) / 2).toBeCloseTo((frame.left + frame.right) / 2, 0)
+  })
+
+  it("keeps a cue its creator put at the edge inside the player", () => {
+    const box = player()
+    createOverlay(ctx(), box, () => {}, SETTINGS).show(
+      { text: "Mamy gościa.", place: { anchor: 0, x: 100, y: 100 } },
+      "pl",
+    )
+    const caption = document.querySelector("[data-dadict-captions]")!.getBoundingClientRect()
+    expect(caption.right).toBeLessThanOrEqual(box.getBoundingClientRect().right)
+    expect(caption.bottom).toBeLessThanOrEqual(box.getBoundingClientRect().bottom)
+  })
+
+  it("draws a creator's colours, italics and bold", () => {
+    createOverlay(ctx(), player(), () => {}, SETTINGS).show(
+      {
+        text: "Pass the salt.\nSure.",
+        styles: [
+          { color: "#ffff00", from: 0, to: 14 },
+          { italic: true, bold: true, from: 15, to: 20 },
+        ],
+      },
+      "en",
+    )
+    expect(getComputedStyle(wordSpan("salt")).color).toBe("rgb(255, 255, 0)")
+    expect(getComputedStyle(wordSpan("Sure")).fontStyle).toBe("italic")
+    expect(getComputedStyle(wordSpan("Sure")).fontWeight).toBe("700")
   })
 
   it("hides until the next cue", () => {

@@ -20,6 +20,14 @@
   bottom: auto;
 }
 
+/* Where the creator put the cue: the point of it they named, so many percent across and down the player. */
+[data-dadict-captions][data-anchor] {
+  left: calc(var(--dadict-anchor-x) * 1% + var(--dadict-caption-x, 0) * 100%);
+  top: calc(var(--dadict-anchor-y) * 1% + var(--dadict-caption-y, 0) * 100%);
+  bottom: auto;
+  transform: translate(calc(var(--dadict-anchor-column) * -50%), calc(var(--dadict-anchor-row) * -50%));
+}
+
 [data-dadict-captions][data-dragging] [data-word] {
   cursor: grabbing;
 }

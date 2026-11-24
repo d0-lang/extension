@@ -24,6 +24,7 @@ describe("trackOf", () => {
       translatedFrom: undefined,
       asr: false,
       cues: [{ startMs: 0, endMs: 1000, text: "こんにちは" }],
+      fast: false,
     })
   })
 

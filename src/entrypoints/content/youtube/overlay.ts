@@ -1,7 +1,7 @@
 /** The cue shown inside the player, in the page's own DOM so a word's sentence and Alt work on it as on any text. */
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { SubtitleSettings } from "$lib/storage"
-import { createRows, type Shown } from "$lib/subtitles/rows"
+import { createRows, type Place, type Shown } from "$lib/subtitles/rows"
 import rowsCss from "$lib/subtitles/rows.css?inline"
 import type { WordHit } from "../page/pick"
 import { highlightRanges, type Paint } from "../popover/highlight"
@@ -146,23 +146,53 @@ export const createOverlay = (
 
   /** Where the viewer dragged the subtitles, in fractions of the player's size from where they start. */
   let chosen = { x: 0, y: 0 }
-  /** Where they are: `chosen`, moved as little as keeps the cue in the safe area. */
+  /** Whether the viewer dragged the subtitles, which then stay where they were dragged to. */
+  let dragged = false
+  /** Where the creator put the cue showing, when that is not where the track's cues mostly are. */
+  let creatorPlace: Place | undefined
+  /** Where they are: `chosen`, or the creator's place, moved as little as keeps the cue in the safe area. */
   let placed = chosen
   const moveTo = (offset: { x: number; y: number }) => {
     placed = offset
     root.style.setProperty("--dadict-caption-x", String(offset.x))
     root.style.setProperty("--dadict-caption-y", String(offset.y))
   }
+  const anchorAt = (at: Place | undefined) => {
+    root.toggleAttribute("data-anchor", at !== undefined)
+    if (at !== undefined) {
+      root.style.setProperty("--dadict-anchor-x", String(at.x))
+      root.style.setProperty("--dadict-anchor-y", String(at.y))
+      root.style.setProperty("--dadict-anchor-column", String(at.anchor % 3))
+      root.style.setProperty("--dadict-anchor-row", String(Math.floor(at.anchor / 3)))
+    }
+  }
   const place = () => {
-    moveTo(chosen)
+    const at = dragged ? undefined : creatorPlace
+    anchorAt(at)
+    const offset = at === undefined ? chosen : { x: 0, y: 0 }
+    moveTo(offset)
     // Where they start is clear of the title bar and controls already, and measuring a hidden overlay gives nothing.
-    if (root.hidden || (chosen.x === 0 && chosen.y === 0)) {
+    if (root.hidden || (at === undefined && offset.x === 0 && offset.y === 0)) {
       return
     }
     const shift = shiftInto(root.getBoundingClientRect(), safeArea(player))
-    moveTo({ x: chosen.x + shift.x / player.clientWidth, y: chosen.y + shift.y / player.clientHeight })
+    moveTo({ x: offset.x + shift.x / player.clientWidth, y: offset.y + shift.y / player.clientHeight })
   }
   dragToMove(ctx, root, () => {
+    if (!dragged && creatorPlace !== undefined) {
+      // Carries on from the creator's place, as an offset from where the subtitles start.
+      const at = root.getBoundingClientRect()
+      dragged = true
+      chosen = { x: 0, y: 0 }
+      place()
+      const start = root.getBoundingClientRect()
+      chosen = {
+        x: (at.left - start.left) / player.clientWidth,
+        y: (at.top - start.top) / player.clientHeight,
+      }
+      place()
+    }
+    dragged = true
     const from = placed
     return (dx, dy) => {
       chosen = { x: from.x + dx / player.clientWidth, y: from.y + dy / player.clientHeight }
@@ -207,6 +237,7 @@ export const createOverlay = (
     show: (cue, lang) => {
       const visible = !root.hidden
       root.hidden = cue === undefined
+      creatorPlace = cue?.place
       // A cue of another size can reach out of the safe area where the last one did not.
       if (cue !== undefined && !rows(cue, lang, visible) && !visible) {
         place()
@@ -233,6 +264,7 @@ export const createOverlay = (
       ),
     resetPosition: () => {
       chosen = { x: 0, y: 0 }
+      dragged = false
       place()
     },
     remove: () => {

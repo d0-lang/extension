@@ -1,14 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { MediaQuery } from "svelte/reactivity"
   import ArrowDownToLineIcon from "@lucide/svelte/icons/arrow-down-to-line"
   import ArrowUpToLineIcon from "@lucide/svelte/icons/arrow-up-to-line"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import {
+    DEFAULT_SUBTITLE_SETTINGS,
     getSubtitleSettings,
+    setSubtitleStyles,
     setSubtitlePosition,
     setSubtitlePrevious,
+    setSubtitleCalm,
     setSubtitleSlide,
     type SubtitlePosition,
     type SubtitleSettings,
@@ -21,7 +25,9 @@
     { value: "top", label: "Top", icon: ArrowUpToLineIcon },
   ] satisfies Array<{ value: SubtitlePosition; label: string; icon: typeof ArrowDownToLineIcon }>
 
-  let settings = $state<SubtitleSettings>({ previous: true, slide: true, position: "bottom" })
+  let settings = $state<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
+  /** The slide stays out while this matches, whatever its switch says. */
+  const reducedMotion = new MediaQuery("prefers-reduced-motion: reduce")
   /** Set once the settings are read, so the defaults do not show first and then change. */
   let loaded = $state(false)
 
@@ -33,6 +39,16 @@
   const onPrevious = async (checked: boolean) => {
     settings = { ...settings, previous: checked }
     await setSubtitlePrevious(checked)
+  }
+
+  const onStyles = async (checked: boolean) => {
+    settings = { ...settings, styles: checked }
+    await setSubtitleStyles(checked)
+  }
+
+  const onCalm = async (checked: boolean) => {
+    settings = { ...settings, calm: checked }
+    await setSubtitleCalm(checked)
   }
 
   const onSlide = async (checked: boolean) => {
@@ -74,15 +90,43 @@
         <div class="flex flex-col gap-0.5">
           <Label for="subtitle-slide">Slide up</Label>
           <p class="text-muted-foreground text-sm">
-            The line before slides into place when the next subtitle starts. Off while your system asks for
-            less motion.
+            {reducedMotion.current
+              ? "Off while your system asks for less motion."
+              : "The line before slides into place when the next subtitle starts."}
           </p>
         </div>
         <Switch
           id="subtitle-slide"
-          checked={settings.slide}
-          disabled={!settings.previous}
+          checked={settings.slide && !reducedMotion.current}
+          disabled={!settings.previous || reducedMotion.current}
           onCheckedChange={(checked) => void onSlide(checked)}
+        />
+      </div>
+      <div class="flex items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="subtitle-calm">Calm fast subtitles</Label>
+          <p class="text-muted-foreground text-sm">
+            Turns the slide off on videos where lines change rapidly.
+          </p>
+        </div>
+        <Switch
+          id="subtitle-calm"
+          checked={settings.calm}
+          disabled={!settings.previous || !settings.slide || reducedMotion.current}
+          onCheckedChange={(checked) => void onCalm(checked)}
+        />
+      </div>
+      <div class="flex items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="subtitle-styles">Subtitle styles</Label>
+          <p class="text-muted-foreground text-sm">
+            Shows colors, italics and places when the subtitles have them, like a color for each speaker.
+          </p>
+        </div>
+        <Switch
+          id="subtitle-styles"
+          checked={settings.styles}
+          onCheckedChange={(checked) => void onStyles(checked)}
         />
       </div>
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">

@@ -23,7 +23,7 @@ describe("createRows", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: true }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
-    show({ text: "Ala ma kota i dwa psy.", previous: "Mamy gościa." }, "pl", true)
+    show({ text: "Ala ma kota i dwa psy.", previous: { text: "Mamy gościa." } }, "pl", true)
     const [slide] = root.getAnimations()
     slide!.pause()
     slide!.currentTime = 0
@@ -38,7 +38,7 @@ describe("createRows", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: false }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
-    show({ text: "Ala ma kota.", previous: "Mamy gościa." }, "pl", true)
+    show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
     expect(root.getAnimations()).toHaveLength(0)
     expect(root.querySelector("[data-previous]")?.textContent).toBe("Mamy gościa.")
   })

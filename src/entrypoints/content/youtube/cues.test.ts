@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { cueAt, cuesOf, LINE_WIDTH, shownAt, width, type Cue } from "./cues"
+import { cueAt, cuesOf, isFast, LINE_WIDTH, shownAt, width, type Cue } from "./cues"
 import { parseJson3, type Json3 } from "./json3"
 
 type Seg = { utf8: string; tOffsetMs?: number; isSpeakerChange?: number }
@@ -79,8 +79,8 @@ describe("cuesOf for auto captions", () => {
   })
 
   it("keeps a short word with the word after it across a pause", () => {
-    const json3 = asr([...spoken("il a pris le dernier train de la"), ...spoken(" nuit", 4000)])
-    expect(texts(cuesOf(json3, true))).toEqual(["il a pris le dernier train de la nuit"])
+    const json3 = asr([...spoken("il a mangé le dernier morceau de la"), ...spoken(" tarte", 4000)])
+    expect(texts(cuesOf(json3, true))).toEqual(["il a mangé le dernier morceau de la tarte"])
   })
 
   it("puts a space between lines, but not between Japanese ones", () => {
@@ -216,27 +216,27 @@ describe("cuesOf for auto captions without word timings", () => {
 
   it("moves the short words a cue ends on to the next cue", () => {
     const json3 = creator(
-      ["hier soir nous sommes partis vers la", 0, 3000],
-      ["gare centrale avant minuit puis on a", 3000, 6000],
-      ["attendu le dernier bus sous la pluie", 6000, 9000],
+      ["hier soir nous avons cuisiné pour la", 0, 3000],
+      ["famille entière avant minuit puis on a", 3000, 6000],
+      ["mangé le gâteau sous la lumière", 6000, 9000],
     )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "hier soir nous sommes partis vers",
-      "la gare centrale avant minuit puis",
-      "on a attendu le dernier bus sous la pluie",
+      "hier soir nous avons cuisiné pour",
+      "la famille entière avant minuit puis",
+      "on a mangé le gâteau sous la lumière",
     ])
   })
 
   it("keeps the short words a cue ends on before a pause or a new speaker", () => {
     const json3 = creator(
-      ["hier soir nous sommes partis vers la", 0, 3000],
-      ["gare centrale avant minuit et", 5000, 8000],
-      [">> le train était déjà parti", 8000, 9000],
+      ["hier soir nous avons cuisiné pour la", 0, 3000],
+      ["famille entière avant minuit et", 5000, 8000],
+      [">> le repas était déjà prêt", 8000, 9000],
     )
     expect(texts(cuesOf(json3, true))).toEqual([
-      "hier soir nous sommes partis vers la",
-      "gare centrale avant minuit et",
-      "le train était déjà parti",
+      "hier soir nous avons cuisiné pour la",
+      "famille entière avant minuit et",
+      "le repas était déjà prêt",
     ])
   })
 
@@ -444,13 +444,67 @@ describe("shownAt", () => {
   )
 
   it("shows the cue before above when it ended just before", () => {
-    expect(shownAt(cues, 1500)).toEqual({ text: "Dwa", previous: "Raz" })
-    expect(shownAt(cues, 5500)).toEqual({ text: "Trzy", previous: "Dwa" })
+    expect(shownAt(cues, 1500, true)).toEqual({ text: "Dwa", previous: { text: "Raz" } })
+    expect(shownAt(cues, 5500, true)).toEqual({ text: "Trzy", previous: { text: "Dwa" } })
   })
 
   it("leaves out a cue before that ended long before, or none", () => {
-    expect(shownAt(cues, 500)).toEqual({ text: "Raz", previous: undefined })
-    expect(shownAt(cues, 9200)).toEqual({ text: "Cztery", previous: undefined })
-    expect(shownAt(cues, 3000)).toBeUndefined()
+    expect(shownAt(cues, 500, true)).toEqual({ text: "Raz", previous: undefined })
+    expect(shownAt(cues, 9200, true)).toEqual({ text: "Cztery", previous: undefined })
+    expect(shownAt(cues, 3000, true)).toBeUndefined()
+  })
+
+  it("leaves out a cue before that was in another place", () => {
+    const placed: Array<Cue> = [
+      { startMs: 0, endMs: 1000, text: "Raz" },
+      { startMs: 1000, endMs: 2000, text: "Dwa", place: { anchor: 4, x: 50, y: 55 } },
+      { startMs: 2000, endMs: 3000, text: "Trzy", place: { anchor: 4, x: 50, y: 55 } },
+    ]
+    expect(shownAt(placed, 1500, true)?.previous).toBeUndefined()
+    expect(shownAt(placed, 2500, true)?.previous).toEqual({ text: "Dwa" })
+  })
+
+  it("leaves styles and places out when told to", () => {
+    const styled: Array<Cue> = [
+      { startMs: 0, endMs: 1000, text: "Raz", styles: [{ color: "#ffff00", from: 0, to: 3 }] },
+      { startMs: 1000, endMs: 2000, text: "Dwa", place: { anchor: 4, x: 50, y: 55 } },
+    ]
+    expect(shownAt(styled, 1500, false)).toEqual({ text: "Dwa", previous: { text: "Raz" } })
+  })
+})
+
+describe("isFast", () => {
+  /** Cues one after another, each on screen for its own time. */
+  const paced = (...shown: Array<number>): Array<Cue> => {
+    let startMs = 0
+    return shown.map((ms, index) => {
+      const cue = { startMs, endMs: startMs + ms, text: `${index}` }
+      startMs += ms
+      return cue
+    })
+  }
+
+  it("is fast when most cues follow one shown under two seconds", () => {
+    expect(isFast(paced(1500, 1800, 1200, 3000, 1600))).toBe(true)
+  })
+
+  it("is not when most cues stay longer", () => {
+    expect(isFast(paced(2500, 1500, 4000, 3000, 6000))).toBe(false)
+  })
+
+  it("leaves out cues after a pause, which nothing slides into", () => {
+    const apart = paced(1500, 1500, 1500).map((cue, index) => ({
+      ...cue,
+      startMs: cue.startMs + index * 5000,
+      endMs: cue.endMs + index * 5000,
+    }))
+    expect(isFast(apart)).toBe(false)
+  })
+
+  it.each(["fr.manual.json", "de.manual.uN1Zx-Ia-SE.json", "fr.asr.json"])("finds %s calm", (name) => {
+    const json3 = parseJson3(
+      JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8")),
+    )!
+    expect(isFast(cuesOf(json3, name.includes(".asr.")))).toBe(false)
   })
 })

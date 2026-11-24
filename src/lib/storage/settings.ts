@@ -21,13 +21,23 @@ export type SubtitleSettings = {
   previous: boolean
   /** Whether that row slides up when the next cue starts. */
   slide: boolean
+  /** Whether a track whose cues mostly change within a couple of seconds shows without the slide. */
+  calm: boolean
   position: SubtitlePosition
+  /** Whether the colours, italics and places subtitles come with show. */
+  styles: boolean
 }
 
 const empty = {
   lookupEnabled: true,
   youtubeCaptions: true,
-  subtitles: { previous: true, slide: true, position: "bottom" } as SubtitleSettings,
+  subtitles: {
+    previous: true,
+    slide: true,
+    calm: true,
+    position: "bottom",
+    styles: true,
+  } as SubtitleSettings,
   showIpa: true,
   theme: "system" as Theme,
   markStyle: "tint" as MarkStyle,
@@ -52,19 +62,35 @@ export const setYoutubeCaptions = async (youtubeCaptions: boolean): Promise<void
   await browser.storage.local.set({ youtubeCaptions })
 }
 
+/** How subtitles show until the settings are read. */
+export const DEFAULT_SUBTITLE_SETTINGS: SubtitleSettings = empty.subtitles
+
 /** The storage keys of the subtitle settings, to reload when one changes. */
-export const SUBTITLE_KEYS = ["subtitlePrevious", "subtitleSlide", "subtitlePosition"]
+export const SUBTITLE_KEYS = [
+  "subtitlePrevious",
+  "subtitleSlide",
+  "subtitleCalm",
+  "subtitlePosition",
+  "subtitleStyles",
+]
 
 export const getSubtitleSettings = async (): Promise<SubtitleSettings> => {
-  const { subtitlePrevious, subtitleSlide, subtitlePosition } = await browser.storage.local.get(SUBTITLE_KEYS)
+  const { subtitlePrevious, subtitleSlide, subtitleCalm, subtitlePosition, subtitleStyles } =
+    await browser.storage.local.get(SUBTITLE_KEYS)
   return {
     previous: typeof subtitlePrevious === "boolean" ? subtitlePrevious : empty.subtitles.previous,
     slide: typeof subtitleSlide === "boolean" ? subtitleSlide : empty.subtitles.slide,
+    calm: typeof subtitleCalm === "boolean" ? subtitleCalm : empty.subtitles.calm,
     position:
       typeof subtitlePosition === "string" && subtitlePositions.includes(subtitlePosition)
         ? (subtitlePosition as SubtitlePosition)
         : empty.subtitles.position,
+    styles: typeof subtitleStyles === "boolean" ? subtitleStyles : empty.subtitles.styles,
   }
+}
+
+export const setSubtitleStyles = async (subtitleStyles: boolean): Promise<void> => {
+  await browser.storage.local.set({ subtitleStyles })
 }
 
 export const setSubtitlePrevious = async (subtitlePrevious: boolean): Promise<void> => {
@@ -73,6 +99,10 @@ export const setSubtitlePrevious = async (subtitlePrevious: boolean): Promise<vo
 
 export const setSubtitleSlide = async (subtitleSlide: boolean): Promise<void> => {
   await browser.storage.local.set({ subtitleSlide })
+}
+
+export const setSubtitleCalm = async (subtitleCalm: boolean): Promise<void> => {
+  await browser.storage.local.set({ subtitleCalm })
 }
 
 export const setSubtitlePosition = async (subtitlePosition: SubtitlePosition): Promise<void> => {

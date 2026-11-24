@@ -25,14 +25,13 @@
   -webkit-box-decoration-break: clone;
 }
 
-/* The row the cue before ended on, dimmed. It already fit as one row, so it never wraps into another. */
+/*
+ * The row the cue before ended on, dimmed as a whole, since a creator's colours would keep their own. It already fit
+ * as one row, so it never wraps into another.
+ */
 [data-dadict-captions] [data-previous] {
   white-space: nowrap;
-  color: rgb(255 255 255 / 0.75);
-}
-
-[data-dadict-captions] [data-previous] > [data-line] {
-  background: rgb(8 8 8 / 0.6);
+  opacity: 0.75;
 }
 
 /* An inline box like the line's, so the hover is as tall as the dark background. */
