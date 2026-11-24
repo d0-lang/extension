@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { DEFAULT_SUBTITLE_SETTINGS } from "$lib/storage"
+import type { Shown } from "$lib/subtitles/rows"
 import { addCopyMenu, type SelectTip } from "./copy"
 import { createOverlay } from "./overlay"
 
@@ -21,9 +22,10 @@ afterEach(() => {
 
 /** A player with a video, the overlay in it showing `cue`, and the copy menu on it. */
 const setUp = (
-  cue = { text: "Sure.", previous: { text: "Pass the\nsalt." } },
+  cue: Shown = { text: "Sure.", previous: { text: "Pass the\nsalt." } },
   used = false,
   settings = DEFAULT_SUBTITLE_SETTINGS,
+  lang = "en",
 ) => {
   const player = document.createElement("div")
   player.className = "html5-video-player"
@@ -33,7 +35,7 @@ const setUp = (
   document.body.append(player)
   const onWord = vi.fn()
   const overlay = createOverlay(ctx(), player, onWord, settings)
-  overlay.show(cue, "en")
+  overlay.show(cue, lang)
   const tip: SelectTip = { used: () => Promise.resolve(used), use: vi.fn() }
   addCopyMenu(ctx(), overlay, tip)
   return { player, video, onWord, tip }
@@ -54,40 +56,72 @@ const items = () =>
 
 const note = () => document.querySelector("[data-dadict-note]")?.textContent
 
+const pick = (label: string) =>
+  [...document.querySelectorAll<HTMLElement>("[data-dadict-menu] button")]
+    .find((item) => item.textContent === label)!
+    .click()
+
 describe("addCopyMenu", () => {
   it("opens its own menu on a right-click, not the player's", () => {
     const { player } = setUp()
     const onPlayer = vi.fn()
     player.addEventListener("contextmenu", onPlayer)
     rightClick(word("Sure"))
-    expect(items()).toEqual(["Copy subtitle", "Copy with the line before"])
+    expect(items()).toEqual(["Copy word", "Copy line", "Copy prompt to explain word"])
     expect(onPlayer).not.toHaveBeenCalled()
   })
 
-  it("offers the line before only while it shows", () => {
-    setUp(undefined, false, { ...DEFAULT_SUBTITLE_SETTINGS, previous: false })
-    rightClick(word("Sure"))
-    expect(items()).toEqual(["Copy subtitle"])
+  it("offers only the line between words", () => {
+    setUp()
+    rightClick(document.querySelector<HTMLElement>("[data-cue]:not([data-previous]) [data-line]")!)
+    expect(items()).toEqual(["Copy line"])
   })
 
-  it("copies on one line and tells of selecting with Shift", async () => {
+  it("copies the word right-clicked", async () => {
     const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
     setUp()
     rightClick(word("Sure"))
-    document.querySelector<HTMLElement>("[data-dadict-menu] button:last-child")!.click()
+    pick("Copy word")
+    await vi.waitFor(() => expect(write).toHaveBeenCalledWith("Sure"))
+  })
+
+  it("copies the line clicked on one line, and tells of selecting with Shift", async () => {
+    const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
+    setUp({ text: "Pass the\nsalt." })
+    rightClick(word("salt"))
+    pick("Copy line")
     await vi.waitFor(() => expect(note()).toBe("Copied. Hold Shift and drag to select words."))
-    expect(write).toHaveBeenCalledWith("Pass the salt. Sure.")
+    expect(write).toHaveBeenCalledWith("Pass the salt.")
     expect(document.querySelector("[data-dadict-menu]")).toBeNull()
+  })
+
+  it("copies the line before when its row is clicked", async () => {
+    const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
+    setUp({ text: "Sure.", previous: { text: "Pass the salt." } })
+    rightClick(word("salt"))
+    pick("Copy line")
+    await vi.waitFor(() => expect(write).toHaveBeenCalledWith("Pass the salt."))
+  })
+
+  it("copies a prompt to explain the word in its line", async () => {
+    const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
+    setUp({ text: "Passe-moi le sel." }, false, DEFAULT_SUBTITLE_SETTINGS, "fr")
+    rightClick(word("sel"))
+    pick("Copy prompt to explain word")
+    await vi.waitFor(() =>
+      expect(write).toHaveBeenCalledWith(
+        'Explain the French word "sel" as it is used in this line from a video:\n\n"Passe-moi le sel."',
+      ),
+    )
   })
 
   it("only notes the copy once Shift has been used", async () => {
     vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
     setUp(undefined, true)
     rightClick(word("Sure"))
-    document.querySelector<HTMLElement>("[data-dadict-menu] button")!.click()
+    pick("Copy line")
     await vi.waitFor(() => expect(note()).toBe("Copied."))
   })
-
   it("closes on Escape or a press elsewhere", () => {
     const { player } = setUp()
     rightClick(word("Sure"))

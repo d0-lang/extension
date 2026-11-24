@@ -38,8 +38,8 @@ export type Overlay = {
    * stays open.
    */
   show: (cue: Shown | undefined, lang: string) => void
-  /** The cue showing, with the cue before only while it shows above. */
-  shown: () => Shown | undefined
+  /** The cue showing and its language, with the cue before only while it shows above. */
+  shown: () => { cue: Shown; lang: string } | undefined
   contains: (event: Event) => boolean
   /** Whether `node` is in the subtitles. */
   holds: (node: Node) => boolean
@@ -239,7 +239,7 @@ export const createOverlay = (
 
   const rows = createRows(root, settings, place)
   let marked: ReadonlyArray<Range> = []
-  let current: Shown | undefined
+  let current: { cue: Shown; lang: string } | undefined
 
   return {
     player,
@@ -247,7 +247,7 @@ export const createOverlay = (
     show: (cue, lang) => {
       const visible = !root.hidden
       root.hidden = cue === undefined
-      current = cue
+      current = cue === undefined ? undefined : { cue, lang }
       creatorPlace = cue?.place
       // A cue of another size can reach out of the safe area where the last one did not.
       if (cue !== undefined && !rows(cue, lang, visible) && !visible) {
@@ -257,7 +257,10 @@ export const createOverlay = (
     shown: () =>
       current === undefined
         ? undefined
-        : { ...current, previous: settings.previous ? current.previous : undefined },
+        : {
+            ...current,
+            cue: { ...current.cue, previous: settings.previous ? current.cue.previous : undefined },
+          },
     contains: (event) => event.composedPath().includes(root),
     holds: (node) => root.contains(node),
     // Always over the dark background. The next cue's text drops the tint with the spans.

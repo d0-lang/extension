@@ -1,4 +1,8 @@
-/** Copying subtitles: a menu on right-click, and a note once copied that tells of selecting words with Shift. */
+/**
+ * Copying subtitles: a menu on right-click for the word, its line, or a prompt to have a chatbot explain the word, and a
+ * note once copied that tells of selecting words with Shift.
+ */
+import { fromThrowable } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { joinLines } from "./cues"
 import type { Overlay } from "./overlay"
@@ -22,6 +26,16 @@ const KEPT = [
 
 /** Whether the viewer has selected words with Shift, after which the note on a copy no longer tells of it. */
 export type SelectTip = { used: () => Promise<boolean>; use: () => void }
+
+// The language comes from YouTube's track, which may name one `Intl` does not know.
+const languageName = (lang: string): string | undefined =>
+  fromThrowable(() => new Intl.DisplayNames(["en"], { type: "language" }).of(lang))().unwrapOr(undefined)
+
+/** A prompt to paste into a chatbot, asking what `word` means in `line`. */
+const explainPrompt = (word: string, line: string, lang: string): string => {
+  const language = languageName(lang)
+  return `Explain the ${language === undefined ? "" : `${language} `}word "${word}" as it is used in this line from a video:\n\n"${line}"`
+}
 
 /** A hidden text area the copy command can take the text from. */
 const copyCommand = (text: string): boolean => {
@@ -142,13 +156,20 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay, tip: Se
       }
       event.preventDefault()
       event.stopPropagation()
+      const target = event.target instanceof Element ? event.target : null
+      const word = target?.closest("[data-word]")?.textContent ?? undefined
+      const { cue, lang } = shown
+      // The line clicked, which is the one before when it is the row above.
+      const clicked =
+        target?.closest("[data-previous]") != null && cue.previous !== undefined ? cue.previous : cue
       // YouTube breaks lines to fit its box, so the text goes on one line.
-      const { text, previous } = shown
+      const line = joinLines(clicked.text)
       open(event.clientX, event.clientY, [
-        { label: "Copy subtitle", text: joinLines(text) },
-        ...(previous === undefined
+        ...(word === undefined ? [] : [{ label: "Copy word", text: word }]),
+        { label: "Copy line", text: line },
+        ...(word === undefined
           ? []
-          : [{ label: "Copy with the line before", text: joinLines(`${previous.text}\n${text}`) }]),
+          : [{ label: "Copy prompt to explain word", text: explainPrompt(word, line, lang) }]),
       ])
     },
     { signal: ctx.signal },
