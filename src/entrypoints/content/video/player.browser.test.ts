@@ -31,6 +31,16 @@ describe("playerOf", () => {
     expect(playerOf(video)).toBe(boxes[1])
   })
 
+  it("stops at the element that is fullscreen, though a box outside it is as big as the video", () => {
+    const { video, boxes } = videoIn("position: relative", "position: relative")
+    Object.defineProperty(document, "fullscreenElement", { configurable: true, get: () => boxes[1] })
+    try {
+      expect(playerOf(video)).toBe(boxes[1])
+    } finally {
+      delete (document as { fullscreenElement?: unknown }).fullscreenElement
+    }
+  })
+
   it("finds none in a page with no player box", () => {
     const { video } = videoIn("", "")
     expect(playerOf(video)).toBeUndefined()

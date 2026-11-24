@@ -13,7 +13,8 @@ const MIN_BAR_PX = 48
 
 /**
  * The box the subtitles go in: the outermost positioned element around `video` that is still about its size. That is
- * the player, with its controls and its own subtitles, and it is what goes fullscreen. Nothing when there is none.
+ * the player, with its controls and its own subtitles, and it is what goes fullscreen. Never outside the element that
+ * is fullscreen, since nothing there shows. Nothing when there is none.
  */
 export const playerOf = (video: HTMLVideoElement): HTMLElement | undefined => {
   const box = video.getBoundingClientRect()
@@ -25,6 +26,9 @@ export const playerOf = (video: HTMLVideoElement): HTMLElement | undefined => {
     }
     if (getComputedStyle(element).position !== "static") {
       player = element
+    }
+    if (element === document.fullscreenElement) {
+      break
     }
   }
   return player
