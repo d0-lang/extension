@@ -1,4 +1,4 @@
-/* Light DOM inside the player, so every rule is scoped to the overlay's attribute. */
+/* Light DOM inside the player, so every rule is scoped to the overlay's attribute. The rows are styled in `$lib/subtitles/rows.css`. */
 
 [data-dadict-captions] {
   position: absolute;
@@ -12,52 +12,16 @@
   transform: translateX(-50%);
   /* Only the text takes clicks, so the gaps around it still reach the video. */
   pointer-events: none;
-  text-align: center;
-  /* Shows the line break between a cue's two lines, and after the cue before. */
-  white-space: pre-line;
-  text-wrap: balance;
-  word-break: auto-phrase;
-  color: #fff;
-  font:
-    500 var(--dadict-caption-size, 22px) / 1.4 "YouTube Noto",
-    Roboto,
-    Arial,
-    sans-serif;
 }
 
-[data-dadict-captions] [data-line] {
-  pointer-events: auto;
-  /* A touch drags the subtitles rather than scrolling the page. */
-  touch-action: none;
-  padding: 0.05em 0.3em;
-  border-radius: 0.15em;
-  background: rgb(8 8 8 / 0.75);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
-/* The row the cue before ended on, dimmed. It already fit as one row, so it never wraps into another. */
-[data-dadict-captions] [data-previous] {
-  white-space: nowrap;
-  color: rgb(255 255 255 / 0.75);
-}
-
-[data-dadict-captions] [data-previous] > [data-line] {
-  background: rgb(8 8 8 / 0.6);
-}
-
-/* An inline box like the line's, so the hover is as tall as the dark background. */
-[data-dadict-captions] [data-word] {
-  cursor: pointer;
-  border-radius: 0.15em;
+/* Under the title bar, so the text stays put when moving the mouse makes it show. */
+[data-dadict-captions][data-position="top"] {
+  top: calc(var(--dadict-caption-drop, 0px) + 2% + var(--dadict-caption-y, 0) * 100%);
+  bottom: auto;
 }
 
 [data-dadict-captions][data-dragging] [data-word] {
   cursor: grabbing;
-}
-
-[data-dadict-captions] [data-word]:hover:not([data-mark]) {
-  background: rgb(255 255 255 / 0.25);
 }
 
 /*

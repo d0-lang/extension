@@ -1,6 +1,12 @@
 /** YouTube's subtitles, shown by the extension with the one before above, each word clickable. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
-import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
+import {
+  getLookupEnabled,
+  getSubtitleSettings,
+  getYoutubeCaptions,
+  SUBTITLE_KEYS,
+  type SubtitleSettings,
+} from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
 import { shownAt } from "./cues"
@@ -36,6 +42,7 @@ export const showYouTubeCaptions = (
 ) => {
   const tracks = new Map<string, Track>()
   let showing = true
+  let settings: SubtitleSettings = { previous: true, slide: true, position: "bottom" }
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
@@ -46,13 +53,22 @@ export const showYouTubeCaptions = (
   let running = false
 
   const loadSettings = async () => {
-    const [youtube, lookup] = await Promise.all([getYoutubeCaptions(), getLookupEnabled()])
+    const [youtube, lookup, subtitles] = await Promise.all([
+      getYoutubeCaptions(),
+      getLookupEnabled(),
+      getSubtitleSettings(),
+    ])
     showing = youtube
+    if (JSON.stringify(subtitles) !== JSON.stringify(settings)) {
+      settings = subtitles
+      // Drawn again with the new settings on the next frame.
+      removeOverlay()
+    }
     document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
   void loadSettings()
   browser.storage.onChanged.addListener((changes) => {
-    if ("youtubeCaptions" in changes || "lookupEnabled" in changes) {
+    if (["youtubeCaptions", "lookupEnabled", ...SUBTITLE_KEYS].some((key) => key in changes)) {
       void loadSettings()
     }
   })
@@ -128,7 +144,7 @@ export const showYouTubeCaptions = (
     }
     if (overlay?.player !== player) {
       removeOverlay()
-      overlay = createOverlay(ctx, player, onWord)
+      overlay = createOverlay(ctx, player, onWord, settings)
     }
     overlay.show(adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000), track.lang)
   }

@@ -20,7 +20,7 @@ describe("sectionGroups", () => {
     ).toEqual([
       ["Dictionaries", ["servers"]],
       ["Sites", ["integrations", "sites"]],
-      ["Display", ["appearance", "hotkeys"]],
+      ["Display", ["appearance", "subtitles", "hotkeys"]],
     ])
   })
 })

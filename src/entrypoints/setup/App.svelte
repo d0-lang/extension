@@ -9,6 +9,7 @@
   import Integrations from "./sections/integrations/Integrations.svelte"
   import Servers from "./sections/servers"
   import BlockedSites from "./sections/sites/BlockedSites.svelte"
+  import Subtitles from "./sections/subtitles/Subtitles.svelte"
 
   const route = new Route()
   onMount(route.watch)
@@ -52,6 +53,8 @@
             <BlockedSites />
           {:else if open === "appearance"}
             <Appearance />
+          {:else if open === "subtitles"}
+            <Subtitles />
           {:else}
             <Hotkeys />
           {/if}
