@@ -27,7 +27,7 @@ export type RowSettings = {
 }
 
 /** How long the next cue takes to fade in. */
-const FADE_MS = 80
+const FADE_MS = 100
 
 /**
  * A line with each word in its own span, so hovering and clicking a word need no hit testing.
