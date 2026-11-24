@@ -1,15 +1,12 @@
 <script lang="ts">
-  import CaptionsIcon from "@lucide/svelte/icons/captions"
   import MaximizeIcon from "@lucide/svelte/icons/maximize"
   import MinimizeIcon from "@lucide/svelte/icons/minimize"
   import PauseIcon from "@lucide/svelte/icons/pause"
   import PlayIcon from "@lucide/svelte/icons/play"
-  import UploadIcon from "@lucide/svelte/icons/upload"
   import Volume2Icon from "@lucide/svelte/icons/volume-2"
   import VolumeXIcon from "@lucide/svelte/icons/volume-x"
-  import { languageName } from "$lib/languages"
   import type { FileTrack } from "../open/subtitles"
-  import ChooseFiles from "../open/ChooseFiles.svelte"
+  import SubtitleMenu from "./SubtitleMenu.svelte"
   import { formatTime } from "./time"
 
   /** The bar under the video: playing, seeking, sound, subtitles and fullscreen. */
@@ -98,42 +95,7 @@
       />
       <span class="ml-2 text-sm tabular-nums">{formatTime(currentTime)} / {formatTime(duration)}</span>
       <div class="flex-1"></div>
-      <CaptionsIcon class="size-5 shrink-0 opacity-80" />
-      {#if subtitleFiles.length > 0}
-        <select
-          aria-label="Subtitles"
-          class="max-w-56 cursor-pointer truncate rounded-md bg-transparent px-1 py-1 text-sm hover:bg-white/15"
-          value={track?.name}
-          onchange={(event) => {
-            const file = subtitleFiles.find(({ name }) => name === event.currentTarget.value)
-            if (file !== undefined) {
-              onPickSubtitles(file)
-            }
-          }}
-        >
-          {#each subtitleFiles as file (file.name)}
-            <option class="bg-neutral-900" value={file.name}>{file.name}</option>
-          {/each}
-        </select>
-      {/if}
-      {#if track !== undefined}
-        <span class="text-sm opacity-80"
-          >{track.lang === "" ? "Language unknown" : languageName(track.lang)}</span
-        >
-      {/if}
-      <ChooseFiles {onFiles} accept=".srt,.vtt,.ass,.ssa">
-        {#snippet button(choose)}
-          <button
-            type="button"
-            class="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm hover:bg-white/15"
-            onmousedown={keepFocus}
-            onclick={choose}
-          >
-            <UploadIcon class="size-4" />
-            {subtitleFiles.length === 0 ? "Add subtitles" : "Other file"}
-          </button>
-        {/snippet}
-      </ChooseFiles>
+      <SubtitleMenu {track} {subtitleFiles} {hidden} {onFiles} {onPickSubtitles} />
       <button
         type="button"
         class={button}
