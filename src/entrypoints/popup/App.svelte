@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte"
   import BugIcon from "@lucide/svelte/icons/bug"
+  import ClapperboardIcon from "@lucide/svelte/icons/clapperboard"
   import SettingsIcon from "@lucide/svelte/icons/settings"
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
   import { Button } from "$lib/components/ui/button"
@@ -25,6 +26,11 @@
 
   const openSetup = () => {
     void browser.tabs.create({ url: browser.runtime.getURL("/setup.html") })
+    window.close()
+  }
+
+  const openPlayer = () => {
+    void browser.tabs.create({ url: browser.runtime.getURL("/player.html") })
     window.close()
   }
 
@@ -58,19 +64,25 @@
       {issueCount === 1 ? "A server needs" : `${issueCount} servers need`} your attention.
     </button>
   {/if}
-  <div class="flex gap-2">
-    <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
-      <SettingsIcon />
-      Settings
+  <div class="flex flex-col gap-2">
+    <Button variant="outline" size="lg" class="text-base" onclick={openPlayer}>
+      <ClapperboardIcon />
+      Watch a video file
     </Button>
-    <Button
-      variant="outline"
-      size="icon-lg"
-      aria-label="Report a problem"
-      title="Report a problem"
-      onclick={() => void openReport()}
-    >
-      <BugIcon />
-    </Button>
+    <div class="flex gap-2">
+      <Button variant="outline" size="lg" class="flex-1 text-base" onclick={openSetup}>
+        <SettingsIcon />
+        Settings
+      </Button>
+      <Button
+        variant="outline"
+        size="icon-lg"
+        aria-label="Report a problem"
+        title="Report a problem"
+        onclick={() => void openReport()}
+      >
+        <BugIcon />
+      </Button>
+    </div>
   </div>
 </main>

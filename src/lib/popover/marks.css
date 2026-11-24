@@ -1,0 +1,22 @@
+/*
+ * In the page's own document, where the looked-up words are. Each rule does nothing until a lookup
+ * registers a highlight under its name (`lib/popover/highlight.ts`). The colours are the popover's `--link`,
+ * which lives in its shadow root, for a light and a dark page. `lib/subtitles/overlay.css` repeats the dark tint.
+ */
+::highlight(dadict-tint) {
+  background-color: oklch(0.457 0.24 277.023 / 0.15);
+}
+
+::highlight(dadict-tint-dark) {
+  background-color: oklch(0.785 0.115 274.713 / 0.3);
+}
+
+::highlight(dadict-underline) {
+  text-decoration: underline 2px oklch(0.457 0.24 277.023);
+  text-underline-offset: 3px;
+}
+
+::highlight(dadict-underline-dark) {
+  text-decoration: underline 2px oklch(0.785 0.115 274.713);
+  text-underline-offset: 3px;
+}

@@ -15,11 +15,24 @@ type HoldOptions = {
   close: () => void
 }
 
+/** Inputs nothing is typed into, like a slider or a file picker, which leave key presses free. */
+const UNTYPED_INPUTS = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+])
+
 /** A key press belongs to the page while focus is in a text field. */
 export const isTyping = (): boolean => {
   const active = document.activeElement
   return (
-    active instanceof HTMLInputElement ||
+    (active instanceof HTMLInputElement && !UNTYPED_INPUTS.has(active.type)) ||
     active instanceof HTMLTextAreaElement ||
     (active instanceof HTMLElement && active.isContentEditable)
   )

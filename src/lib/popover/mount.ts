@@ -2,7 +2,6 @@
 import { mount, unmount, type ComponentProps } from "svelte"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import Popover from "./Popover.svelte"
-import "./popover.css"
 
 export type PopoverProps = ComponentProps<typeof Popover>
 
@@ -27,7 +26,11 @@ const anchorNow = (): Element => {
   return full === null || full instanceof HTMLMediaElement ? document.documentElement : full
 }
 
-export const createPopoverHost = (ctx: ContentScriptContext) => {
+/**
+ * The popover's place on the page. `css` is its styles, for a page that does not load them into its shadow root
+ * itself, like a content script's `ui` injection does.
+ */
+export const createPopoverHost = (ctx: ContentScriptContext, css?: string) => {
   let current: { host: HTMLElement; shadow: ShadowRoot; remove: () => void } | undefined
   // Building the UI is async, so a newer open or a close must cancel an older one.
   let latestOpen = 0
@@ -62,6 +65,7 @@ export const createPopoverHost = (ctx: ContentScriptContext) => {
     const ui = await createShadowRootUi(ctx, {
       name: "dict-lookup-popover",
       position: "inline",
+      css,
       anchor,
       onMount: (target) => mount(Popover, { target, props: resolved }),
       onRemove: (app) => {

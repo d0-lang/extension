@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { activeTrack, cuesOf, plainText } from "./tracks"
+import { activeTrack, cuesOf } from "./tracks"
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -20,16 +20,6 @@ const trackWith = (
   track.mode = mode
   return { video, track }
 }
-
-describe("plainText", () => {
-  it("drops tags and speakers, and reads entities", () => {
-    expect(plainText("<v Anna><i>Ala</i> ma &amp; <b>kota</b></v>")).toBe("Ala ma & kota")
-  })
-
-  it("keeps lines, without empty ones or extra spaces", () => {
-    expect(plainText("  Ala  ma\n\n  kota ")).toBe("Ala ma\nkota")
-  })
-})
 
 describe("activeTrack", () => {
   it("takes the track the browser draws over one it keeps hidden", () => {

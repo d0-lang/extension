@@ -69,3 +69,30 @@ export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): 
     previous: follows ? { text: before.text, styles: styled ? before.styles : undefined } : undefined,
   }
 }
+
+/**
+ * `cues` in the order they show, one at a time, without empty ones. Cues that start together, like two speakers', are
+ * one cue with a line each, and an overlap ends at the next start.
+ */
+export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
+  const sorted = cues
+    .filter(({ text }) => text !== "")
+    // Of cues that start together, the one ending first is mostly said first. The browser lists it last.
+    .toSorted((a, b) => a.startMs - b.startMs || a.endMs - b.endMs)
+  const together: Array<Cue> = []
+  for (const cue of sorted) {
+    const last = together.at(-1)
+    if (last !== undefined && last.startMs === cue.startMs) {
+      together[together.length - 1] = {
+        ...last,
+        endMs: Math.max(last.endMs, cue.endMs),
+        text: `${last.text}\n${cue.text}`,
+      }
+    } else {
+      together.push(cue)
+    }
+  }
+  return together
+    .map((cue, index) => ({ ...cue, endMs: Math.min(cue.endMs, together[index + 1]?.startMs ?? Infinity) }))
+    .filter(({ startMs, endMs }) => startMs < endMs)
+}
