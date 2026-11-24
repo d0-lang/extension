@@ -18,6 +18,14 @@
       ],
     },
     {
+      name: "In subtitles",
+      hotkeys: [
+        { action: "Look up a word", text: "Click" },
+        { action: "Copy a word, its line, or a prompt to explain it", text: "Right-click" },
+        { action: "Move the subtitles", text: "Drag" },
+      ],
+    },
+    {
       name: "In the popover",
       hotkeys: [
         { action: "Scroll the popover", keys: ["W", "S"] },

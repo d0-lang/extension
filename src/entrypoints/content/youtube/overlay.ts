@@ -226,10 +226,6 @@ export const createOverlay = (
     root.addEventListener(type, (event) => event.stopPropagation())
   }
   root.addEventListener("click", (event) => {
-    // A click with Shift ends a selection rather than looking a word up.
-    if (event.shiftKey) {
-      return
-    }
     const word = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-word]") : null
     const hit = word === null ? undefined : hitOn(word)
     if (hit !== undefined) {

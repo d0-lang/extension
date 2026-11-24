@@ -12,8 +12,6 @@
   transform: translateX(-50%);
   /* Only the text takes clicks, so the gaps around it still reach the video. */
   pointer-events: none;
-  /* The player turns selecting off, and a press with Shift selects words. */
-  user-select: text;
 }
 
 /* Under the title bar, so the text stays put when moving the mouse makes it show. */

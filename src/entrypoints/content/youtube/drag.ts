@@ -4,35 +4,6 @@ import { keepPressFromPage } from "./press"
 /** How far a press moves before it is a drag rather than a click on a word. */
 const DRAG_THRESHOLD_PX = 4
 
-/** The point in the text at `x` and `y`. Firefox and newer Chrome have a caret position, older Chrome a range. */
-const caretAt = (x: number, y: number): { node: Node; offset: number } | undefined => {
-  // The types have every browser give a caret position, which older Chrome does not.
-  const position =
-    typeof document.caretPositionFromPoint === "function" ? document.caretPositionFromPoint(x, y) : null
-  if (position !== null) {
-    return { node: position.offsetNode, offset: position.offset }
-  }
-  const range = document.caretRangeFromPoint(x, y)
-  return range === null ? undefined : { node: range.startContainer, offset: range.startOffset }
-}
-
-/**
- * Starts the selection a press with Shift makes where the press is. Shift extends a selection, which would otherwise
- * reach back to wherever it was on the page, like the video's title. One already in `root` is extended as usual.
- */
-const selectFrom = (root: HTMLElement, press: PointerEvent) => {
-  const selection = getSelection()
-  if (selection === null || (selection.anchorNode !== null && root.contains(selection.anchorNode))) {
-    return
-  }
-  const caret = caretAt(press.clientX, press.clientY)
-  if (caret === undefined) {
-    selection.removeAllRanges()
-  } else {
-    selection.collapse(caret.node, caret.offset)
-  }
-}
-
 /**
  * Makes a press on `root` that moves a drag. Once it moves, `start` runs and returns what follows the pointer, given
  * how far it is from where the press began. The rest of a drag, its click too, is kept from the words and the page.
@@ -42,25 +13,12 @@ export const dragToMove = (
   root: HTMLElement,
   start: () => (dx: number, dy: number) => void,
 ) => {
-  // A press moves the subtitles rather than selecting their text, unless Shift is held.
-  let selecting = false
-  root.addEventListener(
-    "selectstart",
-    (event) => {
-      if (!selecting) {
-        event.preventDefault()
-      }
-    },
-    { signal: ctx.signal },
-  )
+  // A press moves the subtitles rather than selecting their text.
+  root.addEventListener("selectstart", (event) => event.preventDefault(), { signal: ctx.signal })
   root.addEventListener(
     "pointerdown",
     (down) => {
-      selecting = down.shiftKey
-      if (selecting) {
-        selectFrom(root, down)
-      }
-      if (down.button !== 0 || !down.isPrimary || selecting) {
+      if (down.button !== 0 || !down.isPrimary) {
         return
       }
       const press = new AbortController()

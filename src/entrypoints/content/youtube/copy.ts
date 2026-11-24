@@ -1,12 +1,8 @@
-/**
- * Copying subtitles: a menu on right-click for the word, its line, or a prompt to have a chatbot explain the word, and a
- * note once copied that tells of selecting words with Shift.
- */
+/** Copying subtitles: a menu on right-click for the word, its line, or a prompt to have a chatbot explain the word. */
 import { fromThrowable } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { joinLines } from "./cues"
 import type { Overlay } from "./overlay"
-import { videoIn } from "./player"
 
 /** How long the note on a copy stays. */
 const NOTE_MS = 2500
@@ -23,9 +19,6 @@ const KEPT = [
   "touchstart",
   "touchend",
 ]
-
-/** Whether the viewer has selected words with Shift, after which the note on a copy no longer tells of it. */
-export type SelectTip = { used: () => Promise<boolean>; use: () => void }
 
 // The language comes from YouTube's track, which may name one `Intl` does not know.
 const languageName = (lang: string): string | undefined =>
@@ -56,11 +49,8 @@ const writeText = (text: string): Promise<boolean> =>
     () => copyCommand(text),
   )
 
-/**
- * Opens a menu for copying the subtitles where they are right-clicked, and notes each copy in the player. A press with
- * Shift selects words rather than moving the subtitles, so it stops the video for the text to stay.
- */
-export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay, tip: SelectTip) => {
+/** Opens a menu for copying the subtitles where they are right-clicked, and notes each copy in the player. */
+export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
   const { element: root, player } = overlay
   let menu: HTMLElement | undefined
   let closing: AbortController | undefined
@@ -96,7 +86,7 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay, tip: Se
       tell("Could not copy the subtitle.")
       return
     }
-    tell((await tip.used()) ? "Copied." : "Copied. Hold Shift and drag to select words.")
+    tell("Copied.")
   }
 
   /** Opens the menu with `items` at `x` and `y` on screen, moved as little as keeps it in the player. */
@@ -171,39 +161,6 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay, tip: Se
           ? []
           : [{ label: "Copy prompt to explain word", text: explainPrompt(word, line, lang) }]),
       ])
-    },
-    { signal: ctx.signal },
-  )
-
-  root.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (event.shiftKey && event.button === 0) {
-        tip.use()
-        videoIn(player)?.pause()
-      }
-    },
-    { signal: ctx.signal },
-  )
-
-  // A selection in the subtitles goes once copied, since it only stays for that, and its lines go on one line.
-  document.addEventListener(
-    "copy",
-    (event) => {
-      const selection = getSelection()
-      if (
-        selection === null ||
-        selection.isCollapsed ||
-        selection.anchorNode === null ||
-        !root.contains(selection.anchorNode) ||
-        event.clipboardData === null
-      ) {
-        return
-      }
-      event.preventDefault()
-      event.clipboardData.setData("text/plain", joinLines(selection.toString()))
-      selection.removeAllRanges()
-      tell("Copied.")
     },
     { signal: ctx.signal },
   )

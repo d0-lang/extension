@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { userEvent } from "vitest/browser"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { DEFAULT_SUBTITLE_SETTINGS } from "$lib/storage"
 import type { Shown } from "$lib/subtitles/rows"
-import { addCopyMenu, type SelectTip } from "./copy"
+import { addCopyMenu } from "./copy"
 import { createOverlay } from "./overlay"
 
 let controller = new AbortController()
@@ -21,25 +20,20 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** A player with a video, the overlay in it showing `cue`, and the copy menu on it. */
+/** A player, the overlay in it showing `cue`, and the copy menu on it. */
 const setUp = (
   cue: Shown = { text: "Sure.", previous: { text: "Pass the\nsalt." } },
-  used = false,
   settings = DEFAULT_SUBTITLE_SETTINGS,
   lang = "en",
 ) => {
   const player = document.createElement("div")
   player.className = "html5-video-player"
   player.style.cssText = "position: relative; width: 960px; height: 540px"
-  const video = document.createElement("video")
-  player.append(video)
   document.body.append(player)
-  const onWord = vi.fn()
-  const overlay = createOverlay(ctx(), player, onWord, settings)
+  const overlay = createOverlay(ctx(), player, () => {}, settings)
   overlay.show(cue, lang)
-  const tip: SelectTip = { used: () => Promise.resolve(used), use: vi.fn() }
-  addCopyMenu(ctx(), overlay, tip)
-  return { player, video, onWord, tip }
+  addCopyMenu(ctx(), overlay)
+  return { player }
 }
 
 const word = (text: string): HTMLElement =>
@@ -86,12 +80,12 @@ describe("addCopyMenu", () => {
     await vi.waitFor(() => expect(write).toHaveBeenCalledWith("Sure"))
   })
 
-  it("copies the line clicked on one line, and tells of selecting with Shift", async () => {
+  it("copies the line clicked on one line, and notes the copy", async () => {
     const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
     setUp({ text: "Pass the\nsalt." })
     rightClick(word("salt"))
     pick("Copy line")
-    await vi.waitFor(() => expect(note()).toBe("Copied. Hold Shift and drag to select words."))
+    await vi.waitFor(() => expect(note()).toBe("Copied."))
     expect(write).toHaveBeenCalledWith("Pass the salt.")
     expect(document.querySelector("[data-dadict-menu]")).toBeNull()
   })
@@ -106,7 +100,7 @@ describe("addCopyMenu", () => {
 
   it("copies a prompt to explain the word in its line", async () => {
     const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
-    setUp({ text: "Passe-moi le sel." }, false, DEFAULT_SUBTITLE_SETTINGS, "fr")
+    setUp({ text: "Passe-moi le sel." }, DEFAULT_SUBTITLE_SETTINGS, "fr")
     rightClick(word("sel"))
     pick("Copy prompt to explain word")
     await vi.waitFor(() =>
@@ -116,13 +110,6 @@ describe("addCopyMenu", () => {
     )
   })
 
-  it("only notes the copy once Shift has been used", async () => {
-    vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue()
-    setUp(undefined, true)
-    rightClick(word("Sure"))
-    pick("Copy line")
-    await vi.waitFor(() => expect(note()).toBe("Copied."))
-  })
   it("closes on Escape or a press elsewhere", () => {
     const { player } = setUp()
     rightClick(word("Sure"))
@@ -131,77 +118,5 @@ describe("addCopyMenu", () => {
     rightClick(word("Sure"))
     player.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
     expect(document.querySelector("[data-dadict-menu]")).toBeNull()
-  })
-
-  it("selects words with Shift, stopping the video and looking nothing up", () => {
-    const { video, onWord, tip } = setUp()
-    const pause = vi.spyOn(video, "pause")
-    const target = word("Sure")
-    target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, isPrimary: true, shiftKey: true }))
-    const select = new Event("selectstart", { bubbles: true, cancelable: true })
-    target.dispatchEvent(select)
-    target.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }))
-    expect(select.defaultPrevented).toBe(false)
-    expect(pause).toHaveBeenCalled()
-    expect(tip.use).toHaveBeenCalled()
-    expect(onWord).not.toHaveBeenCalled()
-  })
-
-  it("starts a Shift selection at the press, not at a selection elsewhere on the page", async () => {
-    const title = document.createElement("p")
-    title.textContent = "This section explains the principle of relay operation."
-    document.body.prepend(title)
-    getSelection()!.collapse(title.firstChild, 0)
-    setUp({ text: "Pass the salt, please." })
-    await userEvent.click(word("salt"), { modifiers: ["Shift"] })
-    const selection = getSelection()!
-    expect(selection.toString()).not.toContain("relay")
-    expect(word("salt").contains(selection.anchorNode)).toBe(true)
-  })
-
-  it("extends a Shift selection already in the subtitles", async () => {
-    setUp({ text: "Pass the salt, please." })
-    getSelection()!.collapse(word("Pass").firstChild, 0)
-    await userEvent.click(word("salt"), { modifiers: ["Shift"] })
-    expect(getSelection()!.toString()).toMatch(/^Pass the s/u)
-  })
-
-  it("copies a selection in the subtitles on one line, then lets it go", () => {
-    setUp({ text: "Pass the\nsalt, please." })
-    getSelection()!.setBaseAndExtent(word("the").firstChild!, 0, word("salt").firstChild!, 4)
-    const copy = new ClipboardEvent("copy", {
-      bubbles: true,
-      cancelable: true,
-      clipboardData: new DataTransfer(),
-    })
-    document.dispatchEvent(copy)
-    expect(copy.clipboardData!.getData("text/plain")).toBe("the salt")
-    expect(getSelection()!.isCollapsed).toBe(true)
-    expect(note()).toBe("Copied.")
-  })
-
-  it("leaves a copy from elsewhere on the page alone", () => {
-    setUp()
-    const title = document.createElement("p")
-    title.textContent = "Relay basics"
-    document.body.prepend(title)
-    getSelection()!.selectAllChildren(title)
-    const copy = new ClipboardEvent("copy", {
-      bubbles: true,
-      cancelable: true,
-      clipboardData: new DataTransfer(),
-    })
-    document.dispatchEvent(copy)
-    expect(copy.defaultPrevented).toBe(false)
-    expect(getSelection()!.toString()).toBe("Relay basics")
-  })
-
-  it("still keeps a press without Shift from selecting", () => {
-    setUp()
-    const target = word("Sure")
-    target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, isPrimary: true }))
-    const select = new Event("selectstart", { bubbles: true, cancelable: true })
-    target.dispatchEvent(select)
-    expect(select.defaultPrevented).toBe(true)
   })
 })
