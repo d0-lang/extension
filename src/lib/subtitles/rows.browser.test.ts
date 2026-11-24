@@ -6,7 +6,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** Subtitles centred with `translate`, as Tailwind does, at the bottom of a box. */
+/** Subtitles at the bottom of a box, centred with `translate` as Tailwind does. */
 const centred = (): HTMLElement => {
   const box = document.createElement("div")
   box.style.cssText = "position: relative; width: 600px; height: 340px"
@@ -19,27 +19,22 @@ const centred = (): HTMLElement => {
 }
 
 describe("createRows", () => {
-  it("slides the row before up without moving the subtitles sideways", () => {
+  it("fades the next cue in, with nothing moving", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: true }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
     show({ text: "Ala ma kota i dwa psy.", previous: { text: "Mamy gościa." } }, "pl", true)
-    const [slide] = root.getAnimations()
-    slide!.pause()
-    slide!.currentTime = 0
-    const start = root.getBoundingClientRect()
-    slide!.finish()
-    const end = root.getBoundingClientRect()
-    expect(start.left).toBeCloseTo(end.left, 0)
-    expect(start.top).toBeGreaterThan(end.top)
+    expect(
+      root.getAnimations({ subtree: true }).map(({ effect }) => (effect as KeyframeEffect).target),
+    ).toEqual([root.querySelector("[data-cue]:not([data-previous])")])
   })
 
-  it("leaves the row before still when the slide is off", () => {
+  it("shows the next cue at once when the fade is off", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: false }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
     show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
-    expect(root.getAnimations()).toHaveLength(0)
+    expect(root.getAnimations({ subtree: true })).toHaveLength(0)
     expect(root.querySelector("[data-previous]")?.textContent).toBe("Mamy gościa.")
   })
 })

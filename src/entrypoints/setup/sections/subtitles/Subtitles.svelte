@@ -79,10 +79,10 @@
       </div>
       <div class="flex items-center justify-between gap-4 p-4">
         <div class="flex flex-col gap-0.5">
-          <Label for="subtitle-slide">Slide up</Label>
+          <Label for="subtitle-slide">Fade in</Label>
           <p class="text-muted-foreground text-sm">
-            The line before slides into place when the next subtitle starts. Off while your system asks for
-            less motion.
+            The next subtitle fades in as the line before moves up. Off while your system asks for less
+            motion.
           </p>
         </div>
         <Switch

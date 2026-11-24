@@ -22,12 +22,12 @@ export type Shown = Styled & { previous?: Styled | undefined; place?: Place | un
 export type RowSettings = {
   /** Whether the row the cue before ended on shows above the cue. */
   previous: boolean
-  /** Whether that row slides up when the next cue starts. */
+  /** Whether the next cue fades in when it starts. */
   slide: boolean
 }
 
-/** How long the cue that ended takes to slide up, and the next one to fade in. */
-const SLIDE_MS = 150
+/** How long the next cue takes to fade in. */
+const FADE_MS = 200
 
 /**
  * A line with each word in its own span, so hovering and clicking a word need no hit testing.
@@ -108,27 +108,19 @@ const keepLastRow = (cue: HTMLElement) => {
 
 /**
  * Draws cues in `root`, which has the `data-dadict-captions` attribute the styles are scoped to. The returned function
- * shows a cue and says whether anything changed. `place` runs once the rows change, before a slide is measured.
- * `visible` is whether `root` showed before this cue, since only then is there a row to slide from.
- * When the cue before is the one showing, that row slides up and keeps its words, so a lookup on one stays open.
+ * shows a cue and says whether anything changed. `place` runs once the rows change.
+ * `visible` is whether `root` showed before this cue, since only then does the next one fade in after it.
+ * When the cue before is the one showing, that row moves up and keeps its words, so a lookup on one stays open.
  */
 export const createRows = (root: HTMLElement, settings: RowSettings, place: () => void) => {
   let shown = ""
   let current: { key: string; lang: string; element: HTMLElement } | undefined
 
-  /** Slides everything up from where the cue now above was, and fades the new cue in. */
-  const slide = (from: number, previous: HTMLElement, cue: HTMLElement) => {
-    const distance = from - previous.getBoundingClientRect().bottom
-    if (!settings.slide || distance <= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return
+  /** Fades the next cue in. Nothing moves, so fast dialogue does not keep the subtitles in motion. */
+  const fadeIn = (cue: HTMLElement) => {
+    if (settings.slide && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_MS, easing: "ease-in" })
     }
-    // Added to whatever centres the subtitles, which may be a `translate` too, as with Tailwind's.
-    root.animate([{ translate: `0 ${distance}px` }, { translate: "0 0" }], {
-      duration: SLIDE_MS,
-      easing: "ease-out",
-      composite: "add",
-    })
-    cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS, easing: "ease-in" })
   }
 
   return (cue: Shown, lang: string, visible: boolean): boolean => {
@@ -149,7 +141,6 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       ended.key === keyOf(previous)
     ) {
       // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
-      const from = visible ? ended.element.getBoundingClientRect().bottom : undefined
       keepLastRow(ended.element)
       ended.element.dataset.previous = ""
       while (root.firstChild !== ended.element) {
@@ -157,8 +148,8 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       }
       root.append("\n", element)
       place()
-      if (from !== undefined) {
-        slide(from, ended.element, element)
+      if (visible) {
+        fadeIn(element)
       }
       return true
     }

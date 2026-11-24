@@ -12,7 +12,7 @@
   let root = $state<HTMLElement>()
   let index = $state(0)
 
-  /** Drawn again from scratch when a setting changes, so no slide comes from rows the old settings drew. */
+  /** Drawn again from scratch when a setting changes, so no fade comes from rows the old settings drew. */
   const rows = $derived(
     root === undefined
       ? undefined
