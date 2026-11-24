@@ -49,11 +49,11 @@
 </script>
 
 <div
-  class="absolute inset-x-0 bottom-0 z-50 bg-linear-to-t from-black/80 to-transparent pt-10 text-white transition-opacity duration-300"
+  class="pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-linear-to-t from-black/80 to-transparent pt-10 text-white transition-opacity duration-300"
   class:opacity-0={hidden}
-  class:pointer-events-none={hidden}
 >
-  <div data-controls class="flex flex-col gap-1 px-4 pb-3">
+  <!-- Only the controls take the pointer. The shade above them is over the subtitles' lower half. -->
+  <div data-controls class="flex flex-col gap-1 px-4 pb-3" class:pointer-events-auto={!hidden}>
     <input
       type="range"
       aria-label="Seek"
