@@ -1,8 +1,11 @@
 import { fileURLToPath } from "node:url"
+import { svelte } from "@sveltejs/vite-plugin-svelte"
 import { playwright } from "@vitest/browser-playwright"
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
+  // For Svelte components the code under test draws, like icons.
+  plugins: [svelte()],
   resolve: {
     alias: { $lib: fileURLToPath(new URL("./src/lib", import.meta.url)) },
   },

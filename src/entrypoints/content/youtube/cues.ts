@@ -93,7 +93,7 @@ const joint = (before: string, after: string): string =>
   WIDE.test(before.at(-1) ?? "") && WIDE.test(after[0] ?? "") ? "" : " "
 
 /** Joins text across a line break. */
-const joinLines = (text: string): string =>
+export const joinLines = (text: string): string =>
   text.replace(
     /(.?)[^\S\n]*\n\s*(.?)/gu,
     (_, before: string, after: string) => before + joint(before, after) + after,

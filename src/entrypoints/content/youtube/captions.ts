@@ -10,6 +10,7 @@ import {
 } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import type { WordHit } from "../page/pick"
+import { addCopyMenu } from "./copy"
 import { shownAt } from "./cues"
 import type { Paint } from "../popover/highlight"
 import { createOverlay, removeLeftovers, type Overlay } from "./overlay"
@@ -44,6 +45,7 @@ export const showYouTubeCaptions = (
   const tracks = new Map<string, Track>()
   let showing = true
   let settings: SubtitleSettings = DEFAULT_SUBTITLE_SETTINGS
+  let copyMenu: ReturnType<typeof addCopyMenu> | undefined
   /** Whether the overlay slides, which depends on the track as well as the settings. */
   let overlaySlides: boolean | undefined
   let overlay: Overlay | undefined
@@ -77,6 +79,8 @@ export const showYouTubeCaptions = (
   })
 
   const removeOverlay = () => {
+    copyMenu?.remove()
+    copyMenu = undefined
     overlay?.remove()
     overlay = undefined
   }
@@ -150,6 +154,7 @@ export const showYouTubeCaptions = (
     if (overlay?.player !== player || overlaySlides !== slide) {
       removeOverlay()
       overlay = createOverlay(ctx, player, onWord, { ...settings, slide })
+      copyMenu = addCopyMenu(ctx, overlay)
       overlaySlides = slide
     }
     overlay.show(

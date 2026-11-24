@@ -40,6 +40,6 @@
   border-radius: 0.15em;
 }
 
-[data-dadict-captions] [data-word]:hover:not([data-mark]) {
+[data-dadict-captions] [data-word]:hover:not([data-mark], [data-picked]) {
   background: rgb(255 255 255 / 0.25);
 }
