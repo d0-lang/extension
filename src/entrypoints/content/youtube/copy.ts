@@ -1,7 +1,7 @@
 /** Copying subtitles: a menu on right-click for the word, its line, or a prompt to have a chatbot explain the word. */
-import SparklesIcon from "@lucide/svelte/icons/sparkles"
-import TextIcon from "@lucide/svelte/icons/text"
-import WholeWordIcon from "@lucide/svelte/icons/whole-word"
+import CaseSensitiveIcon from "@lucide/svelte/icons/case-sensitive"
+import MessageCircleQuestionMarkIcon from "@lucide/svelte/icons/message-circle-question-mark"
+import QuoteIcon from "@lucide/svelte/icons/quote"
 import { fromThrowable } from "neverthrow"
 import { mount, unmount } from "svelte"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
@@ -35,7 +35,7 @@ const explainPrompt = (word: string, line: string, lang: string): string => {
 }
 
 /** What a menu item copies, under its label and icon. */
-type Item = { label: string; icon: typeof TextIcon; text: string }
+type Item = { label: string; icon: typeof QuoteIcon; text: string }
 
 /** A hidden text area the copy command can take the text from. */
 const copyCommand = (text: string): boolean => {
@@ -176,14 +176,14 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
       // YouTube breaks lines to fit its box, so the text goes on one line.
       const line = joinLines(clicked.text)
       open(event.clientX, event.clientY, [
-        ...(word === undefined ? [] : [{ label: `Copy “${word}”`, icon: WholeWordIcon, text: word }]),
-        { label: "Copy line", icon: TextIcon, text: line },
+        ...(word === undefined ? [] : [{ label: `Copy “${word}”`, icon: CaseSensitiveIcon, text: word }]),
+        { label: "Copy line", icon: QuoteIcon, text: line },
         ...(word === undefined
           ? []
           : [
               {
                 label: `Copy prompt to explain “${word}”`,
-                icon: SparklesIcon,
+                icon: MessageCircleQuestionMarkIcon,
                 text: explainPrompt(word, line, lang),
               },
             ]),
