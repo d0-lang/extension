@@ -2,7 +2,7 @@
   import { onMount } from "svelte"
   import type { ClassValue } from "svelte/elements"
   import type { SubtitleSettings } from "$lib/storage"
-  import { createRows } from "$lib/subtitles/rows"
+  import { createRows, type Styled } from "$lib/subtitles/rows"
   import "$lib/subtitles/rows.css"
   import { SAMPLE_CUE_MS, SAMPLE_CUES } from "./sample"
 
@@ -19,15 +19,14 @@
       : createRows(root, { previous: settings.previous, slide: settings.slide }, () => {}),
   )
 
+  /** The sample line at `at`, in its speaker's colour when creator styles show. */
+  const sample = (at: number): Styled => {
+    const { text, color } = SAMPLE_CUES[(at + SAMPLE_CUES.length) % SAMPLE_CUES.length]!
+    return settings.creator ? { text, styles: [{ color, from: 0, to: text.length }] } : { text }
+  }
+
   $effect(() => {
-    rows?.(
-      {
-        text: SAMPLE_CUES[index]!,
-        previous: SAMPLE_CUES[(index + SAMPLE_CUES.length - 1) % SAMPLE_CUES.length],
-      },
-      "en",
-      true,
-    )
+    rows?.({ ...sample(index), previous: sample(index - 1) }, "en", true)
   })
 
   onMount(() => {

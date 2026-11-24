@@ -22,12 +22,14 @@ export type SubtitleSettings = {
   /** Whether that row slides up when the next cue starts. */
   slide: boolean
   position: SubtitlePosition
+  /** Whether a creator's colours, italics and places show. */
+  creator: boolean
 }
 
 const empty = {
   lookupEnabled: true,
   youtubeCaptions: true,
-  subtitles: { previous: true, slide: true, position: "bottom" } as SubtitleSettings,
+  subtitles: { previous: true, slide: true, position: "bottom", creator: true } as SubtitleSettings,
   showIpa: true,
   theme: "system" as Theme,
   markStyle: "tint" as MarkStyle,
@@ -52,11 +54,15 @@ export const setYoutubeCaptions = async (youtubeCaptions: boolean): Promise<void
   await browser.storage.local.set({ youtubeCaptions })
 }
 
+/** How subtitles show until the settings are read. */
+export const DEFAULT_SUBTITLE_SETTINGS: SubtitleSettings = empty.subtitles
+
 /** The storage keys of the subtitle settings, to reload when one changes. */
-export const SUBTITLE_KEYS = ["subtitlePrevious", "subtitleSlide", "subtitlePosition"]
+export const SUBTITLE_KEYS = ["subtitlePrevious", "subtitleSlide", "subtitlePosition", "subtitleCreator"]
 
 export const getSubtitleSettings = async (): Promise<SubtitleSettings> => {
-  const { subtitlePrevious, subtitleSlide, subtitlePosition } = await browser.storage.local.get(SUBTITLE_KEYS)
+  const { subtitlePrevious, subtitleSlide, subtitlePosition, subtitleCreator } =
+    await browser.storage.local.get(SUBTITLE_KEYS)
   return {
     previous: typeof subtitlePrevious === "boolean" ? subtitlePrevious : empty.subtitles.previous,
     slide: typeof subtitleSlide === "boolean" ? subtitleSlide : empty.subtitles.slide,
@@ -64,7 +70,12 @@ export const getSubtitleSettings = async (): Promise<SubtitleSettings> => {
       typeof subtitlePosition === "string" && subtitlePositions.includes(subtitlePosition)
         ? (subtitlePosition as SubtitlePosition)
         : empty.subtitles.position,
+    creator: typeof subtitleCreator === "boolean" ? subtitleCreator : empty.subtitles.creator,
   }
+}
+
+export const setSubtitleCreator = async (subtitleCreator: boolean): Promise<void> => {
+  await browser.storage.local.set({ subtitleCreator })
 }
 
 export const setSubtitlePrevious = async (subtitlePrevious: boolean): Promise<void> => {

@@ -1,9 +1,11 @@
 /** Cuts a caption track into cues of up to two lines, which show and go together. */
-import type { Shown } from "$lib/subtitles/rows"
+import type { Place, Shown, Styled } from "$lib/subtitles/rows"
+import { SOUND, SOUND_ONLY, tidy } from "./clean"
+import { creatorCues } from "./creator"
 import type { Json3 } from "./json3"
 
-/** `text` has its lines apart with `\n`. */
-export type Cue = { startMs: number; endMs: number; text: string }
+/** Only a creator's cues have styles, and a place when it is not where the track's cues mostly are. */
+export type Cue = Styled & { startMs: number; endMs: number; place?: Place | undefined }
 
 type Spoken = { text: string; startMs: number; speakerChange: boolean }
 
@@ -64,12 +66,6 @@ const ATTACHED = /^[.,!?;:…)\]}、。，．！？：；]/u
 /** Where auto captions mark a new speaker, at the start of a word or a line. */
 const SPEAKER = /^(\s*)>>\s*/u
 
-/** Sounds and bleeps, like `[Musik]`, `[ __ ]` or `♪`, which have nothing to look up. */
-const SOUND = /\[[^\]]*\]|♪/gu
-
-/** A creator's cue that only describes a sound, like `(Helle Klänge)`. Parentheses inside a cue stay, because they can be part of what is said. */
-const SOUND_ONLY = /^\([^)]*\)$/u
-
 /** East Asian wide and fullwidth characters. */
 const WIDE =
   /[\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua960-\ua97f\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u
@@ -91,9 +87,6 @@ const joinedWidth = (words: ReadonlyArray<Word>): number =>
 
 const joined = (words: ReadonlyArray<Pick<Word, "shown" | "spaced">>): string =>
   words.map(({ shown, spaced }, index) => (index > 0 && spaced ? " " : "") + shown).join("")
-
-/** One space between words, none at the ends. `\s` takes in no-break spaces, which creator tracks use for padding. */
-const tidy = (text: string): string => text.replace(/\s+/gu, " ").trim()
 
 /** What joins two lines: a space, or nothing between two wide characters. */
 const joint = (before: string, after: string): string =>
@@ -275,15 +268,15 @@ const asrCues = (json3: Json3): Array<Cue> => {
 /** A cue and whether a new speaker starts it. */
 type Kept = Cue & { speaker: boolean }
 
-/** The track's own cues, lines and all. */
-const keptCues = (json3: Json3, asr: boolean): Array<Kept> => {
+/** YouTube's own cues of auto captions, lines and all. */
+const keptCues = (json3: Json3): Array<Kept> => {
   const cues = json3.events.flatMap(({ tStartMs, dDurationMs, segs = [] }) => {
     const lines = segs
       .map(({ utf8 }) => utf8)
       .join("")
       .replace(SOUND, "")
       .split("\n")
-      .map((line) => ({ text: tidy(asr ? line.replace(SPEAKER, "$1") : line), speaker: SPEAKER.test(line) }))
+      .map((line) => ({ text: tidy(line.replace(SPEAKER, "$1")), speaker: SPEAKER.test(line) }))
       .filter(({ text }) => text !== "")
     return lines.length === 0 || SOUND_ONLY.test(lines.map(({ text }) => text).join(" "))
       ? []
@@ -291,8 +284,8 @@ const keptCues = (json3: Json3, asr: boolean): Array<Kept> => {
           {
             startMs: tStartMs,
             endMs: tStartMs + dDurationMs,
-            text: asr ? asrLines(lines) : lines.map(({ text }) => text).join("\n"),
-            speaker: asr && lines[0]!.speaker,
+            text: asrLines(lines),
+            speaker: lines[0]!.speaker,
           },
         ]
   })
@@ -378,11 +371,7 @@ const timed = (json3: Json3): boolean =>
  * A creator's cues stay as they are.
  */
 export const cuesOf = (json3: Json3, asr: boolean): Array<Cue> =>
-  asr && timed(json3)
-    ? asrCues(json3)
-    : asr
-      ? mendAsr(keptCues(json3, asr))
-      : keptCues(json3, asr).map(({ startMs, endMs, text }) => ({ startMs, endMs, text }))
+  asr && timed(json3) ? asrCues(json3) : asr ? mendAsr(keptCues(json3)) : creatorCues(json3)
 
 const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
   let low = 0
@@ -410,16 +399,25 @@ export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => 
 /** The previous cue shows above the current one unless it ended longer ago than this before the current one began. */
 const PREVIOUS_GAP_MS = 3000
 
-/** What shows at `ms`, if anything. */
-export const shownAt = (cues: ReadonlyArray<Cue>, ms: number): Shown | undefined => {
+/**
+ * What shows at `ms`, if anything. The cue before shows above only when it was in the same place.
+ * `creator` is whether a creator's styles and places show.
+ */
+export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, creator: boolean): Shown | undefined => {
   const index = indexAt(cues, ms)
   if (index === undefined) {
     return undefined
   }
-  const cue = cues[index]!
+  const { text, styles, place, startMs } = cues[index]!
   const before = cues[index - 1]
+  const follows =
+    before !== undefined &&
+    startMs - before.endMs <= PREVIOUS_GAP_MS &&
+    (!creator || JSON.stringify(before.place) === JSON.stringify(place))
   return {
-    text: cue.text,
-    previous: before !== undefined && cue.startMs - before.endMs <= PREVIOUS_GAP_MS ? before.text : undefined,
+    text,
+    styles: creator ? styles : undefined,
+    place: creator ? place : undefined,
+    previous: follows ? { text: before.text, styles: creator ? before.styles : undefined } : undefined,
   }
 }

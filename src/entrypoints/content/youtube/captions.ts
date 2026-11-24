@@ -1,6 +1,7 @@
 /** YouTube's subtitles, shown by the extension with the one before above, each word clickable. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
 import {
+  DEFAULT_SUBTITLE_SETTINGS,
   getLookupEnabled,
   getSubtitleSettings,
   getYoutubeCaptions,
@@ -42,7 +43,7 @@ export const showYouTubeCaptions = (
 ) => {
   const tracks = new Map<string, Track>()
   let showing = true
-  let settings: SubtitleSettings = { previous: true, slide: true, position: "bottom" }
+  let settings: SubtitleSettings = DEFAULT_SUBTITLE_SETTINGS
   let overlay: Overlay | undefined
   let track: Track | undefined
   let pausedVideo: HTMLVideoElement | undefined
@@ -146,7 +147,10 @@ export const showYouTubeCaptions = (
       removeOverlay()
       overlay = createOverlay(ctx, player, onWord, settings)
     }
-    overlay.show(adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000), track.lang)
+    overlay.show(
+      adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000, settings.creator),
+      track.lang,
+    )
   }
 
   const tick = () => {

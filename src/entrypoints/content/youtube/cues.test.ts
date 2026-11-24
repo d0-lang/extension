@@ -444,13 +444,31 @@ describe("shownAt", () => {
   )
 
   it("shows the cue before above when it ended just before", () => {
-    expect(shownAt(cues, 1500)).toEqual({ text: "Dwa", previous: "Raz" })
-    expect(shownAt(cues, 5500)).toEqual({ text: "Trzy", previous: "Dwa" })
+    expect(shownAt(cues, 1500, true)).toEqual({ text: "Dwa", previous: { text: "Raz" } })
+    expect(shownAt(cues, 5500, true)).toEqual({ text: "Trzy", previous: { text: "Dwa" } })
   })
 
   it("leaves out a cue before that ended long before, or none", () => {
-    expect(shownAt(cues, 500)).toEqual({ text: "Raz", previous: undefined })
-    expect(shownAt(cues, 9200)).toEqual({ text: "Cztery", previous: undefined })
-    expect(shownAt(cues, 3000)).toBeUndefined()
+    expect(shownAt(cues, 500, true)).toEqual({ text: "Raz", previous: undefined })
+    expect(shownAt(cues, 9200, true)).toEqual({ text: "Cztery", previous: undefined })
+    expect(shownAt(cues, 3000, true)).toBeUndefined()
+  })
+
+  it("leaves out a cue before that was in another place", () => {
+    const placed: Array<Cue> = [
+      { startMs: 0, endMs: 1000, text: "Raz" },
+      { startMs: 1000, endMs: 2000, text: "Dwa", place: { anchor: 4, x: 50, y: 55 } },
+      { startMs: 2000, endMs: 3000, text: "Trzy", place: { anchor: 4, x: 50, y: 55 } },
+    ]
+    expect(shownAt(placed, 1500, true)?.previous).toBeUndefined()
+    expect(shownAt(placed, 2500, true)?.previous).toEqual({ text: "Dwa" })
+  })
+
+  it("leaves styles and places out when told to", () => {
+    const styled: Array<Cue> = [
+      { startMs: 0, endMs: 1000, text: "Raz", styles: [{ color: "#ffff00", from: 0, to: 3 }] },
+      { startMs: 1000, endMs: 2000, text: "Dwa", place: { anchor: 4, x: 50, y: 55 } },
+    ]
+    expect(shownAt(styled, 1500, false)).toEqual({ text: "Dwa", previous: { text: "Raz" } })
   })
 })

@@ -6,7 +6,9 @@
   import { Switch } from "$lib/components/ui/switch"
   import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import {
+    DEFAULT_SUBTITLE_SETTINGS,
     getSubtitleSettings,
+    setSubtitleCreator,
     setSubtitlePosition,
     setSubtitlePrevious,
     setSubtitleSlide,
@@ -21,7 +23,7 @@
     { value: "top", label: "Top", icon: ArrowUpToLineIcon },
   ] satisfies Array<{ value: SubtitlePosition; label: string; icon: typeof ArrowDownToLineIcon }>
 
-  let settings = $state<SubtitleSettings>({ previous: true, slide: true, position: "bottom" })
+  let settings = $state<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
   /** Set once the settings are read, so the defaults do not show first and then change. */
   let loaded = $state(false)
 
@@ -33,6 +35,11 @@
   const onPrevious = async (checked: boolean) => {
     settings = { ...settings, previous: checked }
     await setSubtitlePrevious(checked)
+  }
+
+  const onCreator = async (checked: boolean) => {
+    settings = { ...settings, creator: checked }
+    await setSubtitleCreator(checked)
   }
 
   const onSlide = async (checked: boolean) => {
@@ -83,6 +90,20 @@
           checked={settings.slide}
           disabled={!settings.previous}
           onCheckedChange={(checked) => void onSlide(checked)}
+        />
+      </div>
+      <div class="flex items-center justify-between gap-4 p-4">
+        <div class="flex flex-col gap-0.5">
+          <Label for="subtitle-creator">Creator styles</Label>
+          <p class="text-muted-foreground text-sm">
+            Colors, italics and places set by whoever made the subtitles, like a color for each speaker. Auto
+            captions have none.
+          </p>
+        </div>
+        <Switch
+          id="subtitle-creator"
+          checked={settings.creator}
+          onCheckedChange={(checked) => void onCreator(checked)}
         />
       </div>
       <div class="flex flex-wrap items-center justify-between gap-4 p-4">
