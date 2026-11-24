@@ -186,6 +186,28 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay, tip: Se
     { signal: ctx.signal },
   )
 
+  // A selection in the subtitles goes once copied, since it only stays for that, and its lines go on one line.
+  document.addEventListener(
+    "copy",
+    (event) => {
+      const selection = getSelection()
+      if (
+        selection === null ||
+        selection.isCollapsed ||
+        selection.anchorNode === null ||
+        !root.contains(selection.anchorNode) ||
+        event.clipboardData === null
+      ) {
+        return
+      }
+      event.preventDefault()
+      event.clipboardData.setData("text/plain", joinLines(selection.toString()))
+      selection.removeAllRanges()
+      tell("Copied.")
+    },
+    { signal: ctx.signal },
+  )
+
   return {
     remove: () => {
       close()

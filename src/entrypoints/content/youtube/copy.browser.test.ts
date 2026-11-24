@@ -166,6 +166,36 @@ describe("addCopyMenu", () => {
     expect(getSelection()!.toString()).toMatch(/^Pass the s/u)
   })
 
+  it("copies a selection in the subtitles on one line, then lets it go", () => {
+    setUp({ text: "Pass the\nsalt, please." })
+    getSelection()!.setBaseAndExtent(word("the").firstChild!, 0, word("salt").firstChild!, 4)
+    const copy = new ClipboardEvent("copy", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: new DataTransfer(),
+    })
+    document.dispatchEvent(copy)
+    expect(copy.clipboardData!.getData("text/plain")).toBe("the salt")
+    expect(getSelection()!.isCollapsed).toBe(true)
+    expect(note()).toBe("Copied.")
+  })
+
+  it("leaves a copy from elsewhere on the page alone", () => {
+    setUp()
+    const title = document.createElement("p")
+    title.textContent = "Relay basics"
+    document.body.prepend(title)
+    getSelection()!.selectAllChildren(title)
+    const copy = new ClipboardEvent("copy", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: new DataTransfer(),
+    })
+    document.dispatchEvent(copy)
+    expect(copy.defaultPrevented).toBe(false)
+    expect(getSelection()!.toString()).toBe("Relay basics")
+  })
+
   it("still keeps a press without Shift from selecting", () => {
     setUp()
     const target = word("Sure")
