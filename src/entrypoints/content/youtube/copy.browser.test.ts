@@ -20,7 +20,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** A player, the overlay in it showing `cue`, and the copy menu on it. */
+/** A player with a video, the overlay in it showing `cue`, and the copy menu on it. */
 const setUp = (
   cue: Shown = { text: "Sure.", previous: { text: "Pass the\nsalt." } },
   settings = DEFAULT_SUBTITLE_SETTINGS,
@@ -29,11 +29,13 @@ const setUp = (
   const player = document.createElement("div")
   player.className = "html5-video-player"
   player.style.cssText = "position: relative; width: 960px; height: 540px"
+  const video = document.createElement("video")
+  player.append(video)
   document.body.append(player)
   const overlay = createOverlay(ctx(), player, () => {}, settings)
   overlay.show(cue, lang)
   addCopyMenu(ctx(), overlay)
-  return { player }
+  return { player, video, overlay }
 }
 
 const word = (text: string): HTMLElement =>
@@ -79,6 +81,34 @@ describe("addCopyMenu", () => {
     expect(word("Sure").dataset.picked).toBe("")
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
     expect(word("Sure").dataset.picked).toBeUndefined()
+  })
+
+  it("stops the video while the menu is open, and plays it after", () => {
+    const { video } = setUp()
+    Object.defineProperty(video, "paused", { value: false, configurable: true })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {})
+    const play = vi.spyOn(video, "play").mockResolvedValue()
+    rightClick(word("Sure"))
+    expect(pause).toHaveBeenCalledOnce()
+    expect(play).not.toHaveBeenCalled()
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    expect(play).toHaveBeenCalledOnce()
+  })
+
+  it("leaves a video that was stopped already stopped", () => {
+    const { video } = setUp()
+    const play = vi.spyOn(video, "play").mockResolvedValue()
+    rightClick(word("Sure"))
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    expect(play).not.toHaveBeenCalled()
+  })
+
+  it("closes when another line comes, like after a seek", async () => {
+    const { overlay } = setUp()
+    rightClick(word("Sure"))
+    overlay.show({ text: "Anything else?" }, "en")
+    await vi.waitFor(() => expect(document.querySelector("[data-dadict-menu]")).toBeNull())
+    expect(document.querySelector("[data-picked]")).toBeNull()
   })
 
   it("offers only the line between words", () => {

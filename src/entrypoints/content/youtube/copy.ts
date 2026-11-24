@@ -7,6 +7,7 @@ import { mount, unmount } from "svelte"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { joinLines } from "./cues"
 import type { Overlay } from "./overlay"
+import { videoIn } from "./player"
 
 /** How long the note on a copy stays. */
 const NOTE_MS = 2500
@@ -75,9 +76,18 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
   /** The word the menu is for, marked while it is open, since the pointer leaves it for the menu. */
   let picked: HTMLElement | undefined
 
+  /** The video the menu stopped, to play again once it closes. */
+  let paused: HTMLVideoElement | undefined
+  /** Watches the subtitles for another line, which the menu's items would no longer match. */
+  let watching: MutationObserver | undefined
+
   const close = () => {
     closing?.abort()
     closing = undefined
+    watching?.disconnect()
+    watching = undefined
+    void paused?.play().catch(() => {})
+    paused = undefined
     delete picked?.dataset.picked
     picked = undefined
     for (const icon of icons) {
@@ -132,6 +142,16 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     element.style.left = `${Math.max(0, Math.min(x - box.left, box.width - size.width))}px`
     element.style.top = `${Math.max(0, Math.min(y - box.top, box.height - size.height))}px`
     element.querySelector("button")?.focus()
+
+    // The line stays while the menu is open, as it does for a lookup. A video already stopped, like by one, stays so.
+    const video = videoIn(player)
+    if (video !== null && !video.paused) {
+      video.pause()
+      paused = video
+    }
+    // A seek can still bring another line.
+    watching = new MutationObserver(() => close())
+    watching.observe(root, { childList: true, subtree: true })
 
     closing = new AbortController()
     const signal = AbortSignal.any([closing.signal, ctx.signal])
