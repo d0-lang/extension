@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { isFast, type Cue } from "../subtitles/cues"
+import { isFast, type Cue } from "$lib/subtitles/cues"
 import { cuesOf, LINE_WIDTH, width } from "./cues"
 import { parseJson3, type Json3 } from "./json3"
 

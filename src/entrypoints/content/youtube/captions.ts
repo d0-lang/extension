@@ -2,7 +2,7 @@
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
 import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { showSubtitles, type Subtitles, type SubtitlesOptions } from "../subtitles/controller"
+import { showSubtitles, type Subtitles, type SubtitlesOptions } from "$lib/subtitles/controller"
 import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn, YOUTUBE_HOST } from "./player"
 import { watchTracks, type Track } from "./track"
 

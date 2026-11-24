@@ -1,8 +1,8 @@
 /** Subtitles on any site whose videos give the browser their tracks, like Vimeo. */
 import { getVideoSubtitles } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { isFast, type Cue } from "../subtitles/cues"
-import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "../subtitles/controller"
+import { isFast, type Cue } from "$lib/subtitles/cues"
+import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "$lib/subtitles/controller"
 import { playerOf, VIDEO_HOST } from "./player"
 import { createStage, removeStages, type Stage } from "./stage"
 import { activeTrack, cuesOf } from "./tracks"

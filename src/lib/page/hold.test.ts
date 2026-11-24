@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { watchAltHold } from "./hold"
-import type { WordHit } from "./page/pick"
+import type { WordHit } from "./pick"
 
 /** Longer than the hold waits for the cursor to settle on a word. */
 const SETTLED_MS = 500

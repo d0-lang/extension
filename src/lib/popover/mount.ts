@@ -1,8 +1,8 @@
 /** The popover's shadow-root UI on the page. Only one is open at a time. */
 import { mount, unmount, type ComponentProps } from "svelte"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import Popover from "./popover/Popover.svelte"
-import "./popover/popover.css"
+import Popover from "./Popover.svelte"
+import "./popover.css"
 
 export type PopoverProps = ComponentProps<typeof Popover>
 

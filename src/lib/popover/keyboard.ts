@@ -2,7 +2,7 @@
  * Popover keys: W/S scroll, A/D move between the parts of a split word, E plays the topmost pronunciation in view.
  * Arrow keys stay the page's, because Alt + Left and Alt + Right are the browser's Back and Forward.
  */
-import { isTyping } from "../hold"
+import { isTyping } from "../page/hold"
 import { suspendAccessKeys } from "./accesskeys"
 
 // Physical keys, so they stay under the same fingers on any layout.

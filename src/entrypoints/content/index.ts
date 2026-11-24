@@ -1,8 +1,8 @@
 import { isOpenLookupMessage, sendShownLookup, type OpenLookupMessage } from "$lib/messages"
 import { getLookupEnabled, getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
-import { watchAltHold } from "./hold"
-import { createPopoverHost } from "./mount"
+import { watchAltHold } from "$lib/page/hold"
+import { createPopoverHost } from "$lib/popover/mount"
 import {
   MAX_WORD_CHARS,
   pickAt,
@@ -13,10 +13,10 @@ import {
   type AnchorRect,
   type Picked,
   type WordHit,
-} from "./page/pick"
-import { isDarkBehind } from "./page/scheme"
-import { sentenceAround, type Sentence } from "./page/sentence"
-import { createSession } from "./session"
+} from "$lib/page/pick"
+import { isDarkBehind } from "$lib/page/scheme"
+import { sentenceAround, type Sentence } from "$lib/page/sentence"
+import { createSession } from "$lib/session"
 import { showVideoSubtitles } from "./video/captions"
 import { showYouTubeCaptions } from "./youtube/captions"
 import { isYouTube } from "./youtube/player"

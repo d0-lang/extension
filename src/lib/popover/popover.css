@@ -1,11 +1,10 @@
 @import "tailwindcss" source(none);
-@import "../../../styles/tokens.css";
-@import "../../../lib/popover/entries.css";
+@import "../../styles/tokens.css";
+@import "./entries.css";
 
 @source './*.svelte';
-@source '../../../lib/popover';
-@source '../../../lib/components/Keycap.svelte';
-@source '../../../lib/components/ui/kbd';
+@source '../components/Keycap.svelte';
+@source '../components/ui/kbd';
 
 @custom-variant dark (&:is(.dark *));
 

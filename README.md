@@ -79,16 +79,18 @@ The mock server runs a set of dictionary servers for trying out adding servers, 
 
 ### Layout
 
-| Path                            | What is there                                            |
-| ------------------------------- | -------------------------------------------------------- |
-| `src/entrypoints/background.ts` | Lookups, the context menu, and the server check at start |
-| `src/entrypoints/content`       | Finding the word on the page, and the popover            |
-| `src/entrypoints/popup`         | The toolbar button's popup                               |
-| `src/entrypoints/setup`         | The settings page                                        |
-| `src/lib/dict`                  | The protocol client: handshake, signatures, lookup       |
-| `src/lib/popover`               | The popover's entries and footer, also drawn in settings |
-| `src/lib/storage.ts`            | Everything kept in extension storage                     |
-| `scripts/mock-server.ts`        | The test dictionary servers                              |
+| Path                            | What is there                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `src/entrypoints/background.ts` | Lookups, the context menu, and the server check at start                          |
+| `src/entrypoints/content`       | Wiring the popover and subtitles into pages, YouTube's and other sites' subtitles |
+| `src/entrypoints/popup`         | The toolbar button's popup                                                        |
+| `src/entrypoints/setup`         | The settings page                                                                 |
+| `src/lib/dict`                  | The protocol client: handshake, signatures, lookup                                |
+| `src/lib/page`                  | Finding the word and its sentence on a page                                       |
+| `src/lib/popover`               | The popover, also drawn in settings                                               |
+| `src/lib/subtitles`             | Clickable subtitles over a video                                                  |
+| `src/lib/storage.ts`            | Everything kept in extension storage                                              |
+| `scripts/mock-server.ts`        | The test dictionary servers                                                       |
 
 Built with [WXT](https://wxt.dev), [Svelte](https://svelte.dev), [Tailwind CSS](https://tailwindcss.com) and [shadcn-svelte](https://shadcn-svelte.com).
 

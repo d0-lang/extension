@@ -1,7 +1,7 @@
 /** A creator's cues, with the pens they are drawn with and where the creator put them. */
 import type { Place, StyleRun, TextStyle } from "$lib/subtitles/rows"
 import { SOUND, SOUND_ONLY } from "./clean"
-import type { Cue } from "../subtitles/cues"
+import type { Cue } from "$lib/subtitles/cues"
 import type { Json3 } from "./json3"
 
 type Pen = NonNullable<Json3["pens"]>[number]
