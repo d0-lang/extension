@@ -223,13 +223,7 @@ export const createOverlay = (
   resize.observe(player)
 
   for (const type of SWALLOWED) {
-    root.addEventListener(type, (event) => {
-      // A right press goes through, so the player closes its own menu when the subtitles' opens.
-      if (event instanceof MouseEvent && event.button === 2) {
-        return
-      }
-      event.stopPropagation()
-    })
+    root.addEventListener(type, (event) => event.stopPropagation())
   }
   root.addEventListener("click", (event) => {
     const word = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-word]") : null
