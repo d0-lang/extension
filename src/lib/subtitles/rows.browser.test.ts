@@ -1,17 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { createRows } from "./rows"
 import "./rows.css"
 
 afterEach(() => {
-  vi.restoreAllMocks()
   document.body.replaceChildren()
 })
-
-/** Moves `performance.now()` on by `ms`. */
-const wait = (ms: number) => {
-  const now = performance.now()
-  vi.spyOn(performance, "now").mockReturnValue(now + ms)
-}
 
 /** Subtitles centred with `translate`, as Tailwind does, at the bottom of a box. */
 const centred = (): HTMLElement => {
@@ -30,7 +23,6 @@ describe("createRows", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: true }, () => {})
     show({ text: "Mamy gościa." }, "pl", false)
-    wait(2000)
     show({ text: "Ala ma kota i dwa psy.", previous: { text: "Mamy gościa." } }, "pl", true)
     const [slide] = root.getAnimations()
     slide!.pause()
@@ -40,16 +32,6 @@ describe("createRows", () => {
     const end = root.getBoundingClientRect()
     expect(start.left).toBeCloseTo(end.left, 0)
     expect(start.top).toBeGreaterThan(end.top)
-  })
-
-  it("moves a cue that showed only briefly up without a slide", () => {
-    const root = centred()
-    const show = createRows(root, { previous: true, slide: true }, () => {})
-    show({ text: "Mamy gościa." }, "pl", false)
-    wait(1500)
-    show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
-    expect(root.getAnimations()).toHaveLength(0)
-    expect(root.querySelector("[data-previous]")?.textContent).toBe("Mamy gościa.")
   })
 
   it("leaves the row before still when the slide is off", () => {

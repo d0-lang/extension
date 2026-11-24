@@ -29,9 +29,6 @@ export type RowSettings = {
 /** How long the cue that ended takes to slide up, and the next one to fade in. */
 const SLIDE_MS = 150
 
-/** A cue on screen for less than this goes up without a slide, since short lines one after another would keep the subtitles moving. */
-const MIN_SLIDE_SHOWN_MS = 2000
-
 /**
  * A line with each word in its own span, so hovering and clicking a word need no hit testing.
  * What is between words gets a span too, so a mark over a phrase has no gaps.
@@ -117,8 +114,7 @@ const keepLastRow = (cue: HTMLElement) => {
  */
 export const createRows = (root: HTMLElement, settings: RowSettings, place: () => void) => {
   let shown = ""
-  /** `since` is when it started to show, by `performance.now()`. */
-  let current: { key: string; lang: string; element: HTMLElement; since: number } | undefined
+  let current: { key: string; lang: string; element: HTMLElement } | undefined
 
   /** Slides everything up from where the cue now above was, and fades the new cue in. */
   const slide = (from: number, previous: HTMLElement, cue: HTMLElement) => {
@@ -145,7 +141,7 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
     root.lang = lang
     const element = cueOf(cue, lang)
     const ended = current
-    current = { key: keyOf(cue), lang, element, since: performance.now() }
+    current = { key: keyOf(cue), lang, element }
     if (
       previous !== undefined &&
       ended !== undefined &&
@@ -153,8 +149,7 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       ended.key === keyOf(previous)
     ) {
       // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
-      const long = performance.now() - ended.since >= MIN_SLIDE_SHOWN_MS
-      const from = visible && long ? ended.element.getBoundingClientRect().bottom : undefined
+      const from = visible ? ended.element.getBoundingClientRect().bottom : undefined
       keepLastRow(ended.element)
       ended.element.dataset.previous = ""
       while (root.firstChild !== ended.element) {
