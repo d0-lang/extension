@@ -3,7 +3,11 @@ import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { DEFAULT_SUBTITLE_SETTINGS } from "$lib/storage"
 import type { Shown } from "$lib/subtitles/rows"
 import { addCopyMenu } from "./copy"
+import type { Host } from "./host"
 import { createOverlay } from "./overlay"
+
+/** A player with no bars of its own, and an own menu for the copy menu to hide. */
+const HOST: Host = { bars: () => ({ top: 0, bottom: 0 }), ownMenu: ".own-menu" }
 
 let controller = new AbortController()
 
@@ -32,7 +36,7 @@ const setUp = (
   const video = document.createElement("video")
   player.append(video)
   document.body.append(player)
-  const overlay = createOverlay(ctx(), player, () => {}, settings)
+  const overlay = createOverlay(ctx(), player, HOST, () => {}, settings)
   overlay.show(cue, lang)
   addCopyMenu(ctx(), overlay)
   return { player, video, overlay }
@@ -114,7 +118,7 @@ describe("addCopyMenu", () => {
   it("hides the player's own menu", () => {
     const { player } = setUp()
     const own = document.createElement("div")
-    own.className = "ytp-popup ytp-contextmenu"
+    own.className = "own-menu"
     player.append(own)
     rightClick(word("Sure"))
     expect(own.style.display).toBe("none")

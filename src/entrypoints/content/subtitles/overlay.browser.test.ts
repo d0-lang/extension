@@ -3,6 +3,7 @@ import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { DEFAULT_SUBTITLE_SETTINGS } from "$lib/storage"
 import type { WordHit } from "../page/pick"
 import { sentenceAround } from "../page/sentence"
+import type { Host } from "./host"
 import { createOverlay, removeLeftovers } from "./overlay"
 
 /** Stands in for YouTube's player: a positioned box the overlay goes into. */
@@ -18,6 +19,9 @@ const wordSpan = (text: string): HTMLElement =>
   [...document.querySelectorAll<HTMLElement>("[data-word]")].find((word) => word.textContent === text)!
 
 const SETTINGS = DEFAULT_SUBTITLE_SETTINGS
+
+/** A player with no bars of its own, and an own menu for the copy menu to hide. */
+const HOST: Host = { bars: () => ({ top: 0, bottom: 0 }), ownMenu: ".own-menu" }
 
 let controller = new AbortController()
 
@@ -35,7 +39,7 @@ afterEach(() => {
 
 describe("createOverlay", () => {
   it("shows a cue's two lines together", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Eine künstliche Intelligenz\ngerät völlig außer Kontrolle." }, "de")
     const top = (text: string) => wordSpan(text).getBoundingClientRect().top
     expect(top("künstliche")).toBe(top("Intelligenz"))
@@ -44,7 +48,7 @@ describe("createOverlay", () => {
 
   it("reads a word's sentence across both lines", () => {
     let hit: WordHit | undefined
-    const overlay = createOverlay(ctx(), player(), (picked) => (hit = picked), SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, (picked) => (hit = picked), SETTINGS)
     overlay.show({ text: "Eine künstliche Intelligenz\ngerät völlig außer Kontrolle." }, "de")
     wordSpan("künstliche").click()
     expect(hit?.word).toBe("künstliche")
@@ -58,14 +62,14 @@ describe("createOverlay", () => {
     const onPlayer = vi.fn()
     box.addEventListener("click", onPlayer)
     const onWord = vi.fn()
-    createOverlay(ctx(), box, onWord, SETTINGS).show({ text: "Mamy gościa." }, "pl")
+    createOverlay(ctx(), box, HOST, onWord, SETTINGS).show({ text: "Mamy gościa." }, "pl")
     wordSpan("gościa").click()
     expect(onWord).toHaveBeenCalledOnce()
     expect(onPlayer).not.toHaveBeenCalled()
   })
 
   it("marks the words a range covers and what is between them", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Wir senden heute live." }, "de")
     const range = document.createRange()
     range.setStart(wordSpan("senden").firstChild!, 0)
@@ -76,7 +80,7 @@ describe("createOverlay", () => {
   })
 
   it("leaves a word the range only touches", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Wir senden heute live." }, "de")
     const range = document.createRange()
     // From the end of the word before, which is where the word starts too.
@@ -88,7 +92,7 @@ describe("createOverlay", () => {
   })
 
   it("underlines with a highlight", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     const range = document.createRange()
     range.selectNodeContents(wordSpan("gościa").firstChild!)
@@ -100,7 +104,7 @@ describe("createOverlay", () => {
   })
 
   it("takes its mark away when done", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     const range = document.createRange()
     range.selectNodeContents(wordSpan("gościa").firstChild!)
@@ -110,7 +114,7 @@ describe("createOverlay", () => {
 
   it("knows which words are under the mark", () => {
     let hit: WordHit | undefined
-    const overlay = createOverlay(ctx(), player(), (picked) => (hit = picked), SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, (picked) => (hit = picked), SETTINGS)
     overlay.show({ text: "Wir senden heute live." }, "de")
     const range = document.createRange()
     range.setStart(wordSpan("senden").firstChild!, 0)
@@ -128,7 +132,7 @@ describe("createOverlay", () => {
 
   it("leaves a mark on an earlier cue out", () => {
     let hit: WordHit | undefined
-    const overlay = createOverlay(ctx(), player(), (picked) => (hit = picked), SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, (picked) => (hit = picked), SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     const range = document.createRange()
     range.selectNodeContents(wordSpan("gościa").firstChild!)
@@ -139,7 +143,7 @@ describe("createOverlay", () => {
   })
 
   it("shows the row the cue before ended on above", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Ala ma kota.", previous: { text: "Wczoraj padało\ncały dzień." } }, "pl")
     const top = (text: string) => wordSpan(text).getBoundingClientRect().top
     expect(wordSpan("Wczoraj").getClientRects()).toHaveLength(0)
@@ -148,7 +152,7 @@ describe("createOverlay", () => {
   })
 
   it("slides the cue that ended up, keeping its words", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     const word = wordSpan("gościa")
     const range = document.createRange()
@@ -168,7 +172,7 @@ describe("createOverlay", () => {
   })
 
   it("keeps the row a long cue ended on as it showed", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     const long = Array.from({ length: 30 }, (_, index) => `słowo${index}`).join(" ")
     overlay.show({ text: long }, "pl")
     const row = (word: HTMLElement) => word.getBoundingClientRect().top
@@ -184,7 +188,7 @@ describe("createOverlay", () => {
 
   it("reads a word's sentence across the cue before", () => {
     let hit: WordHit | undefined
-    const overlay = createOverlay(ctx(), player(), (picked) => (hit = picked), SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, (picked) => (hit = picked), SETTINGS)
     overlay.show(
       { text: "gerät völlig außer Kontrolle.", previous: { text: "Eine künstliche Intelligenz" } },
       "de",
@@ -196,7 +200,7 @@ describe("createOverlay", () => {
   })
 
   it("leaves the cue before out when told to", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, { ...SETTINGS, previous: false })
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, { ...SETTINGS, previous: false })
     overlay.show({ text: "Mamy gościa." }, "pl")
     overlay.show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl")
     expect(document.querySelector("[data-previous]")).toBeNull()
@@ -205,14 +209,17 @@ describe("createOverlay", () => {
 
   it("starts at the top when told to", () => {
     const box = player()
-    createOverlay(ctx(), box, () => {}, { ...SETTINGS, position: "top" }).show({ text: "Mamy gościa." }, "pl")
+    createOverlay(ctx(), box, HOST, () => {}, { ...SETTINGS, position: "top" }).show(
+      { text: "Mamy gościa." },
+      "pl",
+    )
     const { top } = document.querySelector("[data-dadict-captions]")!.getBoundingClientRect()
     expect(top - box.getBoundingClientRect().top).toBeLessThan(box.clientHeight / 4)
   })
 
   it("puts a cue where its creator did", () => {
     const box = player()
-    const overlay = createOverlay(ctx(), box, () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), box, HOST, () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa.", place: { anchor: 4, x: 50, y: 50 } }, "pl")
     const caption = document.querySelector("[data-dadict-captions]")!.getBoundingClientRect()
     const frame = box.getBoundingClientRect()
@@ -222,7 +229,7 @@ describe("createOverlay", () => {
 
   it("keeps a cue its creator put at the edge inside the player", () => {
     const box = player()
-    createOverlay(ctx(), box, () => {}, SETTINGS).show(
+    createOverlay(ctx(), box, HOST, () => {}, SETTINGS).show(
       { text: "Mamy gościa.", place: { anchor: 0, x: 100, y: 100 } },
       "pl",
     )
@@ -232,7 +239,7 @@ describe("createOverlay", () => {
   })
 
   it("draws a creator's colours, italics and bold", () => {
-    createOverlay(ctx(), player(), () => {}, SETTINGS).show(
+    createOverlay(ctx(), player(), HOST, () => {}, SETTINGS).show(
       {
         text: "Pass the salt.\nSure.",
         styles: [
@@ -248,7 +255,7 @@ describe("createOverlay", () => {
   })
 
   it("hides until the next cue", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     overlay.show(undefined, "pl")
     expect(document.querySelector<HTMLElement>("[data-dadict-captions]")?.hidden).toBe(true)
@@ -275,7 +282,7 @@ describe("dragging", () => {
 
   it("moves the subtitles, and the press does not look the word up", () => {
     const onWord = vi.fn()
-    createOverlay(ctx(), player(), onWord, SETTINGS).show({ text: "Mamy gościa." }, "pl")
+    createOverlay(ctx(), player(), HOST, onWord, SETTINGS).show({ text: "Mamy gościa." }, "pl")
     const before = captions()
     drag(wordSpan("gościa"), 100, -200)
     expect(captions().left).toBeCloseTo(before.left + 100, 0)
@@ -285,7 +292,7 @@ describe("dragging", () => {
 
   it("keeps the subtitles in the player", () => {
     const box = player()
-    createOverlay(ctx(), box, () => {}, SETTINGS).show({ text: "Mamy gościa." }, "pl")
+    createOverlay(ctx(), box, HOST, () => {}, SETTINGS).show({ text: "Mamy gościa." }, "pl")
     drag(wordSpan("gościa"), 2000, -2000)
     const margin = box.clientHeight * 0.02
     expect(captions().right).toBeCloseTo(box.getBoundingClientRect().right - margin, 0)
@@ -294,13 +301,13 @@ describe("dragging", () => {
 
   it("leaves a press that barely moves a click on the word", () => {
     const onWord = vi.fn()
-    createOverlay(ctx(), player(), onWord, SETTINGS).show({ text: "Mamy gościa." }, "pl")
+    createOverlay(ctx(), player(), HOST, onWord, SETTINGS).show({ text: "Mamy gościa." }, "pl")
     drag(wordSpan("gościa"), 2, 1)
     expect(onWord).toHaveBeenCalledOnce()
   })
 
   it("puts the subtitles back where they start", () => {
-    const overlay = createOverlay(ctx(), player(), () => {}, SETTINGS)
+    const overlay = createOverlay(ctx(), player(), HOST, () => {}, SETTINGS)
     overlay.show({ text: "Mamy gościa." }, "pl")
     const before = captions()
     drag(wordSpan("gościa"), 100, -200)
@@ -312,7 +319,7 @@ describe("dragging", () => {
 
 describe("removeLeftovers", () => {
   it("removes an earlier run's overlay and style", () => {
-    createOverlay(ctx(), player(), () => {}, SETTINGS).show({ text: "Mamy gościa." }, "pl")
+    createOverlay(ctx(), player(), HOST, () => {}, SETTINGS).show({ text: "Mamy gościa." }, "pl")
     removeLeftovers()
     expect(document.querySelector("[data-dadict-captions]")).toBeNull()
     expect(document.getElementById("dadict-captions-style")).toBeNull()

@@ -31,6 +31,7 @@ export type SubtitleSettings = {
 const empty = {
   lookupEnabled: true,
   youtubeCaptions: true,
+  videoSubtitles: true,
   subtitles: {
     previous: true,
     slide: true,
@@ -107,6 +108,16 @@ export const setSubtitleCalm = async (subtitleCalm: boolean): Promise<void> => {
 
 export const setSubtitlePosition = async (subtitlePosition: SubtitlePosition): Promise<void> => {
   await browser.storage.local.set({ subtitlePosition })
+}
+
+/** Whether the extension shows the subtitles of videos on other sites, from the tracks they give the browser. */
+export const getVideoSubtitles = async (): Promise<boolean> => {
+  const { videoSubtitles } = await browser.storage.local.get("videoSubtitles")
+  return typeof videoSubtitles === "boolean" ? videoSubtitles : empty.videoSubtitles
+}
+
+export const setVideoSubtitles = async (videoSubtitles: boolean): Promise<void> => {
+  await browser.storage.local.set({ videoSubtitles })
 }
 
 export const getShowIpa = async (): Promise<boolean> => {

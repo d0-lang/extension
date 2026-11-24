@@ -2,7 +2,8 @@
 import { TIMEDTEXT_EVENT, TIMEDTEXT_READY_EVENT, type Timedtext } from "$lib/captions"
 import { fromThrowable } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { cuesOf, isFast, type Cue } from "./cues"
+import { isFast, type Cue } from "../subtitles/cues"
+import { cuesOf } from "./cues"
 import { parseJson3 } from "./json3"
 
 export type Track = {

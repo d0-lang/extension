@@ -12,10 +12,12 @@ import {
   wordAt,
   type AnchorRect,
   type Picked,
+  type WordHit,
 } from "./page/pick"
 import { isDarkBehind } from "./page/scheme"
 import { sentenceAround, type Sentence } from "./page/sentence"
 import { createSession } from "./session"
+import { showVideoSubtitles } from "./video/captions"
 import { showYouTubeCaptions } from "./youtube/captions"
 import { isYouTube } from "./youtube/player"
 
@@ -95,18 +97,27 @@ export default defineContentScript({
       },
       { capture: true },
     )
+    const subtitleOptions = {
+      isEnabled: () => enabled,
+      lookUp: ({ word, anchor, element, range }: WordHit, lang: string) =>
+        // A track may not say its language.
+        void open(
+          word,
+          anchor,
+          element,
+          range,
+          sentenceAround(range, word, lang),
+          lang.split("-")[0] || undefined,
+        ),
+      isShown: ({ range }: WordHit) =>
+        popover.isOpen() &&
+        shownRange?.startContainer === range.startContainer &&
+        shownRange.startOffset === range.startOffset,
+      close: popover.close,
+    }
     const captions = isYouTube(location.hostname)
-      ? showYouTubeCaptions(ctx, {
-          isEnabled: () => enabled,
-          lookUp: ({ word, anchor, element, range }, lang) =>
-            void open(word, anchor, element, range, sentenceAround(range, word, lang), lang.split("-")[0]),
-          isShown: ({ range }) =>
-            popover.isOpen() &&
-            shownRange?.startContainer === range.startContainer &&
-            shownRange.startOffset === range.startOffset,
-          close: popover.close,
-        })
-      : undefined
+      ? showYouTubeCaptions(ctx, subtitleOptions)
+      : showVideoSubtitles(ctx, subtitleOptions)
     if (captions !== undefined) {
       popover.onClose(captions.popoverClosed)
     }

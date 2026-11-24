@@ -1,11 +1,9 @@
 /** Cuts a caption track into cues of up to two lines, which show and go together. */
-import type { Place, Shown, Styled } from "$lib/subtitles/rows"
+import type { Cue } from "../subtitles/cues"
+import { joinLines, joint, WIDE } from "../subtitles/lines"
 import { SOUND, SOUND_ONLY, tidy } from "./clean"
 import { creatorCues } from "./creator"
 import type { Json3 } from "./json3"
-
-/** Only a creator's cues have styles, and a place when it is not where the track's cues mostly are. */
-export type Cue = Styled & { startMs: number; endMs: number; place?: Place | undefined }
 
 type Spoken = { text: string; startMs: number; speakerChange: boolean }
 
@@ -66,10 +64,6 @@ const ATTACHED = /^[.,!?;:…)\]}、。，．！？：；]/u
 /** Where auto captions mark a new speaker, at the start of a word or a line. */
 const SPEAKER = /^(\s*)>>\s*/u
 
-/** East Asian wide and fullwidth characters. */
-const WIDE =
-  /[\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua960-\ua97f\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u
-
 /**
  * Whether `text` is a word of up to three letters, like `le`, `je` or `j'ai`, which mostly leads into the word after it.
  * A word with punctuation ends something, and wide scripts have no spaces to tell their words apart.
@@ -87,17 +81,6 @@ const joinedWidth = (words: ReadonlyArray<Word>): number =>
 
 const joined = (words: ReadonlyArray<Pick<Word, "shown" | "spaced">>): string =>
   words.map(({ shown, spaced }, index) => (index > 0 && spaced ? " " : "") + shown).join("")
-
-/** What joins two lines: a space, or nothing between two wide characters. */
-const joint = (before: string, after: string): string =>
-  WIDE.test(before.at(-1) ?? "") && WIDE.test(after[0] ?? "") ? "" : " "
-
-/** Joins text across a line break. */
-export const joinLines = (text: string): string =>
-  text.replace(
-    /(.?)[^\S\n]*\n\s*(.?)/gu,
-    (_, before: string, after: string) => before + joint(before, after) + after,
-  )
 
 /** Lays the track out on one line: a space between words, or nothing between two wide characters a line break parts. */
 const layOut = (words: ReadonlyArray<Spoken>): Array<Omit<Word, "inSegment" | "cutWorth">> => {
@@ -372,69 +355,3 @@ const timed = (json3: Json3): boolean =>
  */
 export const cuesOf = (json3: Json3, asr: boolean): Array<Cue> =>
   asr && timed(json3) ? asrCues(json3) : asr ? mendAsr(keptCues(json3)) : creatorCues(json3)
-
-const indexAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
-  let low = 0
-  let high = cues.length - 1
-  while (low <= high) {
-    const middle = (low + high) >> 1
-    const cue = cues[middle]!
-    if (ms < cue.startMs) {
-      high = middle - 1
-    } else if (ms >= cue.endMs) {
-      low = middle + 1
-    } else {
-      return middle
-    }
-  }
-  return undefined
-}
-
-/** The cue showing at `ms`, if any. */
-export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => {
-  const index = indexAt(cues, ms)
-  return index === undefined ? undefined : cues[index]
-}
-
-/** The previous cue shows above the current one unless it ended longer ago than this before the current one began. */
-const PREVIOUS_GAP_MS = 3000
-
-/** A cue on screen for less than this is short, for telling fast tracks apart. */
-const SHORT_CUE_MS = 2000
-
-/** A track is fast when at least this share of the cues that follow another follow a short one. */
-const FAST_SHARE = 0.5
-
-/** Whether most cues follow a short one, like quick back-and-forth dialogue, which would keep a slide going. */
-export const isFast = (cues: ReadonlyArray<Cue>): boolean => {
-  const before = cues.flatMap((cue, index) => {
-    const last = cues[index - 1]
-    return last !== undefined && cue.startMs - last.endMs <= PREVIOUS_GAP_MS
-      ? [last.endMs - last.startMs]
-      : []
-  })
-  return before.length > 0 && before.filter((ms) => ms < SHORT_CUE_MS).length >= before.length * FAST_SHARE
-}
-
-/**
- * What shows at `ms`, if anything. The cue before shows above only when it was in the same place.
- * `styled` is whether the styles and places cues come with show.
- */
-export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): Shown | undefined => {
-  const index = indexAt(cues, ms)
-  if (index === undefined) {
-    return undefined
-  }
-  const { text, styles, place, startMs } = cues[index]!
-  const before = cues[index - 1]
-  const follows =
-    before !== undefined &&
-    startMs - before.endMs <= PREVIOUS_GAP_MS &&
-    (!styled || JSON.stringify(before.place) === JSON.stringify(place))
-  return {
-    text,
-    styles: styled ? styles : undefined,
-    place: styled ? place : undefined,
-    previous: follows ? { text: before.text, styles: styled ? before.styles : undefined } : undefined,
-  }
-}

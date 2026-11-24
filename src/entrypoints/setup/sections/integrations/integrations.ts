@@ -1,5 +1,5 @@
 /** Sites the extension does more on than plain text lookups, each with its own switch. */
-import { getYoutubeCaptions, setYoutubeCaptions } from "$lib/storage"
+import { getVideoSubtitles, getYoutubeCaptions, setVideoSubtitles, setYoutubeCaptions } from "$lib/storage"
 
 export type Integration = {
   name: string
@@ -21,6 +21,14 @@ export const integrations: ReadonlyArray<Integration> = [
     key: "youtubeCaptions",
     get: getYoutubeCaptions,
     set: setYoutubeCaptions,
+  },
+  {
+    name: "Other sites",
+    kind: "Video",
+    description: "Clickable subtitles on sites like Vimeo",
+    key: "videoSubtitles",
+    get: getVideoSubtitles,
+    set: setVideoSubtitles,
   },
 ]
 

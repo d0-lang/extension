@@ -1,36 +1,13 @@
-/** YouTube's subtitles, shown by the extension with the one before above, each word clickable. */
+/** YouTube's subtitles, shown by the extension in place of the player's own. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
-import {
-  DEFAULT_SUBTITLE_SETTINGS,
-  getLookupEnabled,
-  getSubtitleSettings,
-  getYoutubeCaptions,
-  SUBTITLE_KEYS,
-  type SubtitleSettings,
-} from "$lib/storage"
+import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import type { WordHit } from "../page/pick"
-import { addCopyMenu } from "./copy"
-import { shownAt } from "./cues"
-import type { Paint } from "../popover/highlight"
-import { createOverlay, removeLeftovers, type Overlay } from "./overlay"
-import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn } from "./player"
-import { keepPressFromPage } from "./press"
+import { showSubtitles, type Subtitles, type SubtitlesOptions } from "../subtitles/controller"
+import { adShowing, captionsOn, findPlayer, videoIdOf, videoIn, YOUTUBE_HOST } from "./player"
 import { watchTracks, type Track } from "./track"
 
 /** For videos watched earlier in the tab, because the player may not download their track again on the way back. */
 const MAX_TRACKS = 20
-
-type CaptionsOptions = {
-  /** Word lookup as a whole. Without it the subtitles are YouTube's own. */
-  isEnabled: () => boolean
-  /** `lang` is the track's language. */
-  lookUp: (hit: WordHit, lang: string) => void
-  /** Whether the open popover is the lookup of `hit`. */
-  isShown: (hit: WordHit) => boolean
-  /** Closes the popover. */
-  close: () => void
-}
 
 /**
  * Shows the track the player last downloaded for the video on the page, in place of YouTube's captions.
@@ -38,135 +15,40 @@ type CaptionsOptions = {
  * and in players without the button, like the one for Shorts.
  * While on, it also has the page's world undo the audio and captions YouTube picks from the viewer's language.
  */
-export const showYouTubeCaptions = (
-  ctx: ContentScriptContext,
-  { isEnabled, lookUp, isShown, close }: CaptionsOptions,
-) => {
+export const showYouTubeCaptions = (ctx: ContentScriptContext, options: SubtitlesOptions): Subtitles => {
   const tracks = new Map<string, Track>()
-  let showing = true
-  let settings: SubtitleSettings = DEFAULT_SUBTITLE_SETTINGS
-  let copyMenu: ReturnType<typeof addCopyMenu> | undefined
-  /** Whether the overlay slides, which depends on the track as well as the settings. */
-  let overlaySlides: boolean | undefined
-  let overlay: Overlay | undefined
-  let track: Track | undefined
-  let pausedVideo: HTMLVideoElement | undefined
-  /** Ends the wait for `pausedVideo` to play by other means, like the space key. */
-  let stopWatchingPlay: AbortController | undefined
   let href: string | undefined
   let videoId: string | undefined
-  let running = false
 
-  const loadSettings = async () => {
-    const [youtube, lookup, subtitles] = await Promise.all([
-      getYoutubeCaptions(),
-      getLookupEnabled(),
-      getSubtitleSettings(),
-    ])
-    showing = youtube
-    if (JSON.stringify(subtitles) !== JSON.stringify(settings)) {
-      settings = subtitles
-      // Drawn again with the new settings on the next frame.
-      removeOverlay()
-    }
+  const markOriginal = async () => {
+    const [youtube, lookup] = await Promise.all([getYoutubeCaptions(), getLookupEnabled()])
     document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
-  void loadSettings()
+  void markOriginal()
   browser.storage.onChanged.addListener((changes) => {
-    if (["youtubeCaptions", "lookupEnabled", ...SUBTITLE_KEYS].some((key) => key in changes)) {
-      void loadSettings()
+    if ("youtubeCaptions" in changes || "lookupEnabled" in changes) {
+      void markOriginal()
     }
   })
 
-  const removeOverlay = () => {
-    copyMenu?.remove()
-    copyMenu = undefined
-    overlay?.remove()
-    overlay = undefined
-  }
-  // An overlay left behind by a reloaded extension would keep YouTube's own captions hidden.
-  removeLeftovers()
-  ctx.onInvalidated(removeOverlay)
-
-  const onWord = (hit: WordHit) => {
-    if (track === undefined || overlay === undefined) {
-      return
-    }
-    // Clicking the word again, or another word its match covers, closes its lookup, which plays the video again.
-    if (isShown(hit) || overlay.isMarked(hit)) {
-      close()
-      return
-    }
-    lookUp(hit, track.lang)
-    // After the lookup, since opening it can close the one before, which plays the video again.
-    const video = videoIn(overlay.player)
-    if (video !== null && !video.paused) {
-      video.pause()
-      pausedVideo = video
-      watchPlay(video)
-    }
-  }
-
-  /** Closes the lookup once `video` plays again, since the lookup is what paused it. */
-  const watchPlay = (video: HTMLVideoElement) => {
-    stopWatchingPlay?.abort()
-    stopWatchingPlay = new AbortController()
-    video.addEventListener(
-      "play",
-      () => {
-        // A `play` queued just before the pause arrives after it, with the video paused again.
-        if (!video.paused) {
-          close()
-        }
-      },
-      { signal: AbortSignal.any([stopWatchingPlay.signal, ctx.signal]) },
-    )
-  }
-
-  const update = () => {
-    // YouTube changes video without loading a new page.
-    if (location.href !== href) {
-      href = location.href
-      const next = videoIdOf(new URL(href))
-      // A drag places the subtitles for one video.
-      if (next !== videoId) {
-        overlay?.resetPosition()
+  const subtitles = showSubtitles(ctx, options, {
+    host: YOUTUBE_HOST,
+    isOn: getYoutubeCaptions,
+    keys: ["youtubeCaptions"],
+    frame: () => {
+      // YouTube changes video without loading a new page.
+      if (location.href !== href) {
+        href = location.href
+        videoId = videoIdOf(new URL(href))
       }
-      videoId = next
-    }
-    const player = findPlayer()
-    const video = player === null ? null : videoIn(player)
-    track = videoId === undefined ? undefined : tracks.get(videoId)
-    // The overlay hides YouTube's captions while it is there, so it goes when ours are not to show.
-    if (
-      !showing ||
-      !isEnabled() ||
-      player === null ||
-      video === null ||
-      track === undefined ||
-      !captionsOn(player)
-    ) {
-      removeOverlay()
-      return
-    }
-    // A fast track shows without the slide, so its subtitles do not keep moving.
-    const slide = settings.slide && !(settings.calm && track.fast)
-    if (overlay?.player !== player || overlaySlides !== slide) {
-      removeOverlay()
-      overlay = createOverlay(ctx, player, onWord, { ...settings, slide })
-      copyMenu = addCopyMenu(ctx, overlay)
-      overlaySlides = slide
-    }
-    overlay.show(
-      adShowing(player) ? undefined : shownAt(track.cues, video.currentTime * 1000, settings.styles),
-      track.lang,
-    )
-  }
-
-  const tick = () => {
-    update()
-    ctx.requestAnimationFrame(tick)
-  }
+      const player = findPlayer()
+      const video = player === null ? null : videoIn(player)
+      const track = videoId === undefined ? undefined : tracks.get(videoId)
+      return player === null || video === null || track === undefined || !captionsOn(player)
+        ? undefined
+        : { player, video, track, hidden: adShowing(player), key: videoId }
+    },
+  })
 
   watchTracks(ctx, (next) => {
     // Re-adding moves it to the end, so the oldest goes first.
@@ -178,37 +60,8 @@ export const showYouTubeCaptions = (
       }
       tracks.delete(oldest)
     }
-    // Only pages that get a track pay for following the video.
-    if (!running) {
-      running = true
-      tick()
-    }
+    subtitles.start()
   })
 
-  return {
-    /** Plays the video again if a lookup paused it. */
-    popoverClosed: () => {
-      stopWatchingPlay?.abort()
-      stopWatchingPlay = undefined
-      void pausedVideo?.play().catch(() => {})
-      pausedVideo = undefined
-    },
-    /**
-     * Keeps a press on the player that closes the popover from the player, while a lookup keeps the video paused.
-     * Closing plays the video, and the player would take the press as a pause.
-     */
-    keepClosingPress: (event: PointerEvent) => {
-      if (
-        pausedVideo !== undefined &&
-        overlay !== undefined &&
-        event.composedPath().includes(overlay.player)
-      ) {
-        keepPressFromPage(ctx, event)
-      }
-    },
-    /** Whether `event` happened on the subtitles. */
-    contains: (event: Event): boolean => overlay?.contains(event) ?? false,
-    /** How to mark words around `node`, when it is in the subtitles. */
-    markFor: (node: Node): Paint | undefined => (overlay?.holds(node) === true ? overlay.mark : undefined),
-  }
+  return subtitles
 }

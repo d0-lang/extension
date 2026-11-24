@@ -1,4 +1,5 @@
 /** Reads the YouTube player from its DOM, since its API lives in the page's own world. */
+import type { Host } from "../subtitles/host"
 
 const HOSTS = new Set(["www.youtube.com", "m.youtube.com", "www.youtube-nocookie.com"])
 
@@ -20,6 +21,22 @@ export const findPlayer = (): HTMLElement | null =>
   document.querySelector<HTMLElement>(".html5-video-player")
 
 export const videoIn = (player: HTMLElement): HTMLVideoElement | null => player.querySelector("video")
+
+/** YouTube's player, for the subtitles shown in it. */
+export const YOUTUBE_HOST: Host = {
+  bars: (player) => {
+    const box = player.getBoundingClientRect()
+    // Players without a title, like the watch page's, keep the bar empty or hidden.
+    const title = player.querySelector(".ytp-chrome-top")?.getBoundingClientRect()
+    const controls = player.querySelector(".ytp-chrome-bottom")?.getBoundingClientRect()
+    return {
+      top: title === undefined || title.height === 0 ? 0 : Math.max(0, title.bottom - box.top),
+      bottom: controls === undefined || controls.height === 0 ? 0 : Math.max(0, box.bottom - controls.top),
+    }
+  },
+  ownSubtitles: ".ytp-caption-window-container",
+  ownMenu: ".ytp-contextmenu",
+}
 
 /** Whether the viewer has the CC button on. */
 export const captionsOn = (player: HTMLElement): boolean =>

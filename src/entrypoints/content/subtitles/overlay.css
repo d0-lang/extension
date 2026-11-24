@@ -94,6 +94,13 @@
   pointer-events: none;
 }
 
-.html5-video-player:has(> [data-dadict-captions]) .ytp-caption-window-container {
-  display: none !important;
+/*
+ * Subtitles the browser draws from the video's own tracks, in a player or next to a box laid over the video. What a
+ * player draws itself is hidden by the host's rule.
+ */
+:has(> [data-dadict-captions]) video::cue,
+video:has(~ * > [data-dadict-captions])::cue {
+  color: transparent !important;
+  background: transparent !important;
+  text-shadow: none !important;
 }

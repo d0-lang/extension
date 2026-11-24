@@ -21,7 +21,8 @@
     "mock-server": "bun scripts/mock-server.ts",
     "youtube": "bun scripts/youtube.ts",
     "youtube:perf": "bun scripts/youtube-perf.ts",
-    "youtube:firefox": "bun scripts/youtube-firefox.ts"
+    "youtube:firefox": "bun scripts/youtube-firefox.ts",
+    "sites": "bun scripts/sites.ts"
   },
   "dependencies": {
     "neverthrow": "^8.2.0",

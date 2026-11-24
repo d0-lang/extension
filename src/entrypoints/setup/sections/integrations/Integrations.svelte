@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, type Component } from "svelte"
+  import GlobeIcon from "@lucide/svelte/icons/globe"
   import SearchIcon from "@lucide/svelte/icons/search"
   import { Input } from "$lib/components/ui/input"
   import { Switch } from "$lib/components/ui/switch"
@@ -9,7 +10,10 @@
   import YouTubeIcon from "./YouTubeIcon.svelte"
 
   /** The site's own icon, by integration name. Others show their first letter. */
-  const icons: Record<string, Component<{ class?: string }>> = { YouTube: YouTubeIcon }
+  const icons: Record<string, Component<{ class?: string }>> = {
+    YouTube: YouTubeIcon,
+    "Other sites": GlobeIcon,
+  }
 
   /** Integration name → whether it is on. Unset until storage answers, so no switch flips after showing. */
   let on = $state<Record<string, boolean>>()
