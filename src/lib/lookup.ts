@@ -4,8 +4,9 @@ import { getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { watchAltHold } from "./page/hold"
-import { MAX_WORD_CHARS, wordAt, type AnchorRect, type WordHit } from "./page/pick"
+import { MAX_WORD_CHARS, selectedText, wordAt, type AnchorRect, type WordHit } from "./page/pick"
 import { isDarkBehind } from "./page/scheme"
+import { watchTouchSelection } from "./page/select"
 import { sentenceAround, type Sentence } from "./page/sentence"
 import { createPopoverHost } from "./popover/mount"
 import { createSession } from "./session"
@@ -19,8 +20,8 @@ export type LookupOptions = {
 }
 
 /**
- * Sets up lookup on the page, with holding Alt over a word to look it up. A press outside the popover or Escape
- * closes it, and a change to the servers or languages drops the answers kept so far.
+ * Sets up lookup on the page, with holding Alt over a word or selecting it by touch to look it up. A press outside the
+ * popover or Escape closes it, and a change to the servers or languages drops the answers kept so far.
  */
 export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: LookupOptions) => {
   /** Covers the word the popover is open on, when it is the one under the cursor. */
@@ -132,6 +133,12 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
     show: ({ word, anchor, element, range }) =>
       void open(word, anchor, element, range, sentenceAround(range, word, session.locale())),
     close: popover.close,
+  })
+  watchTouchSelection(ctx, {
+    isEnabled,
+    isOnPopover: popover.contains,
+    selected: () => selectedText(session.locale()),
+    show: ({ word, anchor, element, context }) => void open(word, anchor, element, undefined, context),
   })
   browser.storage.onChanged.addListener((changes) => {
     // A server's sentence setting and the blocked sites decide what an answer was based on, the order which
