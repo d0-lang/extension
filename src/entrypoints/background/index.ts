@@ -4,7 +4,7 @@ import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./
 import { fetchAudio } from "./audio"
 import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
 import { answer } from "./lookup"
-import { createMenuItem, openFromMenu, showMenuItem } from "./menu"
+import { createMenuItem, listenToMenu, showMenuItem } from "./menu"
 import { isServerNotification, notify } from "./notifications"
 import { rememberShown } from "./shown"
 
@@ -65,7 +65,7 @@ export default defineBackground(() => {
     void openSetup()
   })
 
-  browser.contextMenus.onClicked.addListener(openFromMenu)
+  listenToMenu()
 
   browser.tabs.onRemoved.addListener((tabId) => {
     void clearLastLookup(tabId)

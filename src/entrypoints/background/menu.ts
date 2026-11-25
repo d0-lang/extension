@@ -4,10 +4,18 @@ import { getLookupEnabled } from "$lib/storage"
 
 const MENU_ITEM_ID = "dict-look-up"
 
+/** The right-click menu, which Firefox for Android does not have. */
+const menus = (): typeof browser.contextMenus | undefined =>
+  browser.contextMenus as typeof browser.contextMenus | undefined
+
 /** Replace the item, which is hidden while lookup is off. */
 export const createMenuItem = async () => {
-  await browser.contextMenus.removeAll()
-  browser.contextMenus.create({
+  const menu = menus()
+  if (menu === undefined) {
+    return
+  }
+  await menu.removeAll()
+  menu.create({
     id: MENU_ITEM_ID,
     title: "Look up",
     contexts: ["page", "frame", "selection", "link", "editable"],
@@ -16,11 +24,11 @@ export const createMenuItem = async () => {
 }
 
 export const showMenuItem = (visible: boolean) => {
-  void browser.contextMenus.update(MENU_ITEM_ID, { visible })
+  void menus()?.update(MENU_ITEM_ID, { visible })
 }
 
 /** Ask the content script in the clicked frame to open the popover. */
-export const openFromMenu = (info: Browser.contextMenus.OnClickData, tab: Browser.tabs.Tab | undefined) => {
+const openFromMenu = (info: Browser.contextMenus.OnClickData, tab: Browser.tabs.Tab | undefined) => {
   if (info.menuItemId !== MENU_ITEM_ID || tab?.id === undefined) {
     return
   }
@@ -32,4 +40,9 @@ export const openFromMenu = (info: Browser.contextMenus.OnClickData, tab: Browse
   browser.tabs
     .sendMessage(tab.id, message, { frameId: info.frameId })
     .catch((error: unknown) => console.warn("Could not open the lookup popover", error))
+}
+
+/** Opens the popover when the item is clicked. */
+export const listenToMenu = () => {
+  menus()?.onClicked.addListener(openFromMenu)
 }
