@@ -27,7 +27,12 @@ const events = (...lines: Array<string>): string =>
 describe("readAss", () => {
   it("reads dialogue, with commas in its text, line breaks and no tags or comments", () => {
     expect(readAss(ASS)).toEqual([
-      { startMs: 1000, endMs: 2500, text: "Ala ma kota,\ni dwa psy." },
+      {
+        startMs: 1000,
+        endMs: 2500,
+        text: "Ala ma kota,\ni dwa psy.",
+        styles: [{ italic: true, from: 0, to: 3 }],
+      },
       { startMs: 3000, endMs: 4000, text: "Raz dwa trzy" },
     ])
   })
@@ -106,5 +111,39 @@ describe("readAss", () => {
 
   it("reads nothing outside the events", () => {
     expect(readAss("[Script Info]\nDialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Raz")).toEqual([])
+  })
+  it("draws lines in their style's colour, italics and bold, and in what their tags change", () => {
+    const styled = [
+      "[V4+ Styles]",
+      "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic",
+      "Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0",
+      "Style: Thought,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,-1",
+      "Style: Anna,Arial,48,&H0000FFFF,&H000000FF,&H00000000,&H00000000,-1,0",
+      "",
+      events(
+        "Dialogue: 0,0:00:01.00,0:00:02.00,Thought,,0,0,0,,Myślę",
+        "Dialogue: 0,0:00:02.00,0:00:03.00,Anna,,0,0,0,,Raz {\\rDefault}dwa {\\r}trzy",
+        "Dialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,{\\c&HFF8000&}Niebo {\\b1\\1c&H00FF00&}trawa{\\b0\\c} koniec",
+      ),
+    ].join("\n")
+    expect(readAss(styled).map(({ styles }) => styles)).toEqual([
+      [{ italic: true, from: 0, to: 5 }],
+      [
+        { color: "#ffff00", bold: true, from: 0, to: 4 },
+        { color: "#ffff00", bold: true, from: 8, to: 12 },
+      ],
+      [
+        { color: "#0080ff", from: 0, to: 6 },
+        { color: "#00ff00", bold: true, from: 6, to: 11 },
+      ],
+    ])
+  })
+
+  it("leaves out white and colours too dark to read, like the black of a line drawn for its outline", () => {
+    const outlined = events(
+      "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\c&H000000&\\blur3}Raz",
+      "Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,{\\c&HFFFFFF&}Dwa {\\c&H800000&}trzy",
+    )
+    expect(readAss(outlined).map(({ styles }) => styles)).toEqual([undefined, undefined])
   })
 })

@@ -1,6 +1,7 @@
 /** ASS and SSA subtitle files: the lines their characters say or sing, without signs or drawings. */
+import { styledOf, type Char } from "$lib/subtitles/chars"
 import type { Cue } from "$lib/subtitles/cues"
-import { plainText } from "$lib/subtitles/markup"
+import type { TextStyle } from "$lib/subtitles/rows"
 
 /** The fields of an event when the file does not list them, as ASS writes them. */
 const DEFAULT_FORMAT = [
@@ -55,25 +56,105 @@ const withoutFurigana = (syllable: string): string => {
   return base === "#" ? "" : base
 }
 
+/** How a style or a tag draws text. `colour` is `#rrggbb`. */
+type Pen = { colour: string | undefined; italic: boolean; bold: boolean }
+
+const PLAIN: Pen = { colour: undefined, italic: false, bold: false }
+
+/** A colour as ASS writes it, `&HAABBGGRR` with the alpha optional, or as SSA's styles do, a number. */
+const colourOf = (value: string): string | undefined => {
+  const hex = /^&?H([0-9a-f]+)&?$/iu.exec(value.trim())
+  const bgr =
+    hex !== null ? parseInt(hex[1]!.slice(-6), 16) : /^\d+$/u.test(value.trim()) ? Number(value) : undefined
+  if (bgr === undefined) {
+    return undefined
+  }
+  return `#${[bgr & 0xff, (bgr >> 8) & 0xff, (bgr >> 16) & 0xff].map((part) => part.toString(16).padStart(2, "0")).join("")}`
+}
+
+/** WCAG's relative luminance of `#rrggbb`. */
+const luminanceOf = (colour: string): number => {
+  const [r, g, b] = [1, 3, 5].map((at) => {
+    const part = parseInt(colour.slice(at, at + 2), 16) / 255
+    return part <= 0.039_28 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+}
+
+/** Of the subtitles' near-black background, so text in a colour darker than this would not stand out from it. */
+const MIN_LUMINANCE = 0.1
+
 /**
- * An event's text as a cue's: `\N` breaks a line, and `\n` and `\h` are spaces unless the file asks otherwise. A
- * karaoke line loses the readings over its syllables.
+ * The style `pen` draws in. White is how subtitles draw anyway. A colour too dark to read on their dark background is
+ * left out, like the black of a copy drawn under a line for its outline.
  */
-const textOf = (text: string): string =>
-  plainText(
-    (KARAOKE.test(text)
-      ? // Split on the tags, which leaves the syllables at even places.
-        text
-          .split(/(\{[^}]*\})/u)
-          .map((part, index) => (index % 2 === 0 ? withoutFurigana(part) : part))
-          .join("")
-      : text
-    )
-      // Every `{…}`, since one without a backslash is a comment.
-      .replace(/\{[^}]*\}/gu, "")
-      .replace(/\\N/gu, "\n")
-      .replace(/\\[nh]/gu, " "),
-  )
+const styleOf = ({ colour, italic, bold }: Pen): TextStyle | undefined => {
+  const style: TextStyle = {
+    ...(colour !== undefined &&
+      colour !== "#ffffff" &&
+      luminanceOf(colour) >= MIN_LUMINANCE && { color: colour }),
+    ...(italic && { italic: true }),
+    ...(bold && { bold: true }),
+  }
+  return Object.keys(style).length === 0 ? undefined : style
+}
+
+/** A style's name, which a leading `*` does not change. */
+const styleName = (name: string): string => name.trim().replace(/^\*/u, "")
+
+/**
+ * `pen` after the tags in `block`, a `{…}` of a line: `\i`, `\b`, `\c` or `\1c`, and `\r`, which goes back to the line's
+ * style, `base`, or to the style it names.
+ */
+const overridden = (pen: Pen, block: string, base: Pen, pens: ReadonlyMap<string, Pen>): Pen =>
+  block
+    .slice(1, -1)
+    .split("\\")
+    .slice(1)
+    .reduce((pen, tag) => {
+      const italic = /^i([01])$/u.exec(tag)
+      const bold = /^b(\d+)$/u.exec(tag)
+      const colour = /^1?c(.*)$/u.exec(tag)
+      const reset = /^r(.*)$/u.exec(tag)
+      if (italic !== null) {
+        return { ...pen, italic: italic[1] === "1" }
+      }
+      if (bold !== null) {
+        // A weight from 100 to 900, or 1 for bold.
+        return { ...pen, bold: Number(bold[1]) === 1 || Number(bold[1]) >= 600 }
+      }
+      if (colour !== null) {
+        return { ...pen, colour: colour[1] === "" ? base.colour : (colourOf(colour[1]!) ?? pen.colour) }
+      }
+      if (reset !== null) {
+        return reset[1] === "" ? base : (pens.get(styleName(reset[1]!)) ?? pen)
+      }
+      return pen
+    }, pen)
+
+/**
+ * An event's text as characters, each with how it is drawn: `\N` breaks a line, and `\n` and `\h` are spaces unless
+ * the file asks otherwise. A karaoke line loses the readings over its syllables. Every `{…}` goes, since one without a
+ * backslash is a comment.
+ */
+const charsOf = (text: string, base: Pen, pens: ReadonlyMap<string, Pen>): Array<Char> => {
+  const karaoke = KARAOKE.test(text)
+  const chars: Array<Char> = []
+  let pen = base
+  // Split on the blocks, which leaves the text at even places.
+  for (const [index, part] of text.split(/(\{[^}]*\})/u).entries()) {
+    if (index % 2 === 1) {
+      pen = overridden(pen, part, base, pens)
+      continue
+    }
+    const shown = (karaoke ? withoutFurigana(part) : part).replace(/\\N/gu, "\n").replace(/\\[nh]/gu, " ")
+    const style = styleOf(pen)
+    for (const char of shown.split("")) {
+      chars.push({ char, style })
+    }
+  }
+  return chars
+}
 
 /** The fields of `value`, what follows `Dialogue:`, named by `format`. The text, which is last, may hold commas. */
 const fieldsOf = (value: string, format: ReadonlyArray<string>): Map<string, string> => {
@@ -85,10 +166,32 @@ const fieldsOf = (value: string, format: ReadonlyArray<string>): Map<string, str
 /** An event of the `[Events]` section: a `Dialogue:` line, or a `Comment:` one, which does not show. */
 type Event = { comment: boolean; effect: string; fields: Map<string, string> }
 
-/** The events of an ASS or SSA file, in the order the file has them. */
-const eventsOf = (text: string): Array<Event> => {
+/** The fields of a style when the file does not list them, as ASS writes them, up to the ones read. */
+const DEFAULT_STYLE_FORMAT = [
+  "name",
+  "fontname",
+  "fontsize",
+  "primarycolour",
+  "secondarycolour",
+  "outlinecolour",
+  "backcolour",
+  "bold",
+  "italic",
+]
+
+const penOf = (fields: Map<string, string>): Pen => ({
+  colour: colourOf(fields.get("primarycolour") ?? ""),
+  // `-1` is on, `0` off.
+  italic: !["", "0"].includes((fields.get("italic") ?? "").trim()),
+  bold: !["", "0"].includes((fields.get("bold") ?? "").trim()),
+})
+
+/** The styles of an ASS or SSA file, by name, and its events in the order the file has them. */
+const sectionsOf = (text: string): { pens: Map<string, Pen>; events: Array<Event> } => {
   let section = ""
   let format = DEFAULT_FORMAT
+  let styleFormat = DEFAULT_STYLE_FORMAT
+  const pens = new Map<string, Pen>()
   const events: Array<Event> = []
   for (const line of text.replace(/\r\n?/gu, "\n").split("\n")) {
     const heading = /^\s*\[([^\]]+)\]\s*$/u.exec(line)
@@ -97,11 +200,24 @@ const eventsOf = (text: string): Array<Event> => {
       continue
     }
     const entry = /^\s*([^:]+):\s?(.*)$/u.exec(line)
-    if (section !== "events" || entry === null) {
+    if (entry === null) {
       continue
     }
     const kind = entry[1]!.trim().toLowerCase()
     const value = entry[2]!
+    // `[V4+ Styles]` in ASS, `[V4 Styles]` in SSA.
+    if (section.endsWith("styles")) {
+      if (kind === "format") {
+        styleFormat = value.split(",").map((name) => name.trim().toLowerCase())
+      } else if (kind === "style") {
+        const fields = fieldsOf(value, styleFormat)
+        pens.set(styleName(fields.get("name") ?? ""), penOf(fields))
+      }
+      continue
+    }
+    if (section !== "events") {
+      continue
+    }
     if (kind === "format") {
       format = value.split(",").map((name) => name.trim().toLowerCase())
     } else if (kind === "dialogue" || kind === "comment") {
@@ -113,11 +229,12 @@ const eventsOf = (text: string): Array<Event> => {
       })
     }
   }
-  return events
+  return { pens, events }
 }
 
 /**
- * The cues of an ASS or SSA file, as plain text, in the order the file has them. A song's karaoke lines show whole.
+ * The cues of an ASS or SSA file, in the order the file has them, in their styles' colours, italics and bold. A song's
+ * karaoke lines show whole.
  * An event with an effect, a place on the picture or a drawing is left out, and so is a copy of one at the same time,
  * like a second layer drawn for its outline.
  *
@@ -127,7 +244,7 @@ const eventsOf = (text: string): Array<Event> => {
  * show as one cue.
  */
 export const readAss = (text: string): Array<Cue> => {
-  const events = eventsOf(text)
+  const { pens, events } = sectionsOf(text)
   const templated = events.some(({ comment, effect }) => comment && effect === "karaoke")
   const cues: Array<Cue & { sung: boolean }> = []
   const seen = new Set<string>()
@@ -136,7 +253,9 @@ export const readAss = (text: string): Array<Cue> => {
     const raw = fields.get("text") ?? ""
     const start = msOf(fields.get("start") ?? "")
     const endMs = msOf(fields.get("end") ?? "")
-    const said = textOf(raw)
+    const { text: said, styles } = styledOf(
+      charsOf(raw, pens.get(styleName(fields.get("style") ?? "")) ?? PLAIN, pens),
+    )
     const key = JSON.stringify([start, endMs, said])
     if (
       !shown ||
@@ -150,15 +269,16 @@ export const readAss = (text: string): Array<Cue> => {
     }
     seen.add(key)
     const startMs = start + Number(LEAD_IN.exec(raw)?.[1] ?? 0) * 10
-    cues.push({ startMs: Math.min(startMs, endMs), endMs, text: said, sung: KARAOKE.test(raw) })
+    cues.push({ startMs: Math.min(startMs, endMs), endMs, text: said, styles, sung: KARAOKE.test(raw) })
   }
   const sungFrom = new Map<number, number>()
   for (const { startMs, endMs, sung } of cues.filter(({ sung }) => sung)) {
     sungFrom.set(endMs, Math.min(startMs, sungFrom.get(endMs) ?? startMs))
   }
-  return cues.map(({ startMs, endMs, text, sung }) => ({
+  return cues.map(({ startMs, endMs, text, styles, sung }) => ({
     startMs: sung ? sungFrom.get(endMs)! : startMs,
     endMs,
     text,
+    ...(styles !== undefined && { styles }),
   }))
 }
