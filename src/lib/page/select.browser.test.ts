@@ -64,7 +64,7 @@ describe("watchTouchSelection", () => {
       context: { text: "Ala ma kota, a kot ma Alę." },
     })
     const [selected, anchor] = show.mock.calls[0]!
-    expect(anchor.top).toBe(selected.anchor.top)
+    expect(anchor.top).toBeLessThan(selected.anchor.top)
     expect(anchor.bottom).toBeGreaterThan(selected.anchor.bottom)
   })
 

@@ -8,12 +8,15 @@ const SETTLE_MS = 400
 /** Room under a selection for the handles a phone draws below it, which the popover would cover. */
 const HANDLES_PX = 28
 
+/** Room above a selection for the bar of Copy, Share and the like that Android shows over it. */
+const TOOLBAR_PX = 56
+
 type SelectOptions = {
   isEnabled: () => boolean
   /** Whether `event` happened on the popover, whose text is not looked up from. */
   isOnPopover: (event: Event) => boolean
   selected: () => Selected | undefined
-  /** `anchor` is the selection's box with the handles under it. */
+  /** `anchor` is the selection's box with the handles under it and Android's bar above it. */
   show: (selected: Selected, anchor: AnchorRect) => void
 }
 
@@ -50,7 +53,7 @@ export const watchTouchSelection = (
     }
     shown = now
     const { top, bottom, left, right } = now.anchor
-    show(now, { top, bottom: bottom + HANDLES_PX, left, right })
+    show(now, { top: top - TOOLBAR_PX, bottom: bottom + HANDLES_PX, left, right })
   }
 
   ctx.addEventListener(
