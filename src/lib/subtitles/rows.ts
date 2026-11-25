@@ -17,10 +17,10 @@ export type Styled = { text: string; styles?: ReadonlyArray<StyleRun> | undefine
 export type Place = { anchor: number; x: number; y: number }
 
 /**
- * A cue, the cue before it when that one ended just before in the same place, and where the creator put it. A cue with
- * no text is the silence after the cue before, drawn as an empty row under it.
+ * A cue, the cue before it when that one ended just before in the same place, and where the creator put it. `held` is
+ * whether the cue has ended and stays, dimmed, in the silence after it.
  */
-export type Shown = Styled & { previous?: Styled | undefined; place?: Place | undefined }
+export type Shown = Styled & { previous?: Styled | undefined; place?: Place | undefined; held?: boolean }
 
 export type RowSettings = {
   /** Whether the row the cue before ended on shows above the cue. */
@@ -77,12 +77,6 @@ const paint = (part: HTMLElement, style: TextStyle | undefined) => {
 const cueOf = ({ text, styles = [] }: Styled, lang: string): HTMLElement => {
   const cue = document.createElement("span")
   cue.dataset.cue = ""
-  if (text === "") {
-    // A row as tall as a line, so the cue before sits where it will once the next cue shows.
-    cue.dataset.blank = ""
-    cue.textContent = "\u00a0"
-    return cue
-  }
   let start = 0
   for (const [index, line] of text.split("\n").entries()) {
     const from = start
@@ -124,21 +118,11 @@ const keepLastRow = (cue: HTMLElement) => {
 export const createRows = (root: HTMLElement, settings: RowSettings, place: () => void) => {
   let shown = ""
   let current: { key: string; lang: string; element: HTMLElement } | undefined
-  /** The row above `current`, while it shows. */
-  let above: { key: string; lang: string } | undefined
-
-  const moves = () => settings.slide && !matchMedia("(prefers-reduced-motion: reduce)").matches
-
-  const fadeIn = (cue: HTMLElement) => {
-    if (moves()) {
-      cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS, easing: "ease-in" })
-    }
-  }
 
   /** Slides everything up from where the cue now above was, and fades the new cue in. */
   const slide = (from: number, previous: HTMLElement, cue: HTMLElement) => {
     const distance = from - previous.getBoundingClientRect().bottom
-    if (!moves() || distance <= 0) {
+    if (!settings.slide || distance <= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return
     }
     // Added to whatever centres the subtitles, which may be a `translate` too, as with Tailwind's.
@@ -147,34 +131,26 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       easing: "ease-out",
       composite: "add",
     })
-    fadeIn(cue)
+    cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS, easing: "ease-in" })
   }
 
   return (cue: Shown, lang: string, visible: boolean): boolean => {
     const previous = settings.previous ? cue.previous : undefined
     const key = JSON.stringify([lang, previous === undefined ? undefined : keyOf(previous), keyOf(cue)])
     if (key === shown) {
-      return false
+      const held = cue.held === true
+      if (current === undefined || (current.element.dataset.held !== undefined) === held) {
+        return false
+      }
+      current.element.toggleAttribute("data-held", held)
+      return true
     }
     shown = key
     root.lang = lang
     const element = cueOf(cue, lang)
+    element.toggleAttribute("data-held", cue.held === true)
     const ended = current
-    const before = above
     current = { key: keyOf(cue), lang, element }
-    above = previous === undefined ? undefined : { key: keyOf(previous), lang }
-    if (
-      previous !== undefined &&
-      ended?.element.dataset.blank !== undefined &&
-      before?.lang === lang &&
-      before.key === keyOf(previous)
-    ) {
-      // The silence ends, and the next cue takes the empty row under the one that held.
-      ended.element.replaceWith(element)
-      place()
-      fadeIn(element)
-      return true
-    }
     if (
       previous !== undefined &&
       ended !== undefined &&
@@ -184,6 +160,7 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
       const from = visible ? ended.element.getBoundingClientRect().bottom : undefined
       keepLastRow(ended.element)
+      delete ended.element.dataset.held
       ended.element.dataset.previous = ""
       while (root.firstChild !== ended.element) {
         root.firstChild!.remove()
@@ -199,10 +176,10 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       root.replaceChildren(element)
     } else {
       // Laid out alone first, as it showed before a seek, to find the row it ended on.
-      const row = cueOf(previous, lang)
-      root.replaceChildren(row)
-      keepLastRow(row)
-      row.dataset.previous = ""
+      const before = cueOf(previous, lang)
+      root.replaceChildren(before)
+      keepLastRow(before)
+      before.dataset.previous = ""
       root.append("\n", element)
     }
     place()

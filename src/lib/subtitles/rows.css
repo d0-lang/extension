@@ -34,6 +34,17 @@
   opacity: 0.75;
 }
 
+/* A cue that ended, dimmed like the row before while it waits in the silence after it. */
+[data-dadict-captions] [data-held] {
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-dadict-captions] [data-held] {
+    transition: opacity 0.3s;
+  }
+}
+
 /* An inline box like the line's, so the hover is as tall as the dark background. */
 [data-dadict-captions] [data-word] {
   cursor: pointer;
@@ -42,9 +53,4 @@
 
 [data-dadict-captions] [data-word]:hover:not([data-mark], [data-picked]) {
   background: rgb(255 255 255 / 0.25);
-}
-
-/* The empty row under the cue before, in the silence after it. */
-[data-dadict-captions] [data-blank] {
-  visibility: hidden;
 }
