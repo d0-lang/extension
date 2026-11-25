@@ -15,6 +15,7 @@ const fakeContext = (signal: AbortSignal) =>
       options?: AddEventListenerOptions,
     ) => target.addEventListener(type, listener as EventListener, { ...options, signal }),
     setTimeout: (handler: () => void, ms: number) => window.setTimeout(handler, ms),
+    onInvalidated: () => {},
   }) as unknown as ContentScriptContext
 
 const press = (pointerType: string, target: EventTarget = document.body) =>
@@ -29,6 +30,15 @@ const select = (text: string) => {
 
 /** Waits for the selection to settle, and for `selectionchange`, which is queued, to come first. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, SETTLED_MS))
+
+const button = (): HTMLButtonElement | undefined =>
+  document.querySelector("dadict-look-up")?.shadowRoot?.querySelector("button") ?? undefined
+
+/** Waits for the selection to settle and presses the button it offers, if any. */
+const pressButton = async () => {
+  await settle()
+  button()?.click()
+}
 
 describe("watchTouchSelection", () => {
   let aborts: AbortController
@@ -54,10 +64,14 @@ describe("watchTouchSelection", () => {
     document.body.replaceChildren()
   })
 
-  it("looks up a word selected by touch once the selection settles, with its sentence", async () => {
+  it("offers a button under a word selected by touch, which looks it up with its sentence", async () => {
     press("touch")
     select("kota")
     await settle()
+    expect(show).not.toHaveBeenCalled()
+    const word = document.querySelector("p")!.getBoundingClientRect()
+    expect(button()!.getBoundingClientRect().top).toBeGreaterThan(word.top)
+    button()!.click()
     expect(show).toHaveBeenCalledOnce()
     expect(show.mock.calls[0]![0]).toMatchObject({
       word: "kota",
@@ -66,29 +80,32 @@ describe("watchTouchSelection", () => {
     const [selected, anchor] = show.mock.calls[0]!
     expect(anchor.top).toBeLessThan(selected.anchor.top)
     expect(anchor.bottom).toBeGreaterThan(selected.anchor.bottom)
+    expect(button()).toBeUndefined()
+    expect(window.getSelection()!.toString()).toBe("kota")
   })
 
-  it("looks up only where a widened selection stops, and not the same one twice", async () => {
+  it("hides the button while the selection changes, and offers where it stops", async () => {
     press("touch")
     select("ma")
-    select("ma kota")
     await settle()
     select("ma kota")
-    await settle()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(button()).toBeUndefined()
+    await pressButton()
     expect(show.mock.calls.map(([selected]) => selected.word)).toEqual(["ma kota"])
   })
 
-  it("leaves a selection made with a mouse, one in the popover, or a passage alone", async () => {
+  it("offers no button for a selection made with a mouse, one in the popover, or a passage", async () => {
     press("mouse")
     select("kota")
-    await settle()
+    await pressButton()
     press("touch", onPopover)
     select("ma")
-    await settle()
+    await pressButton()
     press("touch")
     document.querySelector("p")!.textContent = "Ala ".repeat(30)
     select("Ala ".repeat(20).trim())
-    await settle()
+    await pressButton()
     expect(show).not.toHaveBeenCalled()
   })
 })

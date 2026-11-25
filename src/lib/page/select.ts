@@ -1,11 +1,12 @@
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isTyping } from "./hold"
+import { createLookUpButton } from "./look-up-button"
 import { MAX_WORD_CHARS, type AnchorRect, type Selected } from "./pick"
 
-/** Dragging a handle to widen the selection changes it many times, and only where it stops is looked up. */
-const SETTLE_MS = 400
+/** Dragging a handle to widen the selection changes it many times, and the button waits for where it stops. */
+const SETTLE_MS = 300
 
-/** Room under a selection for the handles a phone draws below it, which the popover would cover. */
+/** Room under a selection for the handles a phone draws below it, which the button and popover would cover. */
 const HANDLES_PX = 28
 
 /** Room above a selection for the bar of Copy, Share and the like that Android shows over it. */
@@ -20,7 +21,7 @@ type SelectOptions = {
   show: (selected: Selected, anchor: AnchorRect) => void
 }
 
-/** Whether `a` and `b` cover the same text at the same place, so a selection that did not move is not looked up again. */
+/** Whether `a` and `b` cover the same text at the same place, so a selection that did not move is not offered again. */
 const sameSelection = (a: Selected | undefined, b: Selected): boolean =>
   a !== undefined &&
   a.word === b.word &&
@@ -28,8 +29,9 @@ const sameSelection = (a: Selected | undefined, b: Selected): boolean =>
   a.range.startOffset === b.range.startOffset
 
 /**
- * Looks up a word selected by touch, like with a long press on a phone, where there is no Alt to hold or menu to
- * open. A selection longer than a word or two, or one made with a mouse or keys, is left alone.
+ * Offers to look up a word selected by touch, like with a long press on a phone, where there is no Alt to hold or menu
+ * to open. A "Look up" button shows under the selection once it settles, and goes while it changes. A selection longer
+ * than a word or two, or one made with a mouse or keys, gets no button.
  */
 export const watchTouchSelection = (
   ctx: ContentScriptContext,
@@ -37,10 +39,20 @@ export const watchTouchSelection = (
 ) => {
   let touching = false
   let timer: number | undefined
+  /** The selection the button is for. */
+  let offered: { selected: Selected; anchor: AnchorRect } | undefined
+  /** The selection last looked up, which the popover is open for. */
   let shown: Selected | undefined
+  const button = createLookUpButton(ctx, () => {
+    if (offered !== undefined) {
+      shown = offered.selected
+      show(offered.selected, offered.anchor)
+    }
+  })
 
-  const lookUp = () => {
+  const offer = () => {
     const now = selected()
+    offered = undefined
     if (
       !touching ||
       !isEnabled() ||
@@ -51,9 +63,9 @@ export const watchTouchSelection = (
     ) {
       return
     }
-    shown = now
     const { top, bottom, left, right } = now.anchor
-    show(now, { top: top - TOOLBAR_PX, bottom: bottom + HANDLES_PX, left, right })
+    offered = { selected: now, anchor: { top: top - TOOLBAR_PX, bottom: bottom + HANDLES_PX, left, right } }
+    button.show(offered.anchor)
   }
 
   ctx.addEventListener(
@@ -65,7 +77,8 @@ export const watchTouchSelection = (
     { capture: true, passive: true },
   )
   ctx.addEventListener(document, "selectionchange", () => {
+    button.hide()
     clearTimeout(timer)
-    timer = ctx.setTimeout(lookUp, SETTLE_MS)
+    timer = ctx.setTimeout(offer, SETTLE_MS)
   })
 }
