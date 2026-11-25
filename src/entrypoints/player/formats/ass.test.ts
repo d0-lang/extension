@@ -32,19 +32,56 @@ describe("readAss", () => {
     ])
   })
 
-  it("leaves out signs, drawings, karaoke and effects", () => {
+  it("leaves out signs, drawings and effects", () => {
     expect(
       readAss(
         events(
           "Dialogue: 0,0:00:01.00,0:00:05.00,Sign,,0,0,0,,{\\an8\\pos(640,80)}Dworzec Centralny",
           "Dialogue: 0,0:00:01.00,0:00:05.00,Sign,,0,0,0,,{\\move(0,0,100,100)}Ulica",
           "Dialogue: 0,0:00:01.00,0:00:05.00,Sign,,0,0,0,,{\\p1}m 0 0 l 100 0 100 100",
-          "Dialogue: 0,0:00:01.00,0:00:05.00,OP,,0,0,0,,{\\k20}Ra{\\kf30}zem",
+          "Dialogue: 0,0:00:01.00,0:00:01.10,OP,,0,0,0,fx,{\\an5\\pos(300,40)}Ra",
           "Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,Scroll up;10;100;5,Napisy",
           "Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,{\\an8}Mówię u góry",
         ),
       ),
     ).toEqual([{ startMs: 2000, endMs: 3000, text: "Mówię u góry" }])
+  })
+
+  it("shows a song's karaoke line whole", () => {
+    expect(
+      readAss(
+        events("Dialogue: 0,0:00:01.00,0:00:05.00,OP,,0,0,0,,{\\k20}Ra{\\kf30}zem {\\ko25}we {\\K40}dwoje"),
+      ),
+    ).toEqual([{ startMs: 1000, endMs: 5000, text: "Razem we dwoje" }])
+  })
+
+  it("reads the sung lines a karaoke template was made from, in place of what it made", () => {
+    const sung = events(
+      "Comment: 0,0:00:00.00,0:00:00.00,OP,,0,0,0,template line,{\\fad(300,200)}",
+      "Comment: 0,0:00:01.00,0:00:03.00,OP,,0,0,0,karaoke,{\\k20}Ra{\\k30}zem",
+      "Dialogue: 0,0:00:00.10,0:00:03.20,OP,,0,0,0,fx,{\\fad(300,200)}{\\k90}{\\k20}Ra{\\k30}zem",
+      "Dialogue: 0,0:00:01.00,0:00:01.20,OP,,0,0,0,fx,{\\an5\\pos(300,40)}Ra",
+    )
+    expect(readAss(sung)).toEqual([{ startMs: 1000, endMs: 3000, text: "Razem" }])
+  })
+
+  it("reads whole karaoke lines a template made when the file has nothing else", () => {
+    expect(
+      readAss(
+        events("Dialogue: 0,0:00:01.00,0:00:03.00,OP,,0,0,0,fx,{\\k90\\fad(300,200)}{\\k20}Ra{\\k30}zem"),
+      ),
+    ).toEqual([{ startMs: 1900, endMs: 3000, text: "Razem" }])
+  })
+
+  it("shows a song's kanji and romaji together, after the lead-in, without the readings over the kanji", () => {
+    const song = events(
+      "Comment: 0,0:00:10.20,0:00:16.12,Kanji,,0,0,0,karaoke,{\\k90}{\\k19}ね{\\k52}ぇ　{\\k17}忘|わ{\\k17}#|す{\\k16}れ{\\k16}な{\\k17}い{\\k27}で",
+      "Comment: 0,0:00:11.20,0:00:16.12,Romaji,,0,0,0,karaoke,{\\k19}ne{\\k52}e {\\k17}wa{\\k17}su{\\k16}re{\\k16}na{\\k17}i{\\k27}de",
+    )
+    expect(readAss(song)).toEqual([
+      { startMs: 11_100, endMs: 16_120, text: "ねぇ 忘れないで" },
+      { startMs: 11_100, endMs: 16_120, text: "nee wasurenaide" },
+    ])
   })
 
   it("keeps one of the same line drawn twice, like an outline under it", () => {
