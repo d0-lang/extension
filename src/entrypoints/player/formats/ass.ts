@@ -72,27 +72,10 @@ const colourOf = (value: string): string | undefined => {
   return `#${[bgr & 0xff, (bgr >> 8) & 0xff, (bgr >> 16) & 0xff].map((part) => part.toString(16).padStart(2, "0")).join("")}`
 }
 
-/** WCAG's relative luminance of `#rrggbb`. */
-const luminanceOf = (colour: string): number => {
-  const [r, g, b] = [1, 3, 5].map((at) => {
-    const part = parseInt(colour.slice(at, at + 2), 16) / 255
-    return part <= 0.039_28 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4
-  })
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
-}
-
-/** Of the subtitles' near-black background, so text in a colour darker than this would not stand out from it. */
-const MIN_LUMINANCE = 0.1
-
-/**
- * The style `pen` draws in. White is how subtitles draw anyway. A colour too dark to read on their dark background is
- * left out, like the black of a copy drawn under a line for its outline.
- */
+/** The style `pen` draws in. White is how subtitles draw anyway. */
 const styleOf = ({ colour, italic, bold }: Pen): TextStyle | undefined => {
   const style: TextStyle = {
-    ...(colour !== undefined &&
-      colour !== "#ffffff" &&
-      luminanceOf(colour) >= MIN_LUMINANCE && { color: colour }),
+    ...(colour !== undefined && colour !== "#ffffff" && { color: colour }),
     ...(italic && { italic: true }),
     ...(bold && { bold: true }),
   }

@@ -139,11 +139,10 @@ describe("readAss", () => {
     ])
   })
 
-  it("leaves out white and colours too dark to read, like the black of a line drawn for its outline", () => {
-    const outlined = events(
-      "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\c&H000000&\\blur3}Raz",
+  it("leaves out white, which subtitles draw in anyway", () => {
+    const white = events(
       "Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,{\\c&HFFFFFF&}Dwa {\\c&H800000&}trzy",
     )
-    expect(readAss(outlined).map(({ styles }) => styles)).toEqual([undefined, undefined])
+    expect(readAss(white).map(({ styles }) => styles)).toEqual([[{ color: "#000080", from: 4, to: 8 }]])
   })
 })
