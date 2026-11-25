@@ -42,4 +42,26 @@ describe("createRows", () => {
     expect(root.getAnimations()).toHaveLength(0)
     expect(root.querySelector("[data-previous]")?.textContent).toBe("Mamy gościa.")
   })
+  it("slides the cue up over an empty row in the silence, and keeps it there for the next cue", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: true }, () => {})
+    show({ text: "Mamy gościa." }, "pl", false)
+    const said = root.querySelector("[data-cue]")!
+    const bottom = said.getBoundingClientRect().bottom
+    show({ text: "", previous: { text: "Mamy gościa." } }, "pl", true)
+    for (const animation of root.getAnimations()) {
+      animation.finish()
+    }
+    expect(said.hasAttribute("data-previous")).toBe(true)
+    expect(said.getBoundingClientRect().bottom).toBeLessThan(bottom)
+    const held = said.getBoundingClientRect().top
+    show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
+    for (const animation of root.getAnimations()) {
+      animation.finish()
+    }
+    expect(root.querySelector("[data-previous]")).toBe(said)
+    expect(said.getBoundingClientRect().top).toBeCloseTo(held, 0)
+    expect(root.querySelector("[data-blank]")).toBeNull()
+    expect(root.textContent).toBe("Mamy gościa.\nAla ma kota.")
+  })
 })

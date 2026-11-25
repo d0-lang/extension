@@ -43,3 +43,8 @@
 [data-dadict-captions] [data-word]:hover:not([data-mark], [data-picked]) {
   background: rgb(255 255 255 / 0.25);
 }
+
+/* The empty row under the cue before, in the silence after it. */
+[data-dadict-captions] [data-blank] {
+  visibility: hidden;
+}
