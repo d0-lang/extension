@@ -42,4 +42,20 @@ describe("createRows", () => {
     expect(root.getAnimations()).toHaveLength(0)
     expect(root.querySelector("[data-previous]")?.textContent).toBe("Mamy gościa.")
   })
+  it("dims the cue in place in the silence, and slides it up from there for the next cue", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: true }, () => {})
+    show({ text: "Mamy gościa." }, "pl", false)
+    const said = root.querySelector<HTMLElement>("[data-cue]")!
+    const word = said.querySelector("[data-word]")!
+    const top = word.getBoundingClientRect().top
+    expect(show({ text: "Mamy gościa.", held: true }, "pl", true)).toBe(true)
+    expect(root.querySelector("[data-cue]")).toBe(said)
+    expect(said.hasAttribute("data-held")).toBe(true)
+    expect(word.getBoundingClientRect().top).toBe(top)
+    show({ text: "Ala ma kota.", previous: { text: "Mamy gościa." } }, "pl", true)
+    expect(root.querySelector("[data-previous]")).toBe(said)
+    expect(said.hasAttribute("data-held")).toBe(false)
+    expect(root.getAnimations()).not.toHaveLength(0)
+  })
 })

@@ -40,7 +40,15 @@ describe("shownAt", () => {
   it("leaves out a cue before that ended long before, or none", () => {
     expect(shownAt(cues, 500, true)).toEqual({ text: "Raz", previous: undefined })
     expect(shownAt(cues, 9200, true)).toEqual({ text: "Cztery", previous: undefined })
-    expect(shownAt(cues, 3000, true)).toBeUndefined()
+    expect(shownAt(cues, 9000, true)).toBeUndefined()
+    expect(shownAt(cues, -1, true)).toBeUndefined()
+  })
+
+  it("holds the cue that ended in the silence after it", () => {
+    expect(shownAt(cues, 2000, true)).toEqual({ ...shownAt(cues, 1999, true), held: true })
+    expect(shownAt(cues, 4999, true)).toMatchObject({ text: "Dwa", held: true })
+    expect(shownAt(cues, 8999, true)).toMatchObject({ text: "Trzy", held: true })
+    expect(shownAt(cues, 12_500, true)).toBeUndefined()
   })
 
   it("leaves out a cue before that was in another place", () => {

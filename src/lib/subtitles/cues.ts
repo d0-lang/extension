@@ -47,15 +47,23 @@ export const isFast = (cues: ReadonlyArray<Cue>): boolean => {
   return before.length > 0 && before.filter((ms) => ms < SHORT_CUE_MS).length >= before.length * FAST_SHARE
 }
 
-/**
- * What shows at `ms`, if anything. The cue before shows above only when it was in the same place.
- * `styled` is whether the styles and places cues come with show.
- */
-export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): Shown | undefined => {
-  const index = indexAt(cues, ms)
-  if (index === undefined) {
-    return undefined
+/** The last cue that ended at or before `ms`, if any. */
+const endedAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
+  let low = 0
+  let high = cues.length - 1
+  while (low <= high) {
+    const middle = (low + high) >> 1
+    if (cues[middle]!.endMs <= ms) {
+      low = middle + 1
+    } else {
+      high = middle - 1
+    }
   }
+  return high < 0 ? undefined : high
+}
+
+/** What shows while the cue at `index` does. */
+const shownOf = (cues: ReadonlyArray<Cue>, index: number, styled: boolean): Shown => {
   const { text, styles, place, startMs } = cues[index]!
   const before = cues[index - 1]
   const follows =
@@ -68,6 +76,23 @@ export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): 
     place: styled ? place : undefined,
     previous: follows ? { text: before.text, styles: styled ? before.styles : undefined } : undefined,
   }
+}
+
+/**
+ * What shows at `ms`, if anything. The cue before shows above only when it was in the same place.
+ * `styled` is whether the styles and places cues come with show.
+ * In the silence after a cue, it stays held for as long as it would wait above the next one, so its last words can
+ * still be clicked.
+ */
+export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): Shown | undefined => {
+  const index = indexAt(cues, ms)
+  if (index !== undefined) {
+    return shownOf(cues, index, styled)
+  }
+  const ended = endedAt(cues, ms)
+  return ended === undefined || ms - cues[ended]!.endMs >= PREVIOUS_GAP_MS
+    ? undefined
+    : { ...shownOf(cues, ended, styled), held: true }
 }
 
 /**

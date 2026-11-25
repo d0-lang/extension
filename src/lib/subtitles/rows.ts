@@ -16,8 +16,11 @@ export type Styled = { text: string; styles?: ReadonlyArray<StyleRun> | undefine
  */
 export type Place = { anchor: number; x: number; y: number }
 
-/** A cue, the cue before it when that one ended just before in the same place, and where the creator put it. */
-export type Shown = Styled & { previous?: Styled | undefined; place?: Place | undefined }
+/**
+ * A cue, the cue before it when that one ended just before in the same place, and where the creator put it. `held` is
+ * whether the cue has ended and stays, dimmed, in the silence after it.
+ */
+export type Shown = Styled & { previous?: Styled | undefined; place?: Place | undefined; held?: boolean }
 
 export type RowSettings = {
   /** Whether the row the cue before ended on shows above the cue. */
@@ -135,11 +138,17 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
     const previous = settings.previous ? cue.previous : undefined
     const key = JSON.stringify([lang, previous === undefined ? undefined : keyOf(previous), keyOf(cue)])
     if (key === shown) {
-      return false
+      const held = cue.held === true
+      if (current === undefined || (current.element.dataset.held !== undefined) === held) {
+        return false
+      }
+      current.element.toggleAttribute("data-held", held)
+      return true
     }
     shown = key
     root.lang = lang
     const element = cueOf(cue, lang)
+    element.toggleAttribute("data-held", cue.held === true)
     const ended = current
     current = { key: keyOf(cue), lang, element }
     if (
@@ -151,6 +160,7 @@ export const createRows = (root: HTMLElement, settings: RowSettings, place: () =
       // The cue that ended stays in the page rather than being drawn again, which would collapse a range on its words.
       const from = visible ? ended.element.getBoundingClientRect().bottom : undefined
       keepLastRow(ended.element)
+      delete ended.element.dataset.held
       ended.element.dataset.previous = ""
       while (root.firstChild !== ended.element) {
         root.firstChild!.remove()
