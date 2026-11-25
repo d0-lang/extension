@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { cueAt, isFast, shownAt, type Cue } from "./cues"
+import { cueAt, inOrder, isFast, shownAt, type Cue } from "./cues"
 
 const cue = (text: string, startMs: number, endMs: number): Cue => ({ startMs, endMs, text })
 
@@ -96,5 +96,25 @@ describe("isFast", () => {
       endMs: cue.endMs + index * 5000,
     }))
     expect(isFast(apart)).toBe(false)
+  })
+})
+
+describe("inOrder", () => {
+  it("joins cues that start together, with the styles of each", () => {
+    const together: Array<Cue> = [
+      { startMs: 0, endMs: 1000, text: "Raz", styles: [{ italic: true, from: 0, to: 3 }] },
+      { startMs: 0, endMs: 2000, text: "Dwa", styles: [{ color: "#ffff00", from: 0, to: 3 }] },
+    ]
+    expect(inOrder(together)).toEqual([
+      {
+        startMs: 0,
+        endMs: 2000,
+        text: "Raz\nDwa",
+        styles: [
+          { italic: true, from: 0, to: 3 },
+          { color: "#ffff00", from: 4, to: 7 },
+        ],
+      },
+    ])
   })
 })

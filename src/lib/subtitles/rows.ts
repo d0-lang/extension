@@ -1,5 +1,6 @@
 /** Subtitles as rows: a cue, and above it the row the cue before ended on. The YouTube overlay and the settings preview draw them alike. */
 import { segmentsOf } from "$lib/tokenize"
+import { readableColour } from "./colour"
 
 /** How a creator styled part of a cue. */
 export type TextStyle = { color?: string; italic?: boolean; bold?: boolean }
@@ -57,10 +58,14 @@ const lineOf = (
   return line
 }
 
-/** Draws a part of a line the way its creator styled it. A style that starts inside the part takes it from there. */
+/**
+ * Draws a part of a line the way its creator styled it, in a colour light enough to read. A style that starts inside
+ * the part takes it from there.
+ */
 const paint = (part: HTMLElement, style: TextStyle | undefined) => {
-  if (style?.color !== undefined) {
-    part.style.color = style.color
+  const color = style?.color === undefined ? undefined : readableColour(style.color)
+  if (color !== undefined) {
+    part.style.color = color
   }
   if (style?.italic === true) {
     part.style.fontStyle = "italic"

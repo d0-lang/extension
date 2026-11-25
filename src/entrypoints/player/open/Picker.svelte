@@ -27,7 +27,7 @@
       <div class="flex flex-col gap-1">
         <h1 class="text-xl font-semibold">Drop a video and its subtitles</h1>
         <p class="text-muted-foreground text-sm">
-          SRT or WebVTT subtitles, with words you can click to look up. Nothing leaves your computer.
+          SRT, WebVTT or ASS subtitles, with words you can click to look up. Nothing leaves your computer.
         </p>
       </div>
       <ChooseFiles {onFiles}>

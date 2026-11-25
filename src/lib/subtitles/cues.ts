@@ -108,10 +108,20 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
   for (const cue of sorted) {
     const last = together.at(-1)
     if (last !== undefined && last.startMs === cue.startMs) {
+      const styles = [
+        ...(last.styles ?? []),
+        // Past the first cue's text and the line break after it.
+        ...(cue.styles ?? []).map((run) => ({
+          ...run,
+          from: run.from + last.text.length + 1,
+          to: run.to + last.text.length + 1,
+        })),
+      ]
       together[together.length - 1] = {
         ...last,
         endMs: Math.max(last.endMs, cue.endMs),
         text: `${last.text}\n${cue.text}`,
+        ...(styles.length > 0 && { styles }),
       }
     } else {
       together.push(cue)

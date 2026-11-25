@@ -58,4 +58,16 @@ describe("createRows", () => {
     expect(said.hasAttribute("data-held")).toBe(false)
     expect(root.getAnimations()).not.toHaveLength(0)
   })
+  it("draws a dark colour lighter, and a black one white", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: true }, () => {})
+    const styles = [
+      { color: "#000080", from: 0, to: 5 },
+      { color: "#000000", from: 6, to: 10 },
+    ]
+    show({ text: "Niebo nocą", styles }, "pl", false)
+    const [sky, night] = root.querySelectorAll("[data-word]")
+    expect((sky as HTMLElement).style.color).toMatch(/^oklch\(0\.72 /u)
+    expect((night as HTMLElement).style.color).toBe("")
+  })
 })

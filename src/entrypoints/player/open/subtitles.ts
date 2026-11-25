@@ -23,7 +23,7 @@ export const loadSubtitles = (file: File): ResultAsync<FileTrack, SubtitleFileEr
 export const problemOf = (name: string, error: SubtitleFileError): string => {
   switch (error.kind) {
     case "unsupported":
-      return `${name}: .${error.extension} subtitles cannot be read yet. Use an SRT or WebVTT file.`
+      return `${name}: .${error.extension} subtitles cannot be read. Use an SRT, WebVTT or ASS file.`
     case "unreadable":
       return `${name} could not be read.`
     case "empty":
