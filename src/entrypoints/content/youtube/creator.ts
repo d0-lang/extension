@@ -1,5 +1,6 @@
 /** A creator's cues, with the pens they are drawn with and where the creator put them. */
-import type { Place, StyleRun, TextStyle } from "$lib/subtitles/rows"
+import { styledOf, type Char } from "$lib/subtitles/chars"
+import type { Place, TextStyle } from "$lib/subtitles/rows"
 import { SOUND, SOUND_ONLY } from "./clean"
 import type { Cue } from "$lib/subtitles/cues"
 import type { Json3 } from "./json3"
@@ -13,9 +14,6 @@ const WHITE = 0xffffff
 
 /** Where YouTube puts a cue whose window names no place: by its bottom centre, at the bottom centre. */
 const BOTTOM_CENTRE: Place = { anchor: 7, x: 50, y: 100 }
-
-/** A character of a cue, and how it is drawn. */
-type Char = { char: string; style: TextStyle | undefined }
 
 const styleOf = (pen: Pen | undefined): TextStyle | undefined => {
   const style: TextStyle = {
@@ -42,43 +40,6 @@ const charsOf = ({ segs = [], pPenId }: Event, pens: Json3["pens"]): Array<Char>
   return chars.filter((_, index) => !dropped.has(index))
 }
 
-/** One space between words, none at the ends, as `tidy` makes them. A space keeps the style of the first it stands for. */
-const tidyLine = (line: ReadonlyArray<Char>): Array<Char> => {
-  const tidied: Array<Char> = []
-  for (const char of line) {
-    if (!/\s/u.test(char.char)) {
-      tidied.push(char)
-    } else if (tidied.length > 0 && tidied.at(-1)!.char !== " ") {
-      tidied.push({ char: " ", style: char.style })
-    }
-  }
-  if (tidied.at(-1)?.char === " ") {
-    tidied.pop()
-  }
-  return tidied
-}
-
-const sameStyle = (a: TextStyle, b: TextStyle): boolean => JSON.stringify(a) === JSON.stringify(b)
-
-const styleIn = ({ from: _from, to: _to, ...style }: StyleRun): TextStyle => style
-
-/** Where each style runs. Unstyled text has none. */
-const runsOf = (chars: ReadonlyArray<Char>): Array<StyleRun> => {
-  const runs: Array<StyleRun> = []
-  for (const [index, { style }] of chars.entries()) {
-    const last = runs.at(-1)
-    if (style === undefined) {
-      continue
-    }
-    if (last !== undefined && last.to === index && sameStyle(styleIn(last), style)) {
-      last.to = index + 1
-    } else {
-      runs.push({ ...style, from: index, to: index + 1 })
-    }
-  }
-  return runs
-}
-
 const placeOf = (event: Event, json3: Json3): Place => {
   const position = event.wpWinPosId === undefined ? undefined : json3.wpWinPositions?.[event.wpWinPosId]
   return {
@@ -94,28 +55,16 @@ const placeOf = (event: Event, json3: Json3): Place => {
  */
 export const creatorCues = (json3: Json3): Array<Cue> => {
   const cues = json3.events.flatMap((event) => {
-    const lines = charsOf(event, json3.pens)
-      .reduce<Array<Array<Char>>>(
-        (lines, char) => (char.char === "\n" ? [...lines, []] : (lines.at(-1)!.push(char), lines)),
-        [[]],
-      )
-      .map(tidyLine)
-      .filter((line) => line.length > 0)
-    const chars = lines.flatMap((line, index) => [
-      ...(index === 0 ? [] : [{ char: "\n", style: undefined }]),
-      ...line,
-    ])
-    const text = chars.map(({ char }) => char).join("")
+    const { text, styles } = styledOf(charsOf(event, json3.pens))
     if (text === "" || SOUND_ONLY.test(text.replace(/\n/gu, " "))) {
       return []
     }
-    const styles = runsOf(chars)
     return [
       {
         startMs: event.tStartMs,
         endMs: event.tStartMs + event.dDurationMs,
         text,
-        ...(styles.length > 0 && { styles }),
+        ...(styles !== undefined && { styles }),
         place: placeOf(event, json3),
       },
     ]
