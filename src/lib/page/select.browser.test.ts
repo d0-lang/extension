@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { selectedText, type Selected } from "./pick"
+import { selectedText, type AnchorRect, type Selected } from "./pick"
 import { watchTouchSelection } from "./select"
 
 /** Longer than a selection takes to settle. */
@@ -32,7 +32,7 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, SETTLED_MS))
 
 describe("watchTouchSelection", () => {
   let aborts: AbortController
-  let show: ReturnType<typeof vi.fn<(selected: Selected) => void>>
+  let show: ReturnType<typeof vi.fn<(selected: Selected, anchor: AnchorRect) => void>>
   let onPopover: Element | undefined
 
   beforeEach(() => {
@@ -63,6 +63,9 @@ describe("watchTouchSelection", () => {
       word: "kota",
       context: { text: "Ala ma kota, a kot ma Alę." },
     })
+    const [selected, anchor] = show.mock.calls[0]!
+    expect(anchor.top).toBe(selected.anchor.top)
+    expect(anchor.bottom).toBeGreaterThan(selected.anchor.bottom)
   })
 
   it("looks up only where a widened selection stops, and not the same one twice", async () => {

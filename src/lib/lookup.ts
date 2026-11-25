@@ -138,7 +138,7 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
     isEnabled,
     isOnPopover: popover.contains,
     selected: () => selectedText(session.locale()),
-    show: ({ word, anchor, element, context }) => void open(word, anchor, element, undefined, context),
+    show: ({ word, element, context }, anchor) => void open(word, anchor, element, undefined, context),
   })
   browser.storage.onChanged.addListener((changes) => {
     // A server's sentence setting and the blocked sites decide what an answer was based on, the order which

@@ -1,16 +1,20 @@
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isTyping } from "./hold"
-import { MAX_WORD_CHARS, type Selected } from "./pick"
+import { MAX_WORD_CHARS, type AnchorRect, type Selected } from "./pick"
 
 /** Dragging a handle to widen the selection changes it many times, and only where it stops is looked up. */
 const SETTLE_MS = 400
+
+/** Room under a selection for the handles a phone draws below it, which the popover would cover. */
+const HANDLES_PX = 28
 
 type SelectOptions = {
   isEnabled: () => boolean
   /** Whether `event` happened on the popover, whose text is not looked up from. */
   isOnPopover: (event: Event) => boolean
   selected: () => Selected | undefined
-  show: (selected: Selected) => void
+  /** `anchor` is the selection's box with the handles under it. */
+  show: (selected: Selected, anchor: AnchorRect) => void
 }
 
 /** Whether `a` and `b` cover the same text at the same place, so a selection that did not move is not looked up again. */
@@ -45,7 +49,8 @@ export const watchTouchSelection = (
       return
     }
     shown = now
-    show(now)
+    const { top, bottom, left, right } = now.anchor
+    show(now, { top, bottom: bottom + HANDLES_PX, left, right })
   }
 
   ctx.addEventListener(
