@@ -99,22 +99,45 @@ export const wordAt = (x: number, y: number, locale: string | undefined): WordHi
 
 const hasArea = ({ width, height }: DOMRect): boolean => width > 0 || height > 0
 
+/** The page's selection, trimmed. `range` is the selection's own, which may take in spaces around `word`. */
+export type Selected = {
+  word: string
+  anchor: DOMRect
+  element: Element | null
+  range: Range
+  context: Sentence | undefined
+}
+
+/** What is selected on the page, if anything. */
+export const selectedText = (locale: string | undefined): Selected | undefined => {
+  const selection = window.getSelection()
+  const word = selection?.toString().trim() ?? ""
+  if (selection === null || word === "" || selection.rangeCount === 0) {
+    return undefined
+  }
+  const range = selection.getRangeAt(0)
+  const ancestor = range.commonAncestorContainer
+  return {
+    word,
+    anchor: range.getBoundingClientRect(),
+    element: ancestor instanceof Element ? ancestor : ancestor.parentElement,
+    range,
+    context: sentenceAround(range, word, locale),
+  }
+}
+
 /** Record the selection and the word under the cursor, plus the box to open next to. */
 export const pickAt = (x: number, y: number, target: Element | null, locale: string | undefined): Picked => {
   const point: AnchorRect = { top: y, bottom: y, left: x, right: x }
-  const selection = window.getSelection()
-  const selected = selection?.toString().trim() ?? ""
-  if (selection !== null && selected !== "" && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-    const ancestor = range.commonAncestorContainer
+  const selected = selectedText(locale)
+  if (selected !== undefined) {
     return {
-      selected,
+      selected: selected.word,
       underCursor: "",
-      anchor: hasArea(rect) ? rect : point,
-      element: ancestor instanceof Element ? ancestor : ancestor.parentElement,
+      anchor: hasArea(selected.anchor) ? selected.anchor : point,
+      element: selected.element,
       range: undefined,
-      context: sentenceAround(range, selected, locale),
+      context: selected.context,
     }
   }
   const hit = wordAt(x, y, locale)
