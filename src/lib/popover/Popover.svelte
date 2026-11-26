@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte"
+  import type { Keeping, KeepState } from "$lib/anki/keep"
+  import type { LookupEntry } from "$lib/dict/types"
   import { sourceLinks, type SourceLink } from "$lib/dict/sources"
   import type { LookupReply } from "$lib/messages"
   import type { MarkStyle } from "$lib/storage"
@@ -37,6 +39,7 @@
     follow,
     shown,
     paint = highlightRanges,
+    keeping,
   }: {
     word: string
     anchor: AnchorRect
@@ -62,6 +65,8 @@
     shown: (word: string, reply: LookupReply) => void
     /** Marks the word and the sentence's matched parts. Text the extension draws itself marks them its own way. */
     paint?: Paint
+    /** Keeping entries for Anki, while it is on. */
+    keeping?: Keeping
   } = $props()
 
   /**
@@ -109,6 +114,51 @@
     }
     return highlight === undefined ? undefined : paint([highlight.range], markStyle, highlight.dark)
   })
+  /** Lemma → whether it is kept or in Anki, for the shown reply. */
+  let keepStates = $state.raw<Record<string, KeepState>>({})
+
+  const loadKeepStates = (result: LookupReply, target: string, followed: boolean) => {
+    if (keeping === undefined || !result.ok || result.lang === undefined) {
+      return Promise.resolve({})
+    }
+    const lemmas = [...new Set(shownEntries(result, target, followed).map((entry) => entry.lemma))]
+    return keeping.states(result.lang, lemmas)
+  }
+
+  $effect(() => {
+    const { reply, word: target, followed } = view
+    keepStates = {}
+    let current = true
+    void reply?.then(async (result) => {
+      const states = await loadKeepStates(result, target, followed)
+      if (current) {
+        keepStates = states
+      }
+    })
+    return () => {
+      current = false
+    }
+  })
+
+  const toggleKeep = async (result: LookupReply, entries: Array<LookupEntry>, entry: number) => {
+    if (keeping === undefined || !result.ok || result.lang === undefined || result.server === undefined) {
+      return
+    }
+    const shownView = view
+    await keeping.toggle({
+      word: shownView.word,
+      followed: shownView.followed,
+      lang: result.lang,
+      server: result.server,
+      entries,
+      entry,
+    })
+    const states = await loadKeepStates(result, shownView.word, shownView.followed)
+    if (view === shownView) {
+      keepStates = states
+    }
+  }
+
   let scroller: HTMLElement | undefined
   const shownScroller = (): HTMLElement | undefined => (scroller?.isConnected ? scroller : undefined)
 
@@ -276,7 +326,9 @@
     return true
   }
 
-  $effect(() => listenForKeys({ scroller: shownScroller, stepSegment, play: audio.play }))
+  $effect(() =>
+    listenForKeys({ scroller: shownScroller, stepSegment, play: audio.play, keeps: keeping !== undefined }),
+  )
 </script>
 
 <div
@@ -361,6 +413,13 @@
                 follow={followLink}
                 reserveEnd={links.length > 0}
                 whole={split === undefined || shownTab === undefined ? 0 : wholeOnTop(split, shownTab)}
+                keep={keeping === undefined
+                  ? undefined
+                  : {
+                      state: (entry) =>
+                        Object.hasOwn(keepStates, entry.lemma) ? keepStates[entry.lemma] : undefined,
+                      toggle: (listed, index) => void toggleKeep(result, listed, index),
+                    }}
               />
               {#if links.length > 0}
                 <SourcesButton open={() => openSources(links)} />

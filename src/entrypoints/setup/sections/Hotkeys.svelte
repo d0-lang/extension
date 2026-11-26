@@ -31,6 +31,7 @@
         { action: "Scroll the popover", keys: ["W", "S"] },
         { action: "Move between the parts of a word", keys: ["A", "D"] },
         { action: "Play the pronunciation", keys: ["E"] },
+        { action: "Keep the word for Anki, when Anki is on", keys: ["Q"] },
         { action: "Close the popover", keys: ["Esc"] },
       ],
     },

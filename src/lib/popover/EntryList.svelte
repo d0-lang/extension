@@ -1,7 +1,11 @@
 <script lang="ts">
   import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right"
+  import BookmarkCheck from "@lucide/svelte/icons/bookmark-check"
+  import BookmarkPlus from "@lucide/svelte/icons/bookmark-plus"
+  import TriangleAlert from "@lucide/svelte/icons/triangle-alert"
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
+  import type { KeepState } from "$lib/anki/keep"
   import { linkSense, playableAudio } from "$lib/dict/entries"
   import type { LookupEntry } from "$lib/dict/types"
   import type { PairLabels } from "$lib/storage"
@@ -20,6 +24,7 @@
     follow,
     reserveEnd = false,
     whole = 0,
+    keep,
   }: {
     entries: Array<LookupEntry>
     /** The language `entries` are in, which a `see` link is looked up in. */
@@ -35,7 +40,18 @@
     reserveEnd?: boolean
     /** How many entries, from the top, are the whole word's own. A bar beside them sets them apart from a part's entries. */
     whole?: number
+    /** Keeping entries for Anki, while it is on. `toggle` gets the entries shown and the index of the one pressed. */
+    keep?: {
+      state: (entry: LookupEntry) => KeepState | undefined
+      toggle: (entries: Array<LookupEntry>, index: number) => void
+    }
   } = $props()
+
+  const keepTitle: Record<KeepState | "none", string> = {
+    none: "Keep for Anki (Q)",
+    kept: "Kept for Anki. Press to remove it (Q)",
+    anki: "Already in Anki. Press to keep it again (Q)",
+  }
 </script>
 
 {#if whole > 0}
@@ -69,6 +85,31 @@
               explanation={explanationOf(labels, label)}
             />{/each}
         </div>
+        {#if keep !== undefined}
+          {@const state = keep.state(entry)}
+          <button
+            type="button"
+            data-keep
+            class={[
+              "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md",
+              state === "kept" ? "bg-link/15 text-link" : "bg-muted text-foreground hover:bg-accent",
+            ]}
+            aria-label={state === "kept"
+              ? `Remove ${entry.lemma} from the words kept for Anki`
+              : `Keep ${entry.lemma} for Anki`}
+            aria-pressed={state === "kept"}
+            title={keepTitle[state ?? "none"]}
+            onclick={() => keep.toggle(entries, index)}
+          >
+            {#if state === "kept"}
+              <BookmarkCheck class="size-3" />
+            {:else if state === "anki"}
+              <TriangleAlert class="size-3" />
+            {:else}
+              <BookmarkPlus class="size-3" />
+            {/if}
+          </button>
+        {/if}
         {#if url !== undefined}
           {@const going = audio.playing === url}
           {@const failed = audio.failed === url}
