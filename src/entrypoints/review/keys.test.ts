@@ -45,5 +45,6 @@ describe("fieldAction", () => {
     expect(field("Escape")).toBe("cancel")
     expect(field("Enter", { ctrlKey: true })).toBe("send")
     expect(field("a")).toBeUndefined()
+    expect(field("Enter", { ctrlKey: true, isComposing: true })).toBeUndefined()
   })
 })

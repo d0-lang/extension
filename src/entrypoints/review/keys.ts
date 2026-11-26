@@ -75,10 +75,14 @@ export const reviewAction = (event: KeyboardEvent): ReviewAction | undefined => 
  * and sends the card. Unset for typing.
  */
 export const fieldAction = (event: KeyboardEvent): "keep" | "cancel" | "send" | undefined => {
+  // Enter also confirms what an input method is composing.
+  if (event.isComposing) {
+    return undefined
+  }
   if (isSend(event)) {
     return "send"
   }
-  if (event.isComposing || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+  if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
     return undefined
   }
   return event.key === "Enter" ? "keep" : event.key === "Escape" ? "cancel" : undefined

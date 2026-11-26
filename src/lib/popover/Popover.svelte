@@ -125,19 +125,19 @@
     return keeping.states(result.lang, lemmas)
   }
 
+  /** Counts the reads of `keepStates`, so an older one that lands late does not replace a newer one. */
+  let keepReads = 0
+
   $effect(() => {
     const { reply, word: target, followed } = view
     keepStates = {}
-    let current = true
+    const read = ++keepReads
     void reply?.then(async (result) => {
       const states = await loadKeepStates(result, target, followed)
-      if (current) {
+      if (read === keepReads) {
         keepStates = states
       }
     })
-    return () => {
-      current = false
-    }
   })
 
   const toggleKeep = async (result: LookupReply, entries: Array<LookupEntry>, entry: number) => {
@@ -153,8 +153,9 @@
       entries,
       entry,
     })
+    const read = ++keepReads
     const states = await loadKeepStates(result, shownView.word, shownView.followed)
-    if (view === shownView) {
+    if (read === keepReads) {
       keepStates = states
     }
   }

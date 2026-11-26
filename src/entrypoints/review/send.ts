@@ -41,15 +41,22 @@ const recording = (seed: CardSeed, url: string | undefined): ResultAsync<Recordi
 /**
  * Adds the card to the deck its language goes to, making the deck and the note type when Anki lacks them, and lets
  * the kept word go once Anki has it. Anki's duplicate check is skipped: the user was warned and kept it anyway.
+ * `removed` is false when Anki has the card but the word stayed on the list, where sending it again adds another.
  */
-export const sendCard = (seed: CardSeed, draft: CardDraft): ResultAsync<number, AnkiError> =>
+export const sendCard = (
+  seed: CardSeed,
+  draft: CardDraft,
+): ResultAsync<{ noteId: number; removed: boolean }, AnkiError> =>
   ResultAsync.fromSafePromise(Promise.all([getAnkiTarget(), getAnkiDecks(), getShowIpa()])).andThen(
     ([target, decks, ipa]) => {
       const deck = deckFor(decks, seed.lang.split("_", 1)[0] ?? seed.lang)
       const fields = noteFields(seed, draft, ipa)
       const entry = seed.entries[draft.entry]
       if (fields === undefined || entry === undefined) {
-        return errAsync<number, AnkiError>({ kind: "anki", message: "The kept word has no such entry" })
+        return errAsync<{ noteId: number; removed: boolean }, AnkiError>({
+          kind: "anki",
+          message: "The kept word has no such entry",
+        })
       }
       return ensureNoteType(target)
         .andThen(() => createDeck(target, deck))
@@ -64,6 +71,13 @@ export const sendCard = (seed: CardSeed, draft: CardDraft): ResultAsync<number, 
             ...(audio === undefined ? {} : { audio: [audio] }),
           }),
         )
-        .andThen((id) => ResultAsync.fromSafePromise(removeSeed(seed.id)).map(() => id))
+        .andThen((noteId) =>
+          ResultAsync.fromSafePromise(
+            removeSeed(seed.id).then(
+              () => ({ noteId, removed: true }),
+              () => ({ noteId, removed: false }),
+            ),
+          ),
+        )
     },
   )

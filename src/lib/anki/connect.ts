@@ -8,6 +8,9 @@ export const DEFAULT_ANKI_URL = "http://127.0.0.1:8765"
 /** Anki answers at once or not at all, but adding a note waits for its audio to be stored. */
 const REQUEST_TIMEOUT_MS = 10_000
 
+/** Asking for access waits while the user answers Anki's dialog. */
+const PERMISSION_TIMEOUT_MS = 120_000
+
 export type AnkiError = {
   /**
    * `offline` is Anki closed or the add-on missing. `denied` is the add-on turning this browser away.
@@ -44,8 +47,8 @@ const replySchema = z.object({ result: z.unknown(), error: z.nullable(z.string()
 const KEY_ERROR = "valid api key must be provided"
 
 const post = ResultAsync.fromThrowable(
-  (url: string, body: string) =>
-    fetch(url, { method: "POST", body, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+  (url: string, body: string, timeoutMs: number) =>
+    fetch(url, { method: "POST", body, signal: AbortSignal.timeout(timeoutMs) }),
   (cause) => ankiError("offline", cause instanceof Error ? cause.message : String(cause)),
 )
 
@@ -75,8 +78,9 @@ export const invoke = <S extends z.ZodMiniType>(
   action: string,
   schema: S,
   params?: Record<string, unknown>,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): ResultAsync<z.infer<S>, AnkiError> =>
-  post(target.url, JSON.stringify({ action, version: 6, params, key: target.key }))
+  post(target.url, JSON.stringify({ action, version: 6, params, key: target.key }), timeoutMs)
     .andThen((response) => readReply(action, response))
     .andThen((result): Result<z.infer<S>, AnkiError> => {
       const parsed = schema.safeParse(result)
@@ -96,11 +100,16 @@ const permissionSchema = z.object({
  * Ok with whether requests need an API key.
  */
 export const requestPermission = (url: string): ResultAsync<{ needsKey: boolean }, AnkiError> =>
-  invoke({ url, key: undefined }, "requestPermission", permissionSchema).andThen(
-    ({ permission, requireApikey }) =>
-      permission === "granted"
-        ? ok({ needsKey: requireApikey === true })
-        : err(ankiError("denied", "Anki did not give access")),
+  invoke(
+    { url, key: undefined },
+    "requestPermission",
+    permissionSchema,
+    undefined,
+    PERMISSION_TIMEOUT_MS,
+  ).andThen(({ permission, requireApikey }) =>
+    permission === "granted"
+      ? ok({ needsKey: requireApikey === true })
+      : err(ankiError("denied", "Anki did not give access")),
   )
 
 export const deckNames = (target: AnkiTarget): ResultAsync<Array<string>, AnkiError> =>

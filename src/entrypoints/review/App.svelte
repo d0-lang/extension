@@ -76,8 +76,18 @@
     if (action === undefined) {
       return
     }
-    // Space and Enter act on the selection, not on a button the mouse left focused.
+    // A control reached with Tab takes Space and Enter itself. One the mouse left focused does not.
+    if (
+      action.kind === "activate" &&
+      target?.matches("button:focus-visible, [role]:focus-visible") === true
+    ) {
+      return
+    }
     event.preventDefault()
+    // A held key repeats, and two drops in a row drop the word, so only a fresh press counts.
+    if (event.repeat && (action.kind === "drop" || action.kind === "activate")) {
+      return
+    }
     // Only a second drop in a row drops.
     if (action.kind !== "drop") {
       review.dropArmed = false

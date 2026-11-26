@@ -35,6 +35,8 @@ export class Review {
   inAnki = $state<Record<string, boolean>>({})
   /** The picks left on another entry, by word id and entry, to come back to. Gone with the page. */
   private leftEntries: Record<string, CardDraft> = {}
+  /** Counts this page's writes, so a read that started before one does not undo it. */
+  private writes = 0
 
   current = $derived(this.seeds.find((seed) => seed.id === this.currentId) ?? this.seeds[0])
   draft = $derived(this.current === undefined ? undefined : (this.current.draft ?? firstDraft(this.current)))
@@ -57,7 +59,13 @@ export class Review {
   }
 
   private load = async () => {
-    this.seeds = await getSeeds()
+    const writes = this.writes
+    const seeds = await getSeeds()
+    // The write's own change event reads again.
+    if (writes !== this.writes) {
+      return
+    }
+    this.seeds = seeds
     this.loaded = true
     void this.checkAnki()
   }
@@ -74,16 +82,22 @@ export class Review {
     }
   }
 
-  /** Shows `draft` at once and keeps it with the word. */
+  /** Shows `draft` at once and keeps it with the word. Nothing changes while the word is being sent. */
   private save = (draft: CardDraft) => {
     const current = this.current
-    if (current === undefined) {
+    if (current === undefined || this.sending) {
       return
     }
     const next = { ...current, draft }
+    this.writes++
     this.seeds = this.seeds.map((seed) => (seed.id === current.id ? next : seed))
-    void addSeed(next)
+    addSeed(next).catch(() => {
+      this.error = "Could not keep this change. Make it again before leaving the page."
+    })
   }
+
+  /** Whether `target` shows as selected: it has the keys, and is not being edited. */
+  selected = (target: Focus): boolean => this.focus === target && this.editing !== target
 
   /** From the top: the sentence, when the word has one, its meanings, then the buttons. */
   private focusOrder = (): Array<Focus> => [
@@ -141,6 +155,7 @@ export class Review {
 
   edit = (target: Focus = this.focus) => {
     if (
+      this.sending ||
       target === "send" ||
       target === "drop" ||
       (target === "sentence" && this.current?.sentence === undefined)
@@ -163,6 +178,12 @@ export class Review {
     } else {
       this.toggleSense(focus)
     }
+  }
+
+  /** Keeps `text` for what was edited and leaves editing, then sends the card. */
+  keepAndSend = (target: Editable, text: string) => {
+    this.keepEdit(target, text)
+    void this.send()
   }
 
   /** Keeps `text` for what was edited. An edited meaning is picked too, as editing it says it is wanted. */
@@ -225,6 +246,13 @@ export class Review {
       this.error = ankiErrorText(sent.error)
       return
     }
+    if (!sent.value.removed) {
+      // Sending it again would add a second card.
+      this.inAnki = { ...this.inAnki, [this.entry?.lemma ?? ""]: true }
+      this.error =
+        "The card is in Anki, but the word could not be taken off this list. Drop it instead of sending it again."
+      return
+    }
     if (next !== undefined) {
       this.show(next)
     }
@@ -242,7 +270,14 @@ export class Review {
     }
     const next = this.following()
     this.dropArmed = false
-    await removeSeed(current.id)
+    const dropped = await removeSeed(current.id).then(
+      () => true,
+      () => false,
+    )
+    if (!dropped) {
+      this.error = "Could not drop the word. Try again."
+      return
+    }
     if (next !== undefined) {
       this.show(next)
     }

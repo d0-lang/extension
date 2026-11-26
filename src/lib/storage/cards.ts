@@ -49,8 +49,12 @@ const isSeed = (value: unknown): value is CardSeed =>
   typeof (value as CardSeed | undefined)?.id === "string" &&
   typeof (value as CardSeed).word === "string" &&
   typeof (value as CardSeed).lang === "string" &&
+  typeof (value as CardSeed).server === "string" &&
   Array.isArray((value as CardSeed).entries) &&
-  typeof (value as CardSeed).entry === "number"
+  typeof (value as CardSeed).entry === "number" &&
+  typeof (value as CardSeed).page?.url === "string" &&
+  typeof (value as CardSeed).page.title === "string" &&
+  ((value as CardSeed).sentence === undefined || typeof (value as CardSeed).sentence?.text === "string")
 
 const isDraft = (value: unknown): value is CardDraft =>
   typeof (value as CardDraft | undefined)?.entry === "number" &&
