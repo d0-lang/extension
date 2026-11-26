@@ -159,9 +159,6 @@
             </li>
           {/each}
         </ul>
-        <p class="text-muted-foreground text-sm">
-          A deck marked new is made with the first card that goes to it.
-        </p>
       {/if}
     </div>
   {/if}

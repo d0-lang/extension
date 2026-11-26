@@ -6,7 +6,7 @@
   /**
    * Each of `keys` is one direction, like W for up and S for down.
    * `hold` keys are held down, and `text` is said in words instead of keys.
-   * `modifier` is held with any of `keys`, and `after` is said after them, like "twice".
+   * `modifier` is held with any of `keys`.
    */
   type Hotkey = {
     action: string
@@ -14,7 +14,6 @@
     hold?: boolean
     text?: string
     modifier?: string
-    after?: string
   }
 
   const groups: Array<{ name: string; hotkeys: Array<Hotkey> }> = [
@@ -46,13 +45,13 @@
     {
       name: "On the kept words page",
       hotkeys: [
-        { action: "Up and down, from the sentence to the buttons", keys: ["W", "S"] },
-        { action: "Another entry of the word, like its noun or verb", keys: ["A", "D"] },
-        { action: "Pick a meaning, or press the button", keys: ["Space"] },
-        { action: "Edit the sentence or a meaning, Enter to keep it", keys: ["E"] },
+        { action: "Move up and down", keys: ["W", "S"] },
         { action: "Previous or next word", modifier: "Shift", keys: ["W", "S"] },
+        { action: "Another entry of the word, like its noun or verb", keys: ["A", "D"] },
+        { action: "Pick a meaning", keys: ["Space", "Enter"] },
+        { action: "Edit the sentence or a meaning", keys: ["E"] },
         { action: "Send to Anki", modifier: "Ctrl", keys: ["Enter"] },
-        { action: "Drop the word", keys: ["X"], after: "twice" },
+        { action: "Drop the word", keys: ["X"] },
       ],
     },
   ]
@@ -84,7 +83,6 @@
                     <Keycap>{key}</Keycap>
                   {/each}
                 </KbdGroup>
-                {#if hotkey.after !== undefined}<span class="ml-1">{hotkey.after}</span>{/if}
               {/if}
             </dd>
           </div>

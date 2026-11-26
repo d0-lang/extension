@@ -47,7 +47,15 @@
   <DropdownMenu>
     <DropdownMenuTrigger>
       {#snippet child({ props })}
-        <Button {...props} variant="outline" class="w-full min-w-0 justify-between" aria-label={label}>
+        <Button
+          {...props}
+          variant="outline"
+          class="w-full min-w-0 justify-between"
+          aria-label={label}
+          title={decks.includes(deck)
+            ? undefined
+            : "Anki doesn't have this deck yet. It's made when the first card goes to it."}
+        >
           <span class="truncate">{deck}</span>
           {#if !decks.includes(deck)}
             <span class="text-muted-foreground ml-auto text-xs">new</span>

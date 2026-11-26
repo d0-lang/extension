@@ -24,14 +24,33 @@
     return noteFields(current, draft, ipa)
   })
 
+  /** Each row's key groups do the same, so they are joined with "or". */
   const legend = [
-    { keys: ["W", "S"], also: ["K", "J"], action: "Up and down, to the buttons" },
-    { keys: ["A", "D"], also: ["H", "L"], action: "Another entry of the word" },
-    { keys: ["Space"], also: ["1–9"], action: "Pick a meaning, or press" },
-    { keys: ["E"], also: ["I"], action: "Edit, Enter to keep" },
-    { keys: ["Shift", "W", "S"], also: ["Shift", "K", "J"], action: "Previous or next word" },
-    { keys: ["Ctrl", "Enter"], action: "Send to Anki" },
-    { keys: ["X", "X"], action: "Drop the word" },
+    {
+      groups: [
+        ["W", "S"],
+        ["K", "J"],
+      ],
+      action: "Move up and down",
+    },
+    {
+      groups: [
+        ["Shift", "W", "S"],
+        ["Shift", "K", "J"],
+      ],
+      action: "Previous or next word",
+    },
+    {
+      groups: [
+        ["A", "D"],
+        ["H", "L"],
+      ],
+      action: "Another entry of the word",
+    },
+    { groups: [["Space"], ["Enter"], ["1–9"]], action: "Pick a meaning" },
+    { groups: [["E"], ["I"]], action: "Edit" },
+    { groups: [["Ctrl", "Enter"]], action: "Send to Anki" },
+    { groups: [["X"]], action: "Drop the word" },
   ]
 
   onMount(() => {
@@ -139,12 +158,11 @@
           />
           <dl class="text-muted-foreground grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
             {#each legend as row (row.action)}
-              <dt class="flex items-center gap-1">
-                {#each row.keys as key, index (index)}<Keycap>{key}</Keycap>{/each}
-                {#if row.also !== undefined}
-                  <span class="px-0.5">or</span>
-                  {#each row.also as key, index (index)}<Keycap>{key}</Keycap>{/each}
-                {/if}
+              <dt class="flex flex-wrap items-center gap-1">
+                {#each row.groups as keys, group (group)}
+                  {#if group > 0}<span class="px-0.5">or</span>{/if}
+                  {#each keys as key, index (index)}<Keycap>{key}</Keycap>{/each}
+                {/each}
               </dt>
               <dd>{row.action}</dd>
             {/each}
