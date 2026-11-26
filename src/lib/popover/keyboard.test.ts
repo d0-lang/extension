@@ -62,6 +62,30 @@ describe("listenForKeys", () => {
     scroller.remove()
   })
 
+  it("counts only the one click a real Q makes, not those the page makes while it lands", () => {
+    const scroller = document.createElement("div")
+    scroller.innerHTML = `<section><button data-keep></button><button data-keep></button></section>`
+    document.body.append(scroller)
+    scroller.querySelector("section")!.getBoundingClientRect = () => new DOMRect(0, 0, 100, 40)
+    const [first, second] = scroller.querySelectorAll("button")
+    const kept: Array<string> = []
+    first!.addEventListener("click", (event) => kept.push(`first ${isUserKeep(event)}`))
+    second!.addEventListener("click", (event) => kept.push(`second ${isUserKeep(event)}`))
+    // The page sees Q's click on its way down, and clicks both buttons before the first one's own handler runs.
+    const meddle = () => {
+      document.removeEventListener("click", meddle, true)
+      second!.click()
+      first!.click()
+    }
+    document.addEventListener("click", meddle, true)
+
+    stop = listenForKeys({ stepSegment: () => false, scroller: () => scroller, play: () => {}, keeps: true })
+    pressReal("KeyQ")
+    // The page's own click on the first button took Q's turn, so Q's click then does not count again.
+    expect(kept).toEqual(["second false", "first true", "first false"])
+    scroller.remove()
+  })
+
   it("leaves the arrow keys to the page", () => {
     const stepSegment = listen()
     expect(press("ArrowLeft", { altKey: true })).toBe(true)
