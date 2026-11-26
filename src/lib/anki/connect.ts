@@ -19,6 +19,22 @@ export type AnkiError = {
 
 const ankiError = (kind: AnkiError["kind"], message: string): AnkiError => ({ kind, message })
 
+/** What to tell the user about `error`. */
+export const ankiErrorText = (error: AnkiError): string => {
+  switch (error.kind) {
+    case "offline":
+      return "Anki is not answering. Open Anki, and install the AnkiConnect add-on if you have not."
+    case "denied":
+      return "AnkiConnect turned this browser away. Connect again and allow it in the dialog Anki shows."
+    case "key":
+      return "AnkiConnect needs its API key."
+    case "anki":
+      return `Anki said: ${error.message}`
+    case "body":
+      return "AnkiConnect answered in a way this version does not understand. Update the add-on."
+  }
+}
+
 /** Where to reach AnkiConnect, and the API key the user set in its config, if any. */
 export type AnkiTarget = { url: string; key: string | undefined }
 
@@ -92,6 +108,10 @@ export const deckNames = (target: AnkiTarget): ResultAsync<Array<string>, AnkiEr
 
 export const modelNames = (target: AnkiTarget): ResultAsync<Array<string>, AnkiError> =>
   invoke(target, "modelNames", z.array(z.string()))
+
+/** Adds `note` and gives its id. */
+export const addNote = (target: AnkiTarget, note: Record<string, unknown>): ResultAsync<number, AnkiError> =>
+  invoke(target, "addNote", z.number(), { note })
 
 /** Creates `name`, with `::` making it a subdeck. Ok when it already exists. */
 export const createDeck = (target: AnkiTarget, name: string): ResultAsync<void, AnkiError> =>

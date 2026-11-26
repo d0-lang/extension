@@ -12,7 +12,7 @@
   import type { AudioPlayer } from "./audio.svelte"
   import LabelTag from "./LabelTag.svelte"
   import { explanationOf, posName } from "./labels"
-  import { splitStress, stressedLetter } from "./stress"
+  import Stressed from "./Stressed.svelte"
 
   let {
     entries,
@@ -76,7 +76,7 @@
         <!-- Inline, so the tags follow a long headword onto its last line. -->
         <div class="min-w-0 flex-1 leading-6 wrap-anywhere">
           <h2 class="inline text-base font-semibold">
-            {@render stressed(entry.lemma)}
+            <Stressed text={entry.lemma} />
           </h2>
           {#if posName(entry.pos) !== ""}{" "}<span class="text-muted-foreground text-xs"
               >{posName(entry.pos)}</span
@@ -135,7 +135,7 @@
       </div>
       <!-- Kana words often come with themselves as the reading. -->
       {#if entry.pron?.reading !== undefined && entry.pron.reading !== entry.lemma}
-        <p class="wrap-anywhere">{@render stressed(entry.pron.reading)}</p>
+        <p class="wrap-anywhere"><Stressed text={entry.pron.reading} /></p>
       {/if}
       {#if showIpa && ipa.length > 0}
         <p class="text-muted-foreground text-xs wrap-anywhere">
@@ -165,12 +165,6 @@
       {/each}
     </ol>
   </section>
-{/snippet}
-
-{#snippet stressed(text: string)}
-  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter = stressedLetter(
-        part.text,
-      )}<span class="dict-stress" data-lift={letter.lift}>{letter.text}</span>{:else}{part.text}{/if}{/each}
 {/snippet}
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}

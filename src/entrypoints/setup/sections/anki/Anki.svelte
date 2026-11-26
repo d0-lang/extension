@@ -11,8 +11,10 @@
   import {
     ANKI_KEYS,
     ankiLanguage,
+    isSeedKey,
     getAnkiEnabled,
     getAnkiLanguages,
+    getSeeds,
     getLanguageOrder,
     getServerByLang,
     setAnkiEnabled,
@@ -21,7 +23,8 @@
     type SourceLanguage,
   } from "$lib/storage"
   import SectionTitle from "../../layout/SectionTitle.svelte"
-  import { AnkiConnection, ankiErrorText } from "./connection.svelte"
+  import { ankiErrorText } from "$lib/anki/connect"
+  import { AnkiConnection } from "./connection.svelte"
   import DeckPicker from "./DeckPicker.svelte"
   import { sourceLanguages } from "./languages"
 
@@ -30,18 +33,21 @@
   let enabled = $state<boolean>()
   let choices = $state.raw<AnkiLanguages>({})
   let languages = $state.raw<Array<SourceLanguage>>([])
+  let keptCount = $state(0)
   let key = $state("")
 
   const decks = $derived(connection.status.kind === "connected" ? connection.status.decks : [])
 
   const load = async () => {
-    const [on, chosen, serverByLang, order] = await Promise.all([
+    const [on, chosen, serverByLang, order, seeds] = await Promise.all([
       getAnkiEnabled(),
       getAnkiLanguages(),
       getServerByLang(),
       getLanguageOrder(),
+      getSeeds(),
     ])
     enabled = on
+    keptCount = seeds.length
     choices = chosen
     languages = sourceLanguages(Object.keys(serverByLang), order)
   }
@@ -52,7 +58,7 @@
     // Another settings tab, or binding a server, changes what is listed.
     const keys = [...ANKI_KEYS, "serverByLang", "languageOrder"]
     const onChanged = (changes: Record<string, unknown>, area: string) => {
-      if (area === "local" && keys.some((name) => name in changes)) {
+      if (area === "local" && Object.keys(changes).some((name) => keys.includes(name) || isSeedKey(name))) {
         void load()
       }
     }
@@ -72,7 +78,13 @@
 </script>
 
 <section class="flex max-w-2xl flex-col gap-5">
-  <SectionTitle title="Anki" />
+  <SectionTitle title="Anki">
+    {#if enabled && keptCount > 0}
+      <Button href="/review.html" target="_blank" variant="outline" size="sm">
+        Review {keptCount} kept {keptCount === 1 ? "word" : "words"}
+      </Button>
+    {/if}
+  </SectionTitle>
   <div class={["flex flex-col divide-y rounded-lg border", enabled === undefined && "invisible"]}>
     <div class="flex items-center justify-between gap-4 p-4">
       <div class="flex flex-col gap-0.5">

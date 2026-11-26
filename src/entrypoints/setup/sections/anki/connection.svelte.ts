@@ -49,19 +49,3 @@ export class AnkiConnection {
     )
   }
 }
-
-/** What to tell the user about `error`. */
-export const ankiErrorText = (error: AnkiError): string => {
-  switch (error.kind) {
-    case "offline":
-      return "Anki is not answering. Open Anki, and install the AnkiConnect add-on if you have not."
-    case "denied":
-      return "AnkiConnect turned this browser away. Connect again and allow it in the dialog Anki shows."
-    case "key":
-      return "AnkiConnect needs its API key."
-    case "anki":
-      return `Anki said: ${error.message}`
-    case "body":
-      return "AnkiConnect answered in a way this version does not understand. Update the add-on."
-  }
-}

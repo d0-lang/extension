@@ -19,12 +19,15 @@ export const FIELDS = [
 
 export type Field = (typeof FIELDS)[number]
 
-const FRONT = `<div class="dadict">
-  <div class="sentence">{{Sentence}}</div>
+// A word reached through a link has no sentence, so its front is the word.
+const QUESTION = `{{#Sentence}}<div class="sentence">{{Sentence}}</div>{{/Sentence}}{{^Sentence}}<div class="sentence">{{Word}}</div>{{/Sentence}}`
+
+export const FRONT = `<div class="dadict">
+  ${QUESTION}
 </div>`
 
-const BACK = `<div class="dadict">
-  <div class="sentence">{{Sentence}}</div>
+export const BACK = `<div class="dadict">
+  ${QUESTION}
   <hr id="answer">
   <div class="head">
     <span class="word">{{Word}}</span>
@@ -38,7 +41,7 @@ const BACK = `<div class="dadict">
 </div>`
 
 // The variables are Anki's own, so the card follows its light and dark themes.
-const CSS = `.card {
+export const CSS = `.card {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans CJK JP", sans-serif;
   font-size: 20px;
   line-height: 1.5;
