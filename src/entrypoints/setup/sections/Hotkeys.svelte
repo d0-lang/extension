@@ -35,6 +35,17 @@
         { action: "Close the popover", keys: ["Esc"] },
       ],
     },
+    {
+      name: "On the kept words page",
+      hotkeys: [
+        { action: "Move between the sentence and meanings", keys: ["A", "D"] },
+        { action: "Pick a meaning", keys: ["Space"] },
+        { action: "Edit the sentence or a meaning, Enter to keep it", keys: ["E"] },
+        { action: "Previous or next word, with Shift held", keys: ["W", "S"] },
+        { action: "Send to Anki", text: "Ctrl + Enter" },
+        { action: "Drop the word", text: "X twice" },
+      ],
+    },
   ]
 </script>
 

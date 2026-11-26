@@ -1,42 +1,45 @@
 import { ankiErrorText } from "$lib/anki/connect"
 import { lemmasInAnki } from "$lib/anki/duplicates"
-import { getAnkiTarget, getSeeds, isSeedKey, removeSeed, type CardSeed } from "$lib/storage"
-import type { Choice } from "./fields"
+import {
+  addSeed,
+  getAnkiTarget,
+  getSeeds,
+  isSeedKey,
+  removeSeed,
+  type CardDraft,
+  type CardSeed,
+} from "$lib/storage"
+import { firstDraft } from "./fields"
 import { sendCard } from "./send"
 
-/** The entry the popover kept, with its only sense picked when it has one. Several wait for the user. */
-const firstChoice = (seed: CardSeed): Choice => ({
-  entry: seed.entry,
-  senses: seed.entries[seed.entry]?.senses.length === 1 ? [0] : [],
-})
+/** The sentence, or a meaning by its index. */
+export type Focus = "sentence" | number
 
-/** The kept words, the one being reviewed, and what the user picked for each. */
+/** The kept words, the one being reviewed, and where the keys are in it. Picks and edits are kept with each word. */
 export class Review {
   seeds = $state.raw<Array<CardSeed>>([])
   loaded = $state(false)
   /** The id of the word being reviewed. */
   currentId = $state<string>()
-  /** Picks by word id. A word not picked yet has its `firstChoice`. */
-  choices = $state<Record<string, Choice>>({})
-  /** The sense the keys move between, by index. */
-  focus = $state(0)
+  focus = $state<Focus>(0)
+  /** What is being edited, if anything. */
+  editing = $state<Focus>()
+  /** Set by the first drop, so the second one drops. Anything else in between undoes it. */
+  dropArmed = $state(false)
   sending = $state(false)
   error = $state<string>()
   /** Lemmas Anki has a DaDict note for, among those asked. */
   inAnki = $state<Record<string, boolean>>({})
 
-  choiceOf = (seed: CardSeed): Choice =>
-    Object.hasOwn(this.choices, seed.id) ? this.choices[seed.id]! : firstChoice(seed)
-
   current = $derived(this.seeds.find((seed) => seed.id === this.currentId) ?? this.seeds[0])
-  choice = $derived(this.current === undefined ? undefined : this.choiceOf(this.current))
+  draft = $derived(this.current === undefined ? undefined : (this.current.draft ?? firstDraft(this.current)))
   entry = $derived(
-    this.current === undefined || this.choice === undefined
+    this.current === undefined || this.draft === undefined
       ? undefined
-      : this.current.entries[this.choice.entry],
+      : this.current.entries[this.draft.entry],
   )
 
-  /** Reads the kept words, and again whenever one is kept or let go, in this tab or another. */
+  /** Reads the kept words, and again whenever one is kept, edited or let go, in this tab or another. */
   watch = (): (() => void) => {
     void this.load()
     const onChanged = (changes: Record<string, unknown>, area: string) => {
@@ -66,44 +69,88 @@ export class Review {
     }
   }
 
-  private pick = (choice: Choice) => {
-    if (this.current !== undefined) {
-      this.choices = { ...this.choices, [this.current.id]: choice }
-    }
-  }
-
-  toggleSense = (index: number) => {
-    const choice = this.choice
-    if (choice === undefined || this.entry === undefined || index >= this.entry.senses.length) {
-      return
-    }
-    this.focus = index
-    const senses = choice.senses.includes(index)
-      ? choice.senses.filter((sense) => sense !== index)
-      : [...choice.senses, index].sort((a, b) => a - b)
-    this.pick({ ...choice, senses })
-  }
-
-  pickEntry = (entry: number) => {
+  /** Shows `draft` at once and keeps it with the word. */
+  private save = (draft: CardDraft) => {
     const current = this.current
     if (current === undefined) {
       return
     }
+    const next = { ...current, draft }
+    this.seeds = this.seeds.map((seed) => (seed.id === current.id ? next : seed))
+    void addSeed(next)
+  }
+
+  /** The sentence first, when the word has one, then its meanings. */
+  private focusOrder = (): Array<Focus> => [
+    ...(this.current?.sentence === undefined ? [] : (["sentence"] as const)),
+    ...(this.entry?.senses.map((_, index) => index) ?? []),
+  ]
+
+  /** Stops at either end. */
+  moveFocus = (step: 1 | -1) => {
+    const order = this.focusOrder()
+    const index = order.indexOf(this.focus)
+    this.focus = order[Math.min(Math.max(index + step, 0), order.length - 1)] ?? this.focus
+  }
+
+  toggleSense = (index: number) => {
+    const draft = this.draft
+    if (draft === undefined || this.entry === undefined || index >= this.entry.senses.length) {
+      return
+    }
+    this.focus = index
+    const senses = draft.senses.includes(index)
+      ? draft.senses.filter((sense) => sense !== index)
+      : [...draft.senses, index].sort((a, b) => a - b)
+    this.save({ ...draft, senses })
+  }
+
+  /** Another entry starts with its own meanings. An edited sentence stays. */
+  pickEntry = (entry: number) => {
+    const { current, draft } = this
+    if (current === undefined || draft === undefined || entry === draft.entry) {
+      return
+    }
     this.focus = 0
-    this.pick({ entry, senses: current.entries[entry]?.senses.length === 1 ? [0] : [] })
+    this.editing = undefined
+    this.save({ ...firstDraft(current, entry), sentence: draft.sentence })
     void this.checkAnki()
   }
 
-  moveFocus = (step: 1 | -1) => {
-    const count = this.entry?.senses.length ?? 0
-    if (count > 0) {
-      this.focus = (this.focus + step + count) % count
+  edit = (target: Focus = this.focus) => {
+    if (target === "sentence" && this.current?.sentence === undefined) {
+      return
     }
+    this.focus = target
+    this.editing = target
+  }
+
+  /** Keeps `text` for what was edited. An edited meaning is picked too, as editing it says it is wanted. */
+  keepEdit = (target: Focus, text: string) => {
+    const draft = this.draft
+    this.editing = undefined
+    if (draft === undefined) {
+      return
+    }
+    if (target === "sentence") {
+      this.save({ ...draft, sentence: text })
+      return
+    }
+    const senses = draft.senses.includes(target)
+      ? draft.senses
+      : [...draft.senses, target].sort((a, b) => a - b)
+    this.save({ ...draft, senses, glosses: { ...draft.glosses, [String(target)]: text } })
+  }
+
+  cancelEdit = () => {
+    this.editing = undefined
   }
 
   show = (id: string) => {
     this.currentId = id
     this.focus = 0
+    this.editing = undefined
+    this.dropArmed = false
     this.error = undefined
     void this.checkAnki()
   }
@@ -124,14 +171,15 @@ export class Review {
   }
 
   send = async () => {
-    const { current, choice } = this
-    if (current === undefined || choice === undefined || choice.senses.length === 0 || this.sending) {
+    const { current, draft } = this
+    if (current === undefined || draft === undefined || draft.senses.length === 0 || this.sending) {
       return
     }
     this.sending = true
     this.error = undefined
+    this.dropArmed = false
     const next = this.following()
-    const sent = await sendCard(current, choice)
+    const sent = await sendCard(current, draft)
     this.sending = false
     if (sent.isErr()) {
       this.error = ankiErrorText(sent.error)
@@ -142,12 +190,18 @@ export class Review {
     }
   }
 
+  /** The first call only arms it. */
   drop = async () => {
     const current = this.current
     if (current === undefined) {
       return
     }
+    if (!this.dropArmed) {
+      this.dropArmed = true
+      return
+    }
     const next = this.following()
+    this.dropArmed = false
     await removeSeed(current.id)
     if (next !== undefined) {
       this.show(next)

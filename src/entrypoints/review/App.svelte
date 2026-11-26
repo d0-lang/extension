@@ -16,20 +16,21 @@
   let dark = $state(false)
 
   const fields = $derived.by(() => {
-    const { current, choice } = review
-    if (current === undefined || choice === undefined) {
+    const { current, draft } = review
+    if (current === undefined || draft === undefined) {
       return undefined
     }
     const { ipa } = ankiLanguage(languages, current.lang.split("_", 1)[0] ?? current.lang)
-    return noteFields(current, choice, ipa)
+    return noteFields(current, draft, ipa)
   })
 
   const legend = [
-    { keys: ["W", "S"], also: ["J", "K"], action: "Move between meanings" },
+    { keys: ["A", "D"], also: ["H", "L"], action: "Move between the sentence and meanings" },
     { keys: ["Space"], also: ["1–9"], action: "Pick a meaning" },
-    { keys: ["A", "D"], also: ["H", "L"], action: "Previous or next word" },
-    { keys: ["Enter"], action: "Send to Anki" },
-    { keys: ["X"], action: "Drop the word" },
+    { keys: ["E"], also: ["I"], action: "Edit, Enter to keep" },
+    { keys: ["Shift", "W", "S"], also: ["Shift", "K", "J"], action: "Previous or next word" },
+    { keys: ["Ctrl", "Enter"], action: "Send to Anki" },
+    { keys: ["X", "X"], action: "Drop the word" },
   ]
 
   onMount(() => {
@@ -52,20 +53,28 @@
       return
     }
     const action = reviewAction(event)
-    // A focused button or checkbox takes Space and Enter itself.
-    if (
-      action === undefined ||
-      ((action.kind === "toggle" || action.kind === "send") && target?.closest("button") != null)
-    ) {
+    // A focused button or checkbox takes Space itself.
+    if (action === undefined || (action.kind === "toggle" && target?.closest("button") != null)) {
       return
     }
     event.preventDefault()
+    // Only a second drop in a row drops.
+    if (action.kind !== "drop") {
+      review.dropArmed = false
+    }
     switch (action.kind) {
       case "focus":
         review.moveFocus(action.step)
         return
       case "toggle":
-        review.toggleSense(review.focus)
+        if (review.focus !== "sentence") {
+          review.toggleSense(review.focus)
+        }
+        return
+      case "edit":
+        review.edit()
+        return
+      case "cancel":
         return
       case "sense":
         review.toggleSense(action.index)
@@ -90,7 +99,7 @@
   <main class="mx-auto max-w-6xl px-4 py-6 md:px-6">
     {#if !review.loaded}
       <!-- Nothing until storage answers, so the empty state does not flash. -->
-    {:else if review.current === undefined || review.choice === undefined || fields === undefined}
+    {:else if review.current === undefined || review.draft === undefined || fields === undefined}
       <div class="mx-auto flex max-w-md flex-col gap-2 py-16 text-center">
         <h1 class="text-xl font-semibold">No kept words</h1>
         <p class="text-muted-foreground text-sm">
@@ -109,7 +118,7 @@
           <WordList seeds={review.seeds} current={review.current.id} show={review.show} />
         </aside>
         <section class="flex min-w-0 flex-col gap-6">
-          <Editor {review} seed={review.current} choice={review.choice} sentence={fields.Sentence} />
+          <Editor {review} seed={review.current} draft={review.draft} sentence={fields.Sentence} />
           <div class="xl:hidden">
             <CardPreview
               {fields}
@@ -129,10 +138,10 @@
           <dl class="text-muted-foreground grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
             {#each legend as row (row.action)}
               <dt class="flex items-center gap-1">
-                {#each row.keys as key (key)}<Keycap>{key}</Keycap>{/each}
+                {#each row.keys as key, index (index)}<Keycap>{key}</Keycap>{/each}
                 {#if row.also !== undefined}
                   <span class="px-0.5">or</span>
-                  {#each row.also as key (key)}<Keycap>{key}</Keycap>{/each}
+                  {#each row.also as key, index (index)}<Keycap>{key}</Keycap>{/each}
                 {/if}
               </dt>
               <dd>{row.action}</dd>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { LookupEntry } from "$lib/dict/types"
 import type { CardSeed } from "$lib/storage"
-import { boldSpans, noteFields, sentenceHtml } from "./fields"
+import { boldSpans, draftSentence, markedHtml, markedSentence, noteFields } from "./fields"
 
 const entry = (lemma: string, extra: Partial<LookupEntry> = {}): LookupEntry => ({
   lemma,
@@ -37,13 +37,28 @@ describe("boldSpans", () => {
   })
 })
 
-describe("sentenceHtml", () => {
-  it("escapes the text and cuts a long sentence around the bold part", () => {
-    const text = `${"Lorem ipsum dolor, ".repeat(10)}<b> wird gefunden, ${"sit amet consectetur, ".repeat(10)}`
+describe("markedSentence", () => {
+  it("marks the bold parts, and cuts a long sentence around them", () => {
+    const text = `${"Lorem ipsum dolor, ".repeat(10)}hier wird gefunden, ${"sit amet consectetur, ".repeat(10)}`
     const start = text.indexOf("gefunden")
-    const html = sentenceHtml(text, [[start, start + "gefunden".length]])
-    expect(html).toMatch(/^….*&lt;b&gt; wird <b>gefunden<\/b>.*…$/)
-    expect(html.length).toBeLessThan(text.length)
+    const marked = markedSentence(text, [[start, start + "gefunden".length]])
+    expect(marked).toMatch(/^….*hier wird \*\*gefunden\*\*.*…$/)
+    expect(marked.length).toBeLessThan(text.length)
+  })
+})
+
+describe("markedHtml", () => {
+  it("bolds between pairs of ** and escapes the rest, keeping a lone ** as typed", () => {
+    expect(markedHtml("a <x> **b** c **d")).toBe("a &lt;x&gt; <b>b</b> c **d")
+  })
+})
+
+describe("draftSentence", () => {
+  it("starts from the sentence around the word, and keeps the user's edit once there is one", () => {
+    const draft = { entry: 0, senses: [] }
+    expect(draftSentence(seed(), draft)).toBe("Der Film **fängt** um acht Uhr **an**.")
+    expect(draftSentence(seed(), { ...draft, sentence: "**fängt** … **an**" })).toBe("**fängt** … **an**")
+    expect(draftSentence(seed({ sentence: undefined }), draft)).toBe("")
   })
 })
 
@@ -57,21 +72,19 @@ describe("noteFields", () => {
     expect(fields.Source).toBe('<a href="https://kino.example/film">Kino</a>')
   })
 
-  it("writes one sense as a paragraph, and leaves IPA out when the language has it off", () => {
-    const fields = noteFields(seed(), { entry: 0, senses: [1] }, false)!
-    expect(fields.Meaning).toBe("<p>to start</p>")
+  it("takes edited senses and sentence, and leaves out a sense edited to nothing", () => {
+    const fields = noteFields(
+      seed(),
+      { entry: 0, senses: [0, 1], glosses: { "0": "to begin", "1": " " }, sentence: "Er **fängt** an." },
+      false,
+    )!
+    expect(fields.Meaning).toBe("<p>to begin</p>")
+    expect(fields.Sentence).toBe("Er <b>fängt</b> an.")
     expect(fields.Pronunciation).toBe("")
   })
 
   it("names a page Anki cannot open without linking it", () => {
-    const fields = noteFields(
-      seed({ page: { url: "chrome-extension://x/player.html", title: "clip.mkv" } }),
-      {
-        entry: 0,
-        senses: [0],
-      },
-      true,
-    )!
-    expect(fields.Source).toBe("clip.mkv")
+    const page = { url: "chrome-extension://x/player.html", title: "clip.mkv" }
+    expect(noteFields(seed({ page }), { entry: 0, senses: [0] }, true)!.Source).toBe("clip.mkv")
   })
 })
