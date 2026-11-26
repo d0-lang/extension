@@ -240,15 +240,24 @@ export class Review {
     this.sending = true
     this.error = undefined
     this.dropArmed = false
+    // A storage read can still throw, and "Sending…" must not stay for good.
+    try {
+      await this.sendWord(current, draft)
+    } catch {
+      this.error = "Could not send the card. Try again."
+    } finally {
+      this.sending = false
+    }
+  }
+
+  private sendWord = async (current: CardSeed, draft: CardDraft) => {
     // The switch may have been turned off since this page opened.
     if (!(await getAnkiEnabled())) {
-      this.sending = false
       this.error = "Adding words to Anki is off in Settings."
       return
     }
     const next = this.following()
     const sent = await sendCard(current, draft)
-    this.sending = false
     if (sent.isErr()) {
       this.error = ankiErrorText(sent.error)
       return
