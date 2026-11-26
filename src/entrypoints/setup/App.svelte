@@ -4,6 +4,7 @@
   import { Route } from "./layout/route.svelte"
   import { FIRST_SECTION } from "./layout/sections"
   import Sidebar from "./layout/Sidebar.svelte"
+  import Anki from "./sections/anki/Anki.svelte"
   import Appearance from "./sections/appearance/Appearance.svelte"
   import Hotkeys from "./sections/Hotkeys.svelte"
   import Integrations from "./sections/integrations/Integrations.svelte"
@@ -55,8 +56,10 @@
             <Appearance />
           {:else if open === "subtitles"}
             <Subtitles />
-          {:else}
+          {:else if open === "hotkeys"}
             <Hotkeys />
+          {:else}
+            <Anki />
           {/if}
         </div>
       </main>

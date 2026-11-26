@@ -1,0 +1,168 @@
+<script lang="ts">
+  import { onMount } from "svelte"
+  import CircleAlertIcon from "@lucide/svelte/icons/circle-alert"
+  import CircleCheckIcon from "@lucide/svelte/icons/circle-check"
+  import LoaderIcon from "@lucide/svelte/icons/loader-circle"
+  import { Button } from "$lib/components/ui/button"
+  import { Input } from "$lib/components/ui/input"
+  import { Label } from "$lib/components/ui/label"
+  import { Switch } from "$lib/components/ui/switch"
+  import { languageName } from "$lib/languages"
+  import {
+    ANKI_KEYS,
+    ankiLanguage,
+    getAnkiEnabled,
+    getAnkiLanguages,
+    getLanguageOrder,
+    getServerByLang,
+    setAnkiEnabled,
+    setAnkiLanguage,
+    type AnkiLanguages,
+    type SourceLanguage,
+  } from "$lib/storage"
+  import SectionTitle from "../../layout/SectionTitle.svelte"
+  import { AnkiConnection, ankiErrorText } from "./connection.svelte"
+  import DeckPicker from "./DeckPicker.svelte"
+  import { sourceLanguages } from "./languages"
+
+  const connection = new AnkiConnection()
+  /** Unset until storage answers, so the switch does not flip after showing. */
+  let enabled = $state<boolean>()
+  let choices = $state.raw<AnkiLanguages>({})
+  let languages = $state.raw<Array<SourceLanguage>>([])
+  let key = $state("")
+
+  const decks = $derived(connection.status.kind === "connected" ? connection.status.decks : [])
+
+  const load = async () => {
+    const [on, chosen, serverByLang, order] = await Promise.all([
+      getAnkiEnabled(),
+      getAnkiLanguages(),
+      getServerByLang(),
+      getLanguageOrder(),
+    ])
+    enabled = on
+    choices = chosen
+    languages = sourceLanguages(Object.keys(serverByLang), order)
+  }
+
+  onMount(() => {
+    void load()
+    void connection.check()
+    // Another settings tab, or binding a server, changes what is listed.
+    const keys = [...ANKI_KEYS, "serverByLang", "languageOrder"]
+    const onChanged = (changes: Record<string, unknown>, area: string) => {
+      if (area === "local" && keys.some((name) => name in changes)) {
+        void load()
+      }
+    }
+    browser.storage.onChanged.addListener(onChanged)
+    return () => browser.storage.onChanged.removeListener(onChanged)
+  })
+
+  const toggle = async (checked: boolean) => {
+    enabled = checked
+    await setAnkiEnabled(checked)
+  }
+
+  const submitKey = (event: SubmitEvent) => {
+    event.preventDefault()
+    void connection.connect(key)
+  }
+</script>
+
+<section class="flex max-w-2xl flex-col gap-5">
+  <SectionTitle title="Anki" />
+  <div class={["flex flex-col divide-y rounded-lg border", enabled === undefined && "invisible"]}>
+    <div class="flex items-center justify-between gap-4 p-4">
+      <div class="flex flex-col gap-0.5">
+        <Label for="anki-enabled">Add words to Anki</Label>
+        <p class="text-muted-foreground text-sm">
+          Keep a word with its sentence from the popover, then pick its meanings and send it to Anki as a
+          card.
+        </p>
+      </div>
+      <Switch
+        id="anki-enabled"
+        checked={enabled ?? false}
+        onCheckedChange={(checked) => void toggle(checked)}
+      />
+    </div>
+    <div class="flex flex-col gap-3 p-4">
+      <div class="flex items-center gap-3" role="status">
+        {#if connection.status.kind === "checking"}
+          <LoaderIcon class="text-muted-foreground size-4 shrink-0 animate-spin" />
+          <p class="text-muted-foreground flex-1 text-sm">Looking for Anki…</p>
+        {:else if connection.status.kind === "connected"}
+          <CircleCheckIcon class="text-muted-foreground size-4 shrink-0" />
+          <p class="flex-1 text-sm">Connected to Anki</p>
+        {:else}
+          <CircleAlertIcon class="text-destructive size-4 shrink-0" />
+          <p class="flex-1 text-sm">
+            {connection.status.kind === "key"
+              ? "AnkiConnect asks for its API key. Find it under Tools → Add-ons → AnkiConnect → Config."
+              : ankiErrorText(connection.status.error)}
+          </p>
+        {/if}
+        {#if connection.status.kind !== "key"}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={connection.busy || connection.status.kind === "checking"}
+            onclick={() => void connection.connect()}
+          >
+            {connection.status.kind === "connected" ? "Check again" : "Connect"}
+          </Button>
+        {/if}
+      </div>
+      {#if connection.status.kind === "key"}
+        <form class="flex gap-2" onsubmit={submitKey}>
+          <Input bind:value={key} type="password" placeholder="API key" aria-label="AnkiConnect API key" />
+          <Button type="submit" variant="outline" disabled={connection.busy}>Connect</Button>
+        </form>
+      {/if}
+    </div>
+  </div>
+
+  {#if enabled}
+    <div class="flex flex-col gap-2">
+      <h2 class="text-muted-foreground text-sm font-medium">Languages</h2>
+      {#if languages.length === 0}
+        <p class="text-muted-foreground text-sm">Add a dictionary server to pick decks for its languages.</p>
+      {:else}
+        <ul class="flex flex-col divide-y rounded-lg border">
+          {#each languages as language (language)}
+            {@const name = languageName(language)}
+            {@const choice = ankiLanguage(choices, language)}
+            <li
+              class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 @min-[32rem]:grid-cols-[8rem_minmax(0,1fr)_auto]"
+            >
+              <span class="text-sm font-medium">{name}</span>
+              <div class="col-span-2 row-start-2 @min-[32rem]:col-span-1 @min-[32rem]:row-start-auto">
+                <DeckPicker
+                  {decks}
+                  deck={choice.deck}
+                  label="Deck for {name}"
+                  pick={(deck) => void setAnkiLanguage(language, { deck })}
+                />
+              </div>
+              <div
+                class="col-start-2 row-start-1 flex items-center gap-2 @min-[32rem]:col-start-auto @min-[32rem]:row-start-auto"
+              >
+                <Label for="anki-ipa-{language}" class="text-muted-foreground font-normal">IPA</Label>
+                <Switch
+                  id="anki-ipa-{language}"
+                  checked={choice.ipa}
+                  onCheckedChange={(ipa) => void setAnkiLanguage(language, { ipa })}
+                />
+              </div>
+            </li>
+          {/each}
+        </ul>
+        <p class="text-muted-foreground text-sm">
+          A deck marked new is made with the first card that goes to it.
+        </p>
+      {/if}
+    </div>
+  {/if}
+</section>
