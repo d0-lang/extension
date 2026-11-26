@@ -25,8 +25,9 @@
   })
 
   const legend = [
-    { keys: ["A", "D"], also: ["H", "L"], action: "Move between the sentence and meanings" },
-    { keys: ["Space"], also: ["1–9"], action: "Pick a meaning" },
+    { keys: ["W", "S"], also: ["K", "J"], action: "Up and down, to the buttons" },
+    { keys: ["A", "D"], also: ["H", "L"], action: "Another entry of the word" },
+    { keys: ["Space"], also: ["1–9"], action: "Pick a meaning, or press" },
     { keys: ["E"], also: ["I"], action: "Edit, Enter to keep" },
     { keys: ["Shift", "W", "S"], also: ["Shift", "K", "J"], action: "Previous or next word" },
     { keys: ["Ctrl", "Enter"], action: "Send to Anki" },
@@ -53,10 +54,10 @@
       return
     }
     const action = reviewAction(event)
-    // A focused button or checkbox takes Space itself.
-    if (action === undefined || (action.kind === "toggle" && target?.closest("button") != null)) {
+    if (action === undefined) {
       return
     }
+    // Space and Enter act on the selection, not on a button the mouse left focused.
     event.preventDefault()
     // Only a second drop in a row drops.
     if (action.kind !== "drop") {
@@ -66,10 +67,11 @@
       case "focus":
         review.moveFocus(action.step)
         return
-      case "toggle":
-        if (review.focus !== "sentence") {
-          review.toggleSense(review.focus)
-        }
+      case "entry":
+        review.stepEntry(action.step)
+        return
+      case "activate":
+        review.activate()
         return
       case "edit":
         review.edit()

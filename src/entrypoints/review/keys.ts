@@ -3,7 +3,8 @@
 export type ReviewAction =
   | { kind: "word"; step: 1 | -1 }
   | { kind: "focus"; step: 1 | -1 }
-  | { kind: "toggle" }
+  | { kind: "entry"; step: 1 | -1 }
+  | { kind: "activate" }
   | { kind: "sense"; index: number }
   | { kind: "edit" }
   | { kind: "send" }
@@ -20,15 +21,26 @@ const SHIFTED: Record<string, ReviewAction> = {
   ArrowDown: { kind: "word", step: 1 },
 }
 
-/** Without modifiers: the sentence and the meanings of the word shown. */
+/**
+ * Without modifiers: up and down from the sentence through the meanings to the buttons, and left and right through
+ * the word's entries, like its noun and its verb.
+ */
 const PLAIN: Record<string, ReviewAction> = {
-  KeyA: { kind: "focus", step: -1 },
-  KeyH: { kind: "focus", step: -1 },
+  KeyW: { kind: "focus", step: -1 },
+  KeyK: { kind: "focus", step: -1 },
   ArrowUp: { kind: "focus", step: -1 },
-  KeyD: { kind: "focus", step: 1 },
-  KeyL: { kind: "focus", step: 1 },
+  KeyS: { kind: "focus", step: 1 },
+  KeyJ: { kind: "focus", step: 1 },
   ArrowDown: { kind: "focus", step: 1 },
-  Space: { kind: "toggle" },
+  KeyA: { kind: "entry", step: -1 },
+  KeyH: { kind: "entry", step: -1 },
+  ArrowLeft: { kind: "entry", step: -1 },
+  KeyD: { kind: "entry", step: 1 },
+  KeyL: { kind: "entry", step: 1 },
+  ArrowRight: { kind: "entry", step: 1 },
+  Space: { kind: "activate" },
+  Enter: { kind: "activate" },
+  NumpadEnter: { kind: "activate" },
   KeyE: { kind: "edit" },
   KeyI: { kind: "edit" },
   KeyX: { kind: "drop" },

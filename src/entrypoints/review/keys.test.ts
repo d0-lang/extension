@@ -6,19 +6,22 @@ const key = (code: string, init: KeyboardEventInit = {}) =>
   reviewAction(new KeyboardEvent("keydown", { code, ...init }))
 
 describe("reviewAction", () => {
-  it("moves between words with Shift and W/S or K/J, and within one with A/D or H/L", () => {
+  it("goes up and down with W/S or K/J, through entries with A/D or H/L, and through words with Shift", () => {
+    expect(key("KeyS")).toEqual({ kind: "focus", step: 1 })
+    expect(key("KeyK")).toEqual({ kind: "focus", step: -1 })
+    expect(key("KeyD")).toEqual({ kind: "entry", step: 1 })
+    expect(key("KeyH")).toEqual({ kind: "entry", step: -1 })
     expect(key("KeyS", { shiftKey: true })).toEqual({ kind: "word", step: 1 })
     expect(key("KeyK", { shiftKey: true })).toEqual({ kind: "word", step: -1 })
-    expect(key("KeyD")).toEqual({ kind: "focus", step: 1 })
-    expect(key("KeyH")).toEqual({ kind: "focus", step: -1 })
-    expect(key("KeyW")).toBeUndefined()
+    expect(key("KeyD", { shiftKey: true })).toBeUndefined()
   })
 
-  it("edits with E or I, sends on Ctrl + Enter, and leaves a plain Enter alone", () => {
+  it("edits with E or I, acts on the selection with Space or Enter, and sends on Ctrl + Enter", () => {
     expect(key("KeyE")).toEqual({ kind: "edit" })
     expect(key("KeyI")).toEqual({ kind: "edit" })
+    expect(key("Space")).toEqual({ kind: "activate" })
+    expect(key("Enter")).toEqual({ kind: "activate" })
     expect(key("Enter", { ctrlKey: true })).toEqual({ kind: "send" })
-    expect(key("Enter")).toBeUndefined()
   })
 
   it("picks a meaning by its number, from the row or the keypad", () => {

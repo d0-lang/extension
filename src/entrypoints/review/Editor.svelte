@@ -8,7 +8,7 @@
   import type { CardDraft, CardSeed } from "$lib/storage"
   import EditField from "./EditField.svelte"
   import { draftSentence, senseText } from "./fields"
-  import type { Focus, Review } from "./review.svelte"
+  import type { Editable, Focus, Review } from "./review.svelte"
 
   let {
     review,
@@ -26,13 +26,16 @@
   const entry = $derived(seed.entries[draft.entry])
 
   /** Keeps the edit, then sends, as Ctrl + Enter does anywhere on the page. */
-  const keepAndSend = (target: Focus, text: string) => {
+  const keepAndSend = (target: Editable, text: string) => {
     review.keepEdit(target, text)
     void review.send()
   }
 
   const focusClass = (target: Focus) =>
     review.focus === target && review.editing !== target ? "bg-accent" : "hover:bg-accent/50"
+
+  /** The ring a selected button gets, as the keys move onto it. */
+  const buttonRing = (target: Focus) => (review.focus === target ? "ring-ring/60 ring-3" : undefined)
 </script>
 
 <div class="flex flex-col gap-4">
@@ -137,11 +140,25 @@
   {/if}
 
   <div class="flex flex-wrap items-center gap-2">
-    <Button disabled={draft.senses.length === 0 || review.sending} onclick={() => void review.send()}>
+    <Button
+      class={buttonRing("send")}
+      disabled={draft.senses.length === 0 || review.sending}
+      onclick={() => {
+        review.focus = "send"
+        void review.send()
+      }}
+    >
       {review.sending ? "Sending…" : "Send to Anki"}
       <Keycap>Ctrl</Keycap><Keycap>Enter</Keycap>
     </Button>
-    <Button variant={review.dropArmed ? "destructive" : "outline"} onclick={() => void review.drop()}>
+    <Button
+      class={buttonRing("drop")}
+      variant={review.dropArmed ? "destructive" : "outline"}
+      onclick={() => {
+        review.focus = "drop"
+        void review.drop()
+      }}
+    >
       {review.dropArmed ? "Drop it for good?" : "Drop"}
       <Keycap>X</Keycap>
     </Button>

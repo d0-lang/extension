@@ -12,8 +12,11 @@ import {
 import { firstDraft } from "./fields"
 import { sendCard } from "./send"
 
-/** The sentence, or a meaning by its index. */
-export type Focus = "sentence" | number
+/** The sentence, a meaning by its index, or one of the buttons under them. */
+export type Focus = "sentence" | number | "send" | "drop"
+
+/** What can be edited: the sentence or a meaning. */
+export type Editable = "sentence" | number
 
 /** The kept words, the one being reviewed, and where the keys are in it. Picks and edits are kept with each word. */
 export class Review {
@@ -23,13 +26,15 @@ export class Review {
   currentId = $state<string>()
   focus = $state<Focus>(0)
   /** What is being edited, if anything. */
-  editing = $state<Focus>()
+  editing = $state<Editable>()
   /** Set by the first drop, so the second one drops. Anything else in between undoes it. */
   dropArmed = $state(false)
   sending = $state(false)
   error = $state<string>()
   /** Lemmas Anki has a DaDict note for, among those asked. */
   inAnki = $state<Record<string, boolean>>({})
+  /** The picks left on another entry, by word id and entry, to come back to. Gone with the page. */
+  private leftEntries: Record<string, CardDraft> = {}
 
   current = $derived(this.seeds.find((seed) => seed.id === this.currentId) ?? this.seeds[0])
   draft = $derived(this.current === undefined ? undefined : (this.current.draft ?? firstDraft(this.current)))
@@ -80,10 +85,12 @@ export class Review {
     void addSeed(next)
   }
 
-  /** The sentence first, when the word has one, then its meanings. */
+  /** From the top: the sentence, when the word has one, its meanings, then the buttons. */
   private focusOrder = (): Array<Focus> => [
     ...(this.current?.sentence === undefined ? [] : (["sentence"] as const)),
     ...(this.entry?.senses.map((_, index) => index) ?? []),
+    "send",
+    "drop",
   ]
 
   /** Stops at either end. */
@@ -105,28 +112,61 @@ export class Review {
     this.save({ ...draft, senses })
   }
 
-  /** Another entry starts with its own meanings. An edited sentence stays. */
+  /**
+   * Another entry gets the meanings picked for it before, or its own first ones. An edited sentence stays.
+   * The selection stays on the sentence or a button, and goes to the first meaning from a meaning.
+   */
   pickEntry = (entry: number) => {
     const { current, draft } = this
-    if (current === undefined || draft === undefined || entry === draft.entry) {
+    if (current === undefined || draft === undefined || entry === draft.entry || !current.entries[entry]) {
       return
     }
-    this.focus = 0
+    this.leftEntries[`${current.id}:${draft.entry}`] = draft
+    const left = this.leftEntries[`${current.id}:${entry}`]
+    if (typeof this.focus === "number") {
+      this.focus = 0
+    }
     this.editing = undefined
-    this.save({ ...firstDraft(current, entry), sentence: draft.sentence })
+    this.save({ ...(left ?? firstDraft(current, entry)), sentence: draft.sentence })
     void this.checkAnki()
   }
 
+  /** Stops at either end. */
+  stepEntry = (step: 1 | -1) => {
+    const { current, draft } = this
+    if (current !== undefined && draft !== undefined) {
+      this.pickEntry(Math.min(Math.max(draft.entry + step, 0), current.entries.length - 1))
+    }
+  }
+
   edit = (target: Focus = this.focus) => {
-    if (target === "sentence" && this.current?.sentence === undefined) {
+    if (
+      target === "send" ||
+      target === "drop" ||
+      (target === "sentence" && this.current?.sentence === undefined)
+    ) {
       return
     }
     this.focus = target
     this.editing = target
   }
 
+  /** What Space and Enter do on the selection: edit the sentence, pick a meaning, or press the button. */
+  activate = () => {
+    const focus = this.focus
+    if (focus === "send") {
+      void this.send()
+    } else if (focus === "drop") {
+      void this.drop()
+    } else if (focus === "sentence") {
+      this.edit(focus)
+    } else {
+      this.toggleSense(focus)
+    }
+  }
+
   /** Keeps `text` for what was edited. An edited meaning is picked too, as editing it says it is wanted. */
-  keepEdit = (target: Focus, text: string) => {
+  keepEdit = (target: Editable, text: string) => {
     const draft = this.draft
     this.editing = undefined
     if (draft === undefined) {
