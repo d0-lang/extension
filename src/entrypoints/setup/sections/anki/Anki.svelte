@@ -107,7 +107,7 @@
           <LoaderIcon class="text-muted-foreground size-4 shrink-0 animate-spin" />
           <p class="text-muted-foreground flex-1 text-sm">Looking for Anki…</p>
         {:else if connection.status.kind === "connected"}
-          <CircleCheckIcon class="text-muted-foreground size-4 shrink-0" />
+          <CircleCheckIcon class="text-link size-4 shrink-0" />
           <p class="flex-1 text-sm">Connected to Anki</p>
         {:else}
           <CircleAlertIcon class="text-destructive size-4 shrink-0" />
