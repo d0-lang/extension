@@ -4,6 +4,7 @@
   import BugIcon from "@lucide/svelte/icons/bug"
   import CaptionsIcon from "@lucide/svelte/icons/captions"
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right"
+  import GraduationCapIcon from "@lucide/svelte/icons/graduation-cap"
   import KeyboardIcon from "@lucide/svelte/icons/keyboard"
   import PaletteIcon from "@lucide/svelte/icons/palette"
   import PlugIcon from "@lucide/svelte/icons/plug"
@@ -27,6 +28,7 @@
     appearance: PaletteIcon,
     subtitles: CaptionsIcon,
     hotkeys: KeyboardIcon,
+    anki: GraduationCapIcon,
   }
 
   const groups = sectionGroups()

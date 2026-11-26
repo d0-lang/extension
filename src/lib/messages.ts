@@ -118,3 +118,20 @@ export const requestAudio = (url: string): ResultAsync<ArrayBuffer, DictError> =
         ? ok(Uint8Array.from(atob(reply.data), (char) => char.charCodeAt(0)).buffer)
         : err(reply.error),
   )
+
+/** Content to background: which of `lemmas` Anki already has a card for. */
+export type InAnkiMessage = { type: "anki:in-anki"; lemmas: Array<string> }
+
+export const isInAnkiMessage = (message: unknown): message is InAnkiMessage =>
+  (message as InAnkiMessage | undefined)?.type === "anki:in-anki" &&
+  Array.isArray((message as InAnkiMessage).lemmas) &&
+  (message as InAnkiMessage).lemmas.every((lemma) => typeof lemma === "string")
+
+/** Ask the background which of `lemmas` are in Anki. None when Anki cannot be asked, as a warning there is only a hint. */
+export const askInAnki = (lemmas: Array<string>): Promise<Array<string>> =>
+  browser.runtime
+    .sendMessage({ type: "anki:in-anki", lemmas } satisfies InAnkiMessage)
+    .then((found: unknown) =>
+      Array.isArray(found) ? found.filter((lemma): lemma is string => typeof lemma === "string") : [],
+    )
+    .catch(() => [])

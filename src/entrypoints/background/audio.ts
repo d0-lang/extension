@@ -1,5 +1,6 @@
 /** Fetches recordings for the popover, so the audio host learns nothing about the page the user is on. */
 import { ResultAsync, errAsync, okAsync } from "neverthrow"
+import { toBase64 } from "$lib/base64"
 import { isAllowedAudioUrl } from "$lib/dict/entries"
 import { audioHostError, bodyError, fromUnknown, httpError, type DictError } from "$lib/dict/errors"
 import type { AudioReply } from "$lib/messages"
@@ -9,17 +10,6 @@ const AUDIO_TIMEOUT_MS = 10_000
 
 /** Far above a spoken word, so a host cannot make the background hold a large file. */
 const MAX_AUDIO_BYTES = 5_000_000
-
-/** `String.fromCharCode` takes its characters as arguments, which a whole file would overflow. */
-const BASE64_CHUNK = 0x8000
-
-const toBase64 = (bytes: Uint8Array): string => {
-  let binary = ""
-  for (let start = 0; start < bytes.length; start += BASE64_CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(start, start + BASE64_CHUNK))
-  }
-  return btoa(binary)
-}
 
 /** Any bound server's host, not only the one that answered, which the popover checks already. */
 const isAllowed = (url: string): ResultAsync<boolean, DictError> =>

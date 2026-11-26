@@ -7,6 +7,7 @@ export const sections = [
   { id: "appearance", label: "Appearance", group: "Display" },
   { id: "subtitles", label: "Subtitles", group: "Display" },
   { id: "hotkeys", label: "Hotkeys", group: "Display" },
+  { id: "anki", label: "Anki", group: "Flashcards" },
 ] as const
 
 export type SectionId = (typeof sections)[number]["id"]

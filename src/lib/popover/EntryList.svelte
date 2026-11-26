@@ -1,14 +1,19 @@
 <script lang="ts">
   import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right"
+  import BookmarkCheck from "@lucide/svelte/icons/bookmark-check"
+  import BookmarkPlus from "@lucide/svelte/icons/bookmark-plus"
+  import TriangleAlert from "@lucide/svelte/icons/triangle-alert"
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
+  import type { KeepState } from "$lib/anki/keep"
   import { linkSense, playableAudio } from "$lib/dict/entries"
   import type { LookupEntry } from "$lib/dict/types"
   import type { PairLabels } from "$lib/storage"
   import type { AudioPlayer } from "./audio.svelte"
   import LabelTag from "./LabelTag.svelte"
+  import { isUserKeep } from "./keyboard"
   import { explanationOf, posName } from "./labels"
-  import { splitStress, stressedLetter } from "./stress"
+  import Stressed from "./Stressed.svelte"
 
   let {
     entries,
@@ -20,6 +25,7 @@
     follow,
     reserveEnd = false,
     whole = 0,
+    keep,
   }: {
     entries: Array<LookupEntry>
     /** The language `entries` are in, which a `see` link is looked up in. */
@@ -35,7 +41,18 @@
     reserveEnd?: boolean
     /** How many entries, from the top, are the whole word's own. A bar beside them sets them apart from a part's entries. */
     whole?: number
+    /** Keeping entries for Anki, while it is on. `toggle` gets the entries shown and the index of the one pressed. */
+    keep?: {
+      state: (entry: LookupEntry) => KeepState | undefined
+      toggle: (entries: Array<LookupEntry>, index: number) => void
+    }
   } = $props()
+
+  const keepTitle: Record<KeepState | "none", string> = {
+    none: "Keep for Anki (Q)",
+    kept: "Kept for Anki. Press to remove it (Q)",
+    anki: "Already in Anki. Press to keep it again (Q)",
+  }
 </script>
 
 {#if whole > 0}
@@ -60,7 +77,7 @@
         <!-- Inline, so the tags follow a long headword onto its last line. -->
         <div class="min-w-0 flex-1 leading-6 wrap-anywhere">
           <h2 class="inline text-base font-semibold">
-            {@render stressed(entry.lemma)}
+            <Stressed text={entry.lemma} />
           </h2>
           {#if posName(entry.pos) !== ""}{" "}<span class="text-muted-foreground text-xs"
               >{posName(entry.pos)}</span
@@ -69,6 +86,35 @@
               explanation={explanationOf(labels, label)}
             />{/each}
         </div>
+        {#if keep !== undefined}
+          {@const state = keep.state(entry)}
+          <button
+            type="button"
+            data-keep
+            class={[
+              "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md",
+              state === "kept" ? "bg-link/15 text-link" : "bg-muted text-foreground hover:bg-accent",
+            ]}
+            aria-label={state === "kept"
+              ? `Remove ${entry.lemma} from the words kept for Anki`
+              : `Keep ${entry.lemma} for Anki`}
+            aria-pressed={state === "kept"}
+            title={keepTitle[state ?? "none"]}
+            onclick={(event) => {
+              if (isUserKeep(event)) {
+                keep.toggle(entries, index)
+              }
+            }}
+          >
+            {#if state === "kept"}
+              <BookmarkCheck class="size-3" />
+            {:else if state === "anki"}
+              <TriangleAlert class="size-3" />
+            {:else}
+              <BookmarkPlus class="size-3" />
+            {/if}
+          </button>
+        {/if}
         {#if url !== undefined}
           {@const going = audio.playing === url}
           {@const failed = audio.failed === url}
@@ -94,7 +140,7 @@
       </div>
       <!-- Kana words often come with themselves as the reading. -->
       {#if entry.pron?.reading !== undefined && entry.pron.reading !== entry.lemma}
-        <p class="wrap-anywhere">{@render stressed(entry.pron.reading)}</p>
+        <p class="wrap-anywhere"><Stressed text={entry.pron.reading} /></p>
       {/if}
       {#if showIpa && ipa.length > 0}
         <p class="text-muted-foreground text-xs wrap-anywhere">
@@ -124,12 +170,6 @@
       {/each}
     </ol>
   </section>
-{/snippet}
-
-{#snippet stressed(text: string)}
-  {#each splitStress(text) as part, partIndex (partIndex)}{#if part.stressed}{@const letter = stressedLetter(
-        part.text,
-      )}<span class="dict-stress" data-lift={letter.lift}>{letter.text}</span>{:else}{part.text}{/if}{/each}
 {/snippet}
 
 {#snippet seeLink(text: string, target: string, language: string | undefined)}

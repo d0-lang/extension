@@ -21,6 +21,7 @@ describe("sectionGroups", () => {
       ["Dictionaries", ["servers"]],
       ["Sites", ["integrations", "sites"]],
       ["Display", ["appearance", "subtitles", "hotkeys"]],
+      ["Flashcards", ["anki"]],
     ])
   })
 })

@@ -1,6 +1,12 @@
-import { isAudioRequestMessage, isLookupRequestMessage, isShownLookupMessage } from "$lib/messages"
-import { clearLastLookup } from "$lib/storage"
+import {
+  isAudioRequestMessage,
+  isInAnkiMessage,
+  isLookupRequestMessage,
+  isShownLookupMessage,
+} from "$lib/messages"
+import { clearLastLookup, isSeedKey } from "$lib/storage"
 import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./action"
+import { inAnki } from "./anki"
 import { fetchAudio } from "./audio"
 import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
 import { answer } from "./lookup"
@@ -53,7 +59,10 @@ export default defineBackground(() => {
     if ("serverByLang" in changes) {
       void syncAction()
     }
-    if ("serverIssues" in changes) {
+    if (
+      ["serverIssues", "ankiEnabled"].some((key) => key in changes) ||
+      Object.keys(changes).some(isSeedKey)
+    ) {
       void syncBadge()
     }
     if ("lookupEnabled" in changes) {
@@ -74,6 +83,10 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (isAudioRequestMessage(message)) {
       void fetchAudio(message.url).then(sendResponse)
+      return true
+    }
+    if (isInAnkiMessage(message)) {
+      void inAnki(message.lemmas).then(sendResponse)
       return true
     }
     if (isShownLookupMessage(message)) {

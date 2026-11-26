@@ -1,5 +1,6 @@
 /**
- * Popover keys: W/S scroll, A/D move between the parts of a split word, E plays the topmost pronunciation in view.
+ * Popover keys: W/S scroll, A/D move between the parts of a split word, E plays the topmost pronunciation in view,
+ * Q keeps the topmost entry in view for Anki.
  * Arrow keys stay the page's, because Alt + Left and Alt + Right are the browser's Back and Forward.
  */
 import { isTyping } from "../page/hold"
@@ -9,6 +10,26 @@ import { suspendAccessKeys } from "./accesskeys"
 const segmentSteps: Record<string, 1 | -1> = { KeyA: -1, KeyD: 1 }
 const scrollSteps: Record<string, 1 | -1> = { KeyW: -1, KeyS: 1 }
 const PLAY_KEY = "KeyE"
+const KEEP_KEY = "KeyQ"
+
+/** The keep button a real Q press is clicking, so its handler can tell that click from one the page made. */
+let pressedKeep: EventTarget | undefined
+
+/**
+ * Whether a click on a keep button is the user's: a real click, or the one click a real Q made on that button. A page
+ * can click a button or make up the key itself, which would keep the page's sentence without the user choosing to.
+ * The page also sees Q's click bubble, so another click it makes meanwhile, on any button, does not count.
+ */
+export const isUserKeep = (event: MouseEvent): boolean => {
+  if (event.isTrusted) {
+    return true
+  }
+  if (pressedKeep === undefined || event.currentTarget !== pressedKeep) {
+    return false
+  }
+  pressedKeep = undefined
+  return true
+}
 
 const SCROLL_PX_PER_MS = 0.6
 /** A tap scrolls at least this far, however quickly the key comes up. */
@@ -20,10 +41,12 @@ export type KeyActions = {
   /** False when there is no other part to pick, so the key reaches the page. */
   stepSegment: (step: 1 | -1) => boolean
   play: (url: string) => void
+  /** Whether entries can be kept for Anki. Without it Q reaches the page. */
+  keeps?: boolean
 }
 
 /** Listen on the page until the returned function is called. Keys the popover uses do not reach the page. */
-export const listenForKeys = ({ scroller, stepSegment, play }: KeyActions): (() => void) => {
+export const listenForKeys = ({ scroller, stepSegment, play, keeps = false }: KeyActions): (() => void) => {
   /** Scrolling frame by frame, because repeated smooth `scrollBy` calls move at different speeds in Chrome and Firefox. */
   let scrolling:
     { code: string; step: 1 | -1; held: boolean; moved: number; last: number; frame: number } | undefined
@@ -77,16 +100,20 @@ export const listenForKeys = ({ scroller, stepSegment, play }: KeyActions): (() 
     return true
   }
 
-  /** The topmost entry with audio that is not scrolled out of view above. */
-  const playShown = () => {
+  /** The first element matching `selector` in the topmost entry that is not scrolled out of view above. */
+  const topmostShown = (selector: string): HTMLElement | undefined => {
     const target = scroller()
     if (target === undefined) {
-      return
+      return undefined
     }
     const top = target.getBoundingClientRect().top
-    const url = [...target.querySelectorAll<HTMLElement>("[data-audio]")].find(
-      (section) => section.getBoundingClientRect().bottom > top,
-    )?.dataset.audio
+    return [...target.querySelectorAll<HTMLElement>(selector)].find(
+      (element) => (element.closest("section") ?? element).getBoundingClientRect().bottom > top,
+    )
+  }
+
+  const playShown = () => {
+    const url = topmostShown("[data-audio]")?.dataset.audio
     if (url !== undefined) {
       play(url)
     }
@@ -100,6 +127,18 @@ export const listenForKeys = ({ scroller, stepSegment, play }: KeyActions): (() 
     const scrollStep = scrollSteps[event.code]
     if (scrollStep !== undefined) {
       return startScroll(event.code, scrollStep)
+    }
+    if (event.code === KEEP_KEY) {
+      const button = keeps && event.isTrusted ? topmostShown("[data-keep]") : undefined
+      if (button !== undefined && !event.repeat) {
+        pressedKeep = button
+        try {
+          button.click()
+        } finally {
+          pressedKeep = undefined
+        }
+      }
+      return button !== undefined
     }
     if (event.code !== PLAY_KEY) {
       return false
@@ -135,6 +174,7 @@ export const listenForKeys = ({ scroller, stepSegment, play }: KeyActions): (() 
     ...Object.keys(segmentSteps),
     ...Object.keys(scrollSteps),
     PLAY_KEY,
+    ...(keeps ? [KEEP_KEY] : []),
   ])
   return () => {
     restoreAccessKeys()

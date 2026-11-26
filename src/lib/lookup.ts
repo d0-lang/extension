@@ -1,6 +1,7 @@
 /** Word lookup on a page: the popover, the session it searches with, and the subtitles that open it. */
+import { createKeeping } from "$lib/anki/keep"
 import { sendShownLookup } from "$lib/messages"
-import { getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
+import { getAnkiEnabled, getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { watchAltHold } from "./page/hold"
@@ -45,7 +46,12 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
   ) => {
     shownRange = range
     return popover.show(async () => {
-      const [theme, showIpa, markStyle] = await Promise.all([getTheme(), getShowIpa(), getMarkStyle()])
+      const [theme, showIpa, markStyle, ankiEnabled] = await Promise.all([
+        getTheme(),
+        getShowIpa(),
+        getMarkStyle(),
+        getAnkiEnabled(),
+      ])
       return {
         word,
         anchor,
@@ -75,6 +81,9 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
           session.search(target, element, language, undefined, known),
         shown: sendShownLookup,
         paint: element === null ? undefined : subtitles?.markFor(element),
+        keeping: ankiEnabled
+          ? createKeeping(context === undefined ? undefined : { text: context.text, at: context.at })
+          : undefined,
       }
     })
   }

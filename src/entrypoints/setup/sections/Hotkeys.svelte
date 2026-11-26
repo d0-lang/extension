@@ -6,8 +6,15 @@
   /**
    * Each of `keys` is one direction, like W for up and S for down.
    * `hold` keys are held down, and `text` is said in words instead of keys.
+   * `modifier` is held with any of `keys`.
    */
-  type Hotkey = { action: string; keys?: Array<string>; hold?: boolean; text?: string }
+  type Hotkey = {
+    action: string
+    keys?: Array<string>
+    hold?: boolean
+    text?: string
+    modifier?: string
+  }
 
   const groups: Array<{ name: string; hotkeys: Array<Hotkey> }> = [
     {
@@ -31,7 +38,20 @@
         { action: "Scroll the popover", keys: ["W", "S"] },
         { action: "Move between the parts of a word", keys: ["A", "D"] },
         { action: "Play the pronunciation", keys: ["E"] },
+        { action: "Keep the word for Anki, when Anki is on", keys: ["Q"] },
         { action: "Close the popover", keys: ["Esc"] },
+      ],
+    },
+    {
+      name: "On the kept words page",
+      hotkeys: [
+        { action: "Move up and down", keys: ["W", "S"] },
+        { action: "Previous or next word", modifier: "Shift", keys: ["W", "S"] },
+        { action: "Another entry of the word, like its noun or verb", keys: ["A", "D"] },
+        { action: "Pick a meaning", keys: ["Space", "Enter"] },
+        { action: "Edit the sentence or a meaning", keys: ["E"] },
+        { action: "Send to Anki", modifier: "Ctrl", keys: ["Enter"] },
+        { action: "Drop the word", keys: ["X"] },
       ],
     },
   ]
@@ -52,6 +72,10 @@
               {:else}
                 {#if hotkey.hold}<span class="mr-1">Hold</span>{/if}
                 <KbdGroup>
+                  {#if hotkey.modifier !== undefined}
+                    <Keycap>{hotkey.modifier}</Keycap>
+                    <span class="text-xs">+</span>
+                  {/if}
                   {#each hotkey.keys ?? [] as key, index (key)}
                     {#if index > 0}
                       <span class="text-xs">/</span>

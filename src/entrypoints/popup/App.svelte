@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import BookmarkIcon from "@lucide/svelte/icons/bookmark"
   import BugIcon from "@lucide/svelte/icons/bug"
   import ClapperboardIcon from "@lucide/svelte/icons/clapperboard"
   import SettingsIcon from "@lucide/svelte/icons/settings"
@@ -7,16 +8,24 @@
   import { Button } from "$lib/components/ui/button"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
-  import { getLookupEnabled, getServerIssues, setLookupEnabled } from "$lib/storage"
+  import { getAnkiEnabled, getLookupEnabled, getSeeds, getServerIssues, setLookupEnabled } from "$lib/storage"
   import { reportPagePath } from "$lib/report-page"
 
   let lookupEnabled = $state(false)
   let issueCount = $state(0)
+  /** Words kept for Anki, while Anki is on. */
+  let keptCount = $state(0)
 
   onMount(async () => {
-    const [enabled, issues] = await Promise.all([getLookupEnabled(), getServerIssues()])
+    const [enabled, issues, ankiEnabled, seeds] = await Promise.all([
+      getLookupEnabled(),
+      getServerIssues(),
+      getAnkiEnabled(),
+      getSeeds(),
+    ])
     lookupEnabled = enabled
     issueCount = Object.keys(issues).length
+    keptCount = ankiEnabled ? seeds.length : 0
   })
 
   const onToggle = async (checked: boolean) => {
@@ -26,6 +35,11 @@
 
   const openSetup = () => {
     void browser.tabs.create({ url: browser.runtime.getURL("/setup.html") })
+    window.close()
+  }
+
+  const openReview = () => {
+    void browser.tabs.create({ url: browser.runtime.getURL("/review.html") })
     window.close()
   }
 
@@ -65,6 +79,12 @@
     </button>
   {/if}
   <div class="flex flex-col gap-2">
+    {#if keptCount > 0}
+      <Button size="lg" class="text-base" onclick={openReview}>
+        <BookmarkIcon />
+        {keptCount} kept {keptCount === 1 ? "word" : "words"}
+      </Button>
+    {/if}
     <Button variant="outline" size="lg" class="text-base" onclick={openPlayer}>
       <ClapperboardIcon />
       Watch a video file
