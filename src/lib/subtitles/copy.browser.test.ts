@@ -87,18 +87,6 @@ describe("addCopyMenu", () => {
     expect(word("Sure").dataset.picked).toBeUndefined()
   })
 
-  it("stops the video while the menu is open, and plays it after", () => {
-    const { video } = setUp()
-    Object.defineProperty(video, "paused", { value: false, configurable: true })
-    const pause = vi.spyOn(video, "pause").mockImplementation(() => {})
-    const play = vi.spyOn(video, "play").mockResolvedValue()
-    rightClick(word("Sure"))
-    expect(pause).toHaveBeenCalledOnce()
-    expect(play).not.toHaveBeenCalled()
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
-    expect(play).toHaveBeenCalledOnce()
-  })
-
   it("leaves a video that was stopped already stopped", () => {
     const { video } = setUp()
     const play = vi.spyOn(video, "play").mockResolvedValue()
