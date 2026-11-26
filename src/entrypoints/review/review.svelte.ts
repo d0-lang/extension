@@ -2,6 +2,7 @@ import { ankiErrorText } from "$lib/anki/connect"
 import { lemmasInAnki } from "$lib/anki/duplicates"
 import {
   addSeed,
+  getAnkiEnabled,
   getAnkiTarget,
   getSeeds,
   isSeedKey,
@@ -239,6 +240,12 @@ export class Review {
     this.sending = true
     this.error = undefined
     this.dropArmed = false
+    // The switch may have been turned off since this page opened.
+    if (!(await getAnkiEnabled())) {
+      this.sending = false
+      this.error = "Adding words to Anki is off in Settings."
+      return
+    }
     const next = this.following()
     const sent = await sendCard(current, draft)
     this.sending = false

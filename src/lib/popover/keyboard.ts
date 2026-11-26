@@ -12,6 +12,15 @@ const scrollSteps: Record<string, 1 | -1> = { KeyW: -1, KeyS: 1 }
 const PLAY_KEY = "KeyE"
 const KEEP_KEY = "KeyQ"
 
+/** Set while a real Q press clicks a keep button, so its handler can tell that click from one the page made. */
+let pressingKeep = false
+
+/**
+ * Whether a click on a keep button is the user's: a real click, or one a real Q made. A page can click the button or
+ * make up the key itself, which would keep the page's sentence without the user choosing to.
+ */
+export const isUserKeep = (event: MouseEvent): boolean => event.isTrusted || pressingKeep
+
 const SCROLL_PX_PER_MS = 0.6
 /** A tap scrolls at least this far, however quickly the key comes up. */
 const SCROLL_TAP_PX = 48
@@ -110,9 +119,14 @@ export const listenForKeys = ({ scroller, stepSegment, play, keeps = false }: Ke
       return startScroll(event.code, scrollStep)
     }
     if (event.code === KEEP_KEY) {
-      const button = keeps ? topmostShown("[data-keep]") : undefined
+      const button = keeps && event.isTrusted ? topmostShown("[data-keep]") : undefined
       if (button !== undefined && !event.repeat) {
-        button.click()
+        pressingKeep = true
+        try {
+          button.click()
+        } finally {
+          pressingKeep = false
+        }
       }
       return button !== undefined
     }

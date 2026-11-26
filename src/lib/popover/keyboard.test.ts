@@ -1,10 +1,17 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { listenForKeys } from "./keyboard"
+import { isUserKeep, listenForKeys } from "./keyboard"
 
 /** Presses `code` on the page, and says whether the page still gets it. */
 const press = (code: string, init: KeyboardEventInit = {}): boolean =>
   window.dispatchEvent(new KeyboardEvent("keydown", { code, cancelable: true, ...init }))
+
+/** Presses `code` as the user would. Only the browser marks events as trusted, so here the flag is set by hand. */
+const pressReal = (code: string, init: KeyboardEventInit = {}): boolean => {
+  const event = new KeyboardEvent("keydown", { code, cancelable: true, ...init })
+  Object.defineProperty(event, "isTrusted", { value: true })
+  return window.dispatchEvent(event)
+}
 
 describe("listenForKeys", () => {
   let stop: () => void
@@ -31,23 +38,27 @@ describe("listenForKeys", () => {
     expect(press("KeyD", { altKey: true })).toBe(true)
   })
 
-  it("keeps the topmost entry on Q only while keeping is on and an entry has the button", () => {
+  it("keeps the topmost entry on a real Q, while keeping is on and an entry has the button", () => {
     const scroller = document.createElement("div")
     scroller.innerHTML = `<section><button data-keep></button></section>`
     document.body.append(scroller)
     // No layout here, so the entry gets a box below the scroller's top.
     scroller.querySelector("section")!.getBoundingClientRect = () => new DOMRect(0, 0, 100, 40)
-    const keep = vi.fn()
-    scroller.querySelector("button")!.addEventListener("click", keep)
+    const button = scroller.querySelector("button")!
+    const kept: Array<boolean> = []
+    button.addEventListener("click", (event) => kept.push(isUserKeep(event)))
 
     stop = listenForKeys({ stepSegment: () => false, scroller: () => scroller, play: () => {} })
-    expect(press("KeyQ")).toBe(true)
+    expect(pressReal("KeyQ")).toBe(true)
     stop()
 
     stop = listenForKeys({ stepSegment: () => false, scroller: () => scroller, play: () => {}, keeps: true })
-    expect(press("KeyQ")).toBe(false)
-    expect(press("KeyQ", { repeat: true })).toBe(false)
-    expect(keep).toHaveBeenCalledTimes(1)
+    // A page can make up the key, or click the button, but neither keeps a word.
+    expect(press("KeyQ")).toBe(true)
+    button.click()
+    expect(pressReal("KeyQ")).toBe(false)
+    expect(pressReal("KeyQ", { repeat: true })).toBe(false)
+    expect(kept).toEqual([false, true])
     scroller.remove()
   })
 

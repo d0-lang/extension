@@ -128,9 +128,8 @@
   /** Counts the reads of `keepStates`, so an older one that lands late does not replace a newer one. */
   let keepReads = 0
 
-  $effect(() => {
-    const { reply, word: target, followed } = view
-    keepStates = {}
+  /** Reads the keep states for a view's reply. They show unless a newer read lands first. */
+  const readKeepStates = ({ reply, word: target, followed }: View) => {
     const read = ++keepReads
     void reply?.then(async (result) => {
       const states = await loadKeepStates(result, target, followed)
@@ -138,6 +137,12 @@
         keepStates = states
       }
     })
+  }
+
+  $effect(() => {
+    const shown = view
+    keepStates = {}
+    untrack(() => readKeepStates(shown))
   })
 
   const toggleKeep = async (result: LookupReply, entries: Array<LookupEntry>, entry: number) => {
@@ -153,15 +158,8 @@
       entries,
       entry,
     })
-    // Another view opened while it was kept, and loads its own states.
-    if (view !== shownView) {
-      return
-    }
-    const read = ++keepReads
-    const states = await loadKeepStates(result, shownView.word, shownView.followed)
-    if (read === keepReads) {
-      keepStates = states
-    }
+    // Whatever is shown now, as Back may have brought the same word back while it was kept.
+    readKeepStates(view)
   }
 
   let scroller: HTMLElement | undefined

@@ -11,6 +11,7 @@
   import type { PairLabels } from "$lib/storage"
   import type { AudioPlayer } from "./audio.svelte"
   import LabelTag from "./LabelTag.svelte"
+  import { isUserKeep } from "./keyboard"
   import { explanationOf, posName } from "./labels"
   import Stressed from "./Stressed.svelte"
 
@@ -99,7 +100,11 @@
               : `Keep ${entry.lemma} for Anki`}
             aria-pressed={state === "kept"}
             title={keepTitle[state ?? "none"]}
-            onclick={() => keep.toggle(entries, index)}
+            onclick={(event) => {
+              if (isUserKeep(event)) {
+                keep.toggle(entries, index)
+              }
+            }}
           >
             {#if state === "kept"}
               <BookmarkCheck class="size-3" />
