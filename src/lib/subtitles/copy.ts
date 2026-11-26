@@ -75,8 +75,6 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
   /** The word the menu is for, marked while it is open, since the pointer leaves it for the menu. */
   let picked: HTMLElement | undefined
 
-  /** The video the menu stopped, to play again once it closes. */
-  let paused: HTMLVideoElement | undefined
   /** Watches the subtitles for another line, which the menu's items would no longer match. */
   let watching: MutationObserver | undefined
 
@@ -85,8 +83,6 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     closing = undefined
     watching?.disconnect()
     watching = undefined
-    void paused?.play().catch(() => {})
-    paused = undefined
     delete picked?.dataset.picked
     picked = undefined
     for (const icon of icons) {
@@ -152,7 +148,6 @@ export const addCopyMenu = (ctx: ContentScriptContext, overlay: Overlay) => {
     const video = player.querySelector("video")
     if (video !== null && !video.paused) {
       video.pause()
-      paused = video
     }
     // A seek can still bring another line.
     watching = new MutationObserver(() => close())
