@@ -6,8 +6,16 @@
   /**
    * Each of `keys` is one direction, like W for up and S for down.
    * `hold` keys are held down, and `text` is said in words instead of keys.
+   * `modifier` is held with any of `keys`, and `after` is said after them, like "twice".
    */
-  type Hotkey = { action: string; keys?: Array<string>; hold?: boolean; text?: string }
+  type Hotkey = {
+    action: string
+    keys?: Array<string>
+    hold?: boolean
+    text?: string
+    modifier?: string
+    after?: string
+  }
 
   const groups: Array<{ name: string; hotkeys: Array<Hotkey> }> = [
     {
@@ -42,9 +50,9 @@
         { action: "Another entry of the word, like its noun or verb", keys: ["A", "D"] },
         { action: "Pick a meaning, or press the button", keys: ["Space"] },
         { action: "Edit the sentence or a meaning, Enter to keep it", keys: ["E"] },
-        { action: "Previous or next word, with Shift held", keys: ["W", "S"] },
-        { action: "Send to Anki", text: "Ctrl + Enter" },
-        { action: "Drop the word", text: "X twice" },
+        { action: "Previous or next word", modifier: "Shift", keys: ["W", "S"] },
+        { action: "Send to Anki", modifier: "Ctrl", keys: ["Enter"] },
+        { action: "Drop the word", keys: ["X"], after: "twice" },
       ],
     },
   ]
@@ -65,6 +73,10 @@
               {:else}
                 {#if hotkey.hold}<span class="mr-1">Hold</span>{/if}
                 <KbdGroup>
+                  {#if hotkey.modifier !== undefined}
+                    <Keycap>{hotkey.modifier}</Keycap>
+                    <span class="text-xs">+</span>
+                  {/if}
                   {#each hotkey.keys ?? [] as key, index (key)}
                     {#if index > 0}
                       <span class="text-xs">/</span>
@@ -72,6 +84,7 @@
                     <Keycap>{key}</Keycap>
                   {/each}
                 </KbdGroup>
+                {#if hotkey.after !== undefined}<span class="ml-1">{hotkey.after}</span>{/if}
               {/if}
             </dd>
           </div>

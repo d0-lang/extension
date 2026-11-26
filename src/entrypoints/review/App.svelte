@@ -3,7 +3,7 @@
   import Keycap from "$lib/components/Keycap.svelte"
   import PageHeader from "$lib/components/PageHeader.svelte"
   import { playableAudio } from "$lib/dict/entries"
-  import { ankiLanguage, getAnkiLanguages, type AnkiLanguages } from "$lib/storage"
+  import { getShowIpa } from "$lib/storage"
   import CardPreview from "./CardPreview.svelte"
   import Editor from "./Editor.svelte"
   import { noteFields } from "./fields"
@@ -12,7 +12,8 @@
   import WordList from "./WordList.svelte"
 
   const review = new Review()
-  let languages = $state.raw<AnkiLanguages>({})
+  /** Whether cards get IPA, as the popover shows it. */
+  let ipa = $state(true)
   let dark = $state(false)
 
   const fields = $derived.by(() => {
@@ -20,7 +21,6 @@
     if (current === undefined || draft === undefined) {
       return undefined
     }
-    const { ipa } = ankiLanguage(languages, current.lang.split("_", 1)[0] ?? current.lang)
     return noteFields(current, draft, ipa)
   })
 
@@ -35,7 +35,7 @@
   ]
 
   onMount(() => {
-    void getAnkiLanguages().then((chosen) => (languages = chosen))
+    void getShowIpa().then((shown) => (ipa = shown))
     // `.dark` on the root is the extension's theme, which the preview follows.
     const root = document.documentElement
     dark = root.classList.contains("dark")

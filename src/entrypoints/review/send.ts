@@ -6,9 +6,10 @@ import { toBase64 } from "$lib/base64"
 import { playableAudio } from "$lib/dict/entries"
 import { requestAudio } from "$lib/messages"
 import {
-  ankiLanguage,
-  getAnkiLanguages,
+  deckFor,
+  getAnkiDecks,
   getAnkiTarget,
+  getShowIpa,
   removeSeed,
   type CardDraft,
   type CardSeed,
@@ -42,9 +43,9 @@ const recording = (seed: CardSeed, url: string | undefined): ResultAsync<Recordi
  * the kept word go once Anki has it. Anki's duplicate check is skipped: the user was warned and kept it anyway.
  */
 export const sendCard = (seed: CardSeed, draft: CardDraft): ResultAsync<number, AnkiError> =>
-  ResultAsync.fromSafePromise(Promise.all([getAnkiTarget(), getAnkiLanguages()])).andThen(
-    ([target, languages]) => {
-      const { deck, ipa } = ankiLanguage(languages, seed.lang.split("_", 1)[0] ?? seed.lang)
+  ResultAsync.fromSafePromise(Promise.all([getAnkiTarget(), getAnkiDecks(), getShowIpa()])).andThen(
+    ([target, decks, ipa]) => {
+      const deck = deckFor(decks, seed.lang.split("_", 1)[0] ?? seed.lang)
       const fields = noteFields(seed, draft, ipa)
       const entry = seed.entries[draft.entry]
       if (fields === undefined || entry === undefined) {

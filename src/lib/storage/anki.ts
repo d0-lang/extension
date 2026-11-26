@@ -1,18 +1,18 @@
-/** Anki: whether cards can be added, the AnkiConnect API key, and each language's deck and IPA choice. */
+/** Anki: whether cards can be added, the AnkiConnect API key, and each language's deck. */
 import { DEFAULT_ANKI_URL, type AnkiTarget } from "../anki/connect"
 import { languageName } from "../languages"
 
 /** A word's own language, like `de` for `de_en`. Decks go by it, whatever language the meanings are in. */
 export type SourceLanguage = string
 
-/** What each language's cards get. Languages the user never set are missing. */
-export type AnkiLanguages = Record<SourceLanguage, { deck?: string; ipa?: boolean }>
+/** The deck each language's cards go to. Languages the user never picked one for are missing. */
+export type AnkiDecks = Record<SourceLanguage, string>
 
-export const ANKI_KEYS = ["ankiEnabled", "ankiKey", "ankiLanguages"]
+export const ANKI_KEYS = ["ankiEnabled", "ankiKey", "ankiDecks"]
 
 const empty = {
   ankiEnabled: false,
-  ankiLanguages: {} as AnkiLanguages,
+  ankiDecks: {} as AnkiDecks,
 }
 
 export const getAnkiEnabled = async (): Promise<boolean> => {
@@ -36,41 +36,24 @@ export const setAnkiKey = async (ankiKey: string | undefined): Promise<void> => 
     : browser.storage.local.set({ ankiKey }))
 }
 
-const isAnkiLanguages = (value: unknown): value is AnkiLanguages =>
+const isAnkiDecks = (value: unknown): value is AnkiDecks =>
   typeof value === "object" &&
   value !== null &&
   !Array.isArray(value) &&
-  Object.values(value).every(
-    (choice) =>
-      typeof choice === "object" &&
-      choice !== null &&
-      ["string", "undefined"].includes(typeof (choice as { deck?: unknown }).deck) &&
-      ["boolean", "undefined"].includes(typeof (choice as { ipa?: unknown }).ipa),
-  )
+  Object.values(value).every((deck) => typeof deck === "string")
 
-export const getAnkiLanguages = async (): Promise<AnkiLanguages> => {
-  const { ankiLanguages } = await browser.storage.local.get("ankiLanguages")
-  return isAnkiLanguages(ankiLanguages) ? ankiLanguages : empty.ankiLanguages
+export const getAnkiDecks = async (): Promise<AnkiDecks> => {
+  const { ankiDecks } = await browser.storage.local.get("ankiDecks")
+  return isAnkiDecks(ankiDecks) ? ankiDecks : empty.ankiDecks
 }
 
-/** Merges `choice` into what `language` had. */
-export const setAnkiLanguage = async (
-  language: SourceLanguage,
-  choice: { deck?: string; ipa?: boolean },
-): Promise<void> => {
-  const languages = await getAnkiLanguages()
-  const had = Object.hasOwn(languages, language) ? languages[language] : {}
-  await browser.storage.local.set({ ankiLanguages: { ...languages, [language]: { ...had, ...choice } } })
+export const setAnkiDeck = async (language: SourceLanguage, deck: string): Promise<void> => {
+  await browser.storage.local.set({ ankiDecks: { ...(await getAnkiDecks()), [language]: deck } })
 }
 
 /** The deck a language's cards go to until the user picks one, like `DaDict::German`. */
 export const defaultDeck = (language: SourceLanguage): string => `DaDict::${languageName(language)}`
 
-/** The deck and IPA choice of `language`, with the defaults for what the user never set. */
-export const ankiLanguage = (
-  languages: AnkiLanguages,
-  language: SourceLanguage,
-): { deck: string; ipa: boolean } => {
-  const choice = Object.hasOwn(languages, language) ? languages[language] : undefined
-  return { deck: choice?.deck ?? defaultDeck(language), ipa: choice?.ipa ?? true }
-}
+/** The deck `language`'s cards go to, the default one until the user picks one. */
+export const deckFor = (decks: AnkiDecks, language: SourceLanguage): string =>
+  Object.hasOwn(decks, language) ? decks[language]! : defaultDeck(language)

@@ -10,16 +10,16 @@
   import { languageName } from "$lib/languages"
   import {
     ANKI_KEYS,
-    ankiLanguage,
+    deckFor,
     isSeedKey,
+    getAnkiDecks,
     getAnkiEnabled,
-    getAnkiLanguages,
     getSeeds,
     getLanguageOrder,
     getServerByLang,
+    setAnkiDeck,
     setAnkiEnabled,
-    setAnkiLanguage,
-    type AnkiLanguages,
+    type AnkiDecks,
     type SourceLanguage,
   } from "$lib/storage"
   import SectionTitle from "../../layout/SectionTitle.svelte"
@@ -31,7 +31,8 @@
   const connection = new AnkiConnection()
   /** Unset until storage answers, so the switch does not flip after showing. */
   let enabled = $state<boolean>()
-  let choices = $state.raw<AnkiLanguages>({})
+  /** The decks the user picked, by language. */
+  let chosen = $state.raw<AnkiDecks>({})
   let languages = $state.raw<Array<SourceLanguage>>([])
   let keptCount = $state(0)
   let key = $state("")
@@ -39,16 +40,16 @@
   const decks = $derived(connection.status.kind === "connected" ? connection.status.decks : [])
 
   const load = async () => {
-    const [on, chosen, serverByLang, order, seeds] = await Promise.all([
+    const [on, picked, serverByLang, order, seeds] = await Promise.all([
       getAnkiEnabled(),
-      getAnkiLanguages(),
+      getAnkiDecks(),
       getServerByLang(),
       getLanguageOrder(),
       getSeeds(),
     ])
     enabled = on
     keptCount = seeds.length
-    choices = chosen
+    chosen = picked
     languages = sourceLanguages(Object.keys(serverByLang), order)
   }
 
@@ -145,29 +146,16 @@
         <ul class="flex flex-col divide-y rounded-lg border">
           {#each languages as language (language)}
             {@const name = languageName(language)}
-            {@const choice = ankiLanguage(choices, language)}
             <li
-              class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 @min-[32rem]:grid-cols-[8rem_minmax(0,1fr)_auto]"
+              class="grid items-center gap-x-4 gap-y-2 px-4 py-3 @min-[32rem]:grid-cols-[8rem_minmax(0,1fr)]"
             >
               <span class="text-sm font-medium">{name}</span>
-              <div class="col-span-2 row-start-2 @min-[32rem]:col-span-1 @min-[32rem]:row-start-auto">
-                <DeckPicker
-                  {decks}
-                  deck={choice.deck}
-                  label="Deck for {name}"
-                  pick={(deck) => void setAnkiLanguage(language, { deck })}
-                />
-              </div>
-              <div
-                class="col-start-2 row-start-1 flex items-center gap-2 @min-[32rem]:col-start-auto @min-[32rem]:row-start-auto"
-              >
-                <Label for="anki-ipa-{language}" class="text-muted-foreground font-normal">IPA</Label>
-                <Switch
-                  id="anki-ipa-{language}"
-                  checked={choice.ipa}
-                  onCheckedChange={(ipa) => void setAnkiLanguage(language, { ipa })}
-                />
-              </div>
+              <DeckPicker
+                {decks}
+                deck={deckFor(chosen, language)}
+                label="Deck for {name}"
+                pick={(deck) => void setAnkiDeck(language, deck)}
+              />
             </li>
           {/each}
         </ul>
