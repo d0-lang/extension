@@ -32,7 +32,7 @@
     <p class="text-muted-foreground text-xs">
       Put ** around what is bold. <Keycap>Enter</Keycap> keeps it, <Keycap>Esc</Keycap> undoes it.
     </p>
-  {:else if html === ""}
+  {:else if seed.sentence === undefined}
     <p class="px-2 text-xl leading-snug">{seed.word}</p>
   {:else}
     <button
@@ -44,7 +44,11 @@
       title="Edit the sentence (E)"
       onclick={() => review.edit("sentence")}
     >
-      {@html html}
+      {#if html === ""}
+        <span class="text-muted-foreground">No sentence. Press E to write one.</span>
+      {:else}
+        {@html html}
+      {/if}
     </button>
   {/if}
   <p class="text-muted-foreground truncate px-2 text-xs">{seed.page.title || seed.page.url}</p>

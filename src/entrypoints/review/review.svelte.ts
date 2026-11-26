@@ -246,14 +246,16 @@ export class Review {
       this.error = ankiErrorText(sent.error)
       return
     }
+    // The user may have moved to another word while this one was sent.
+    const lemma = current.entries[draft.entry]?.lemma ?? current.word
     if (!sent.value.removed) {
       // Sending it again would add a second card.
-      this.inAnki = { ...this.inAnki, [this.entry?.lemma ?? ""]: true }
-      this.error =
-        "The card is in Anki, but the word could not be taken off this list. Drop it instead of sending it again."
+      this.inAnki = { ...this.inAnki, [lemma]: true }
+      this.error = `${lemma} is in Anki, but could not be taken off this list. Drop it instead of sending it again.`
       return
     }
-    if (next !== undefined) {
+    const stayed = this.currentId === undefined || this.currentId === current.id
+    if (stayed && next !== undefined) {
       this.show(next)
     }
   }

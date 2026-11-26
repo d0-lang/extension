@@ -153,6 +153,10 @@
       entries,
       entry,
     })
+    // Another view opened while it was kept, and loads its own states.
+    if (view !== shownView) {
+      return
+    }
     const read = ++keepReads
     const states = await loadKeepStates(result, shownView.word, shownView.followed)
     if (read === keepReads) {
