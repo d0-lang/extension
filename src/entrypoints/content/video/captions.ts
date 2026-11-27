@@ -1,5 +1,5 @@
 /** Subtitles on any site whose videos give the browser their tracks, like Vimeo, or whose player downloads a file we read. */
-import { getVideoSubtitles } from "$lib/storage"
+import { getSiteSubtitles, getVideoSubtitles, siteSubtitlesKey } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isFast, type Cue } from "$lib/subtitles/cues"
 import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "$lib/subtitles/controller"
@@ -28,6 +28,9 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   }
 
   const site = siteFilesOf(location.hostname)
+  /** The box the subtitles go in: the one the site names, or the one around the video about its size. */
+  const playerAround = (over: HTMLVideoElement): HTMLElement | undefined =>
+    site?.player?.(over) ?? playerOf(over)
   const files = site === undefined ? undefined : watchSiteFiles(ctx, site)
 
   /** The track the page has on, or else the file its player downloaded, while the player has its subtitles on. */
@@ -36,7 +39,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
     if (track !== undefined) {
       return trackOf(track)
     }
-    return site !== undefined && replacesOwn(site, over, playerOf(over)) ? files?.track() : undefined
+    return site !== undefined && replacesOwn(site, over, playerAround(over)) ? files?.track() : undefined
   }
   const hasSubtitles = (over: HTMLVideoElement): boolean =>
     activeTrack(over) !== undefined || site?.isOn(over) === true
@@ -60,8 +63,9 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
 
   const subtitles = showSubtitles(ctx, options, {
     host: site?.host ?? VIDEO_HOST,
-    isOn: getVideoSubtitles,
-    keys: ["videoSubtitles"],
+    // A site the extension reads files on has its own switch, as nothing else shows subtitles there.
+    isOn: site === undefined ? getVideoSubtitles : () => getSiteSubtitles(site.id),
+    keys: [site === undefined ? "videoSubtitles" : siteSubtitlesKey(site.id)],
     frame: () => {
       const value = video?.isConnected === true ? trackFor(video) : undefined
       // Nothing shows over a video that is itself fullscreen, so the browser draws its subtitles there.
@@ -69,7 +73,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
         dropStage()
         return undefined
       }
-      const found = playerOf(video)
+      const found = playerAround(video)
       if (found !== undefined) {
         dropStage()
       }

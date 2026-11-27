@@ -120,6 +120,23 @@ export const setVideoSubtitles = async (videoSubtitles: boolean): Promise<void> 
   await browser.storage.local.set({ videoSubtitles })
 }
 
+/** Sites whose players download their subtitle files, which the extension reads to show them, each with its switch. */
+export type SubtitleSite = "ard" | "zdf" | "arte"
+
+/** The storage key of `site`'s switch. */
+export const siteSubtitlesKey = (site: SubtitleSite): string => `${site}Subtitles`
+
+/** Whether the extension shows `site`'s subtitles in place of its own. On until the viewer turns it off. */
+export const getSiteSubtitles = async (site: SubtitleSite): Promise<boolean> => {
+  const key = siteSubtitlesKey(site)
+  const value = (await browser.storage.local.get(key))[key]
+  return typeof value === "boolean" ? value : true
+}
+
+export const setSiteSubtitles = async (site: SubtitleSite, on: boolean): Promise<void> => {
+  await browser.storage.local.set({ [siteSubtitlesKey(site)]: on })
+}
+
 export const getShowIpa = async (): Promise<boolean> => {
   const { showIpa } = await browser.storage.local.get("showIpa")
   return typeof showIpa === "boolean" ? showIpa : empty.showIpa

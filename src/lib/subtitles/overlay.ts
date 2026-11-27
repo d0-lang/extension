@@ -61,13 +61,18 @@ export type Overlay = {
 }
 
 /**
- * Hides what the player draws its own subtitles in, while the overlay is in it, and its controls during a lookup. The
- * controls go without the player's transition, which would show them for its length first.
+ * Hides what the player draws its own subtitles in, and its shade, while the overlay is in it, and its controls during
+ * a lookup. The controls go without the player's transition, which would show them for its length first.
  */
-const hostCss = ({ ownSubtitles, ownControls }: Host): string => {
+const hostCss = ({ ownSubtitles, ownControls, ownShade }: Host): string => {
   const subtitles = `:has(> [data-dadict-captions]) :is(${ownSubtitles}) { display: none !important; }`
+  const shade = `:has(> [data-dadict-captions]) :is(${ownShade}) { background: none !important; }`
   const controls = `:has(> [data-dadict-captions][data-held]) :is(${ownControls}) { visibility: hidden !important; transition: none !important; }`
-  return (ownSubtitles === undefined ? "" : subtitles) + (ownControls === undefined ? "" : controls)
+  return (
+    (ownSubtitles === undefined ? "" : subtitles) +
+    (ownShade === undefined ? "" : shade) +
+    (ownControls === undefined ? "" : controls)
+  )
 }
 
 const addStyle = (host: Host) => {
