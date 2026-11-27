@@ -109,11 +109,11 @@
               }
             }}
           >
+            <!-- The deck stays in, only hidden, so keeping from "anki" has a deck to play on as it shows. -->
             {#if state === "anki"}
               <TriangleAlert class="size-3.5" />
-            {:else}
-              <Deck class="size-4" />
             {/if}
+            <span class={["inline-flex", state === "anki" && "hidden"]}><Deck class="size-4" /></span>
           </button>
         {/if}
         {#if url !== undefined}

@@ -2,12 +2,13 @@
 import { describe, expect, it } from "vitest"
 import { reviewAction } from "./keys"
 import { legendRow, litKeys, pressedKeys } from "./legend"
+import type { Focus } from "./review.svelte"
 
 const press = (code: string, init: KeyboardEventInit = {}) => new KeyboardEvent("keydown", { code, ...init })
 
-const rowOf = (code: string, init: KeyboardEventInit = {}) => {
+const rowOf = (code: string, init: KeyboardEventInit = {}, focus: Focus = 0) => {
   const action = reviewAction(press(code, init))
-  return action === undefined ? undefined : legendRow(action)
+  return action === undefined ? undefined : legendRow(action, focus)
 }
 
 describe("legendRow", () => {
@@ -21,6 +22,13 @@ describe("legendRow", () => {
     expect(rowOf("Enter", { ctrlKey: true })).toBe(5)
     expect(rowOf("KeyX")).toBe(6)
     expect(rowOf("Escape")).toBeUndefined()
+  })
+
+  it("puts Space and Enter on the row of what they do on the selection", () => {
+    expect(rowOf("Enter", {}, 2)).toBe(3)
+    expect(rowOf("Enter", {}, "send")).toBe(5)
+    expect(rowOf("Space", {}, "drop")).toBe(6)
+    expect(rowOf("Space", {}, "sentence")).toBe(4)
   })
 })
 

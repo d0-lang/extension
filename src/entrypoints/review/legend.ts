@@ -1,5 +1,6 @@
 /** The key legend beside the card, and which of its rows and keys a key press lights. */
 import type { ReviewAction } from "./keys"
+import type { Focus } from "./review.svelte"
 
 type LegendRow = {
   /** Each group does the same, so they are joined with "or". */
@@ -39,9 +40,20 @@ export const LEGEND: Array<LegendRow> = [
   { groups: [["X"]], action: "Drop the word", kinds: ["drop"] },
 ]
 
-/** The row of the legend that `action` belongs to. Unset for Escape, which has none. */
-export const legendRow = (action: ReviewAction): number | undefined => {
-  const row = LEGEND.findIndex((entry) => entry.kinds.includes(action.kind))
+/** What Space and Enter do on each selection: send, drop, edit the sentence, or pick the meaning. */
+const ACTIVATED: Record<Exclude<Focus, number>, ReviewAction["kind"]> = {
+  send: "send",
+  drop: "drop",
+  sentence: "edit",
+}
+
+/**
+ * The row of the legend that `action` belongs to, with Space and Enter on the row of what they do on `focus`. Unset
+ * for Escape, which has none.
+ */
+export const legendRow = (action: ReviewAction, focus: Focus): number | undefined => {
+  const kind = action.kind === "activate" && typeof focus !== "number" ? ACTIVATED[focus] : action.kind
+  const row = LEGEND.findIndex((entry) => entry.kinds.includes(kind))
   return row === -1 ? undefined : row
 }
 

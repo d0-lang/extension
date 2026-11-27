@@ -71,7 +71,7 @@
     if (event.repeat && (action.kind === "drop" || action.kind === "activate")) {
       return
     }
-    const row = legendRow(action)
+    const row = legendRow(action, review.focus)
     if (row !== undefined) {
       legend?.flash(row, pressedKeys(event))
     }

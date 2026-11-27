@@ -258,7 +258,7 @@ export class Review {
     }
   }
 
-  /** Whether the card went to Anki and the word off the list. */
+  /** Whether the card went to Anki, even if the word could not be taken off the list. */
   private sendWord = async (current: CardSeed, draft: CardDraft): Promise<boolean> => {
     // The switch may have been turned off since this page opened.
     if (!(await getAnkiEnabled())) {
@@ -277,7 +277,8 @@ export class Review {
       // Sending it again would add a second card.
       this.inAnki = { ...this.inAnki, [lemma]: true }
       this.error = `${lemma} is in Anki, but could not be taken off this list. Drop it instead of sending it again.`
-      return false
+      // Counted all the same, as "All sent" counts the cards Anki has, and dropping the word adds none.
+      return true
     }
     const stayed = this.currentId === undefined || this.currentId === current.id
     if (stayed && next !== undefined) {
