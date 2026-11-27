@@ -43,8 +43,9 @@
       {:else}
         <button
           type="button"
-          class="flex-1 cursor-text text-left text-sm leading-snug"
+          class="flex-1 cursor-text text-start text-sm leading-snug"
           title="Edit this meaning (E)"
+          dir="auto"
           onclick={() => review.edit(index)}
         >
           {senseText(seed, draft, index)}

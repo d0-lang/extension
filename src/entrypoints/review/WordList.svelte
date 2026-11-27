@@ -36,10 +36,12 @@
         onclick={() => show(seed.id)}
       >
         <span class="flex items-baseline justify-between gap-2">
-          <span class="truncate text-sm font-medium"><Stressed text={lemma} /></span>
+          <span class="truncate text-sm font-medium" dir="auto"><Stressed text={lemma} /></span>
           <span class="text-muted-foreground shrink-0 text-xs">{seed.lang.split("_", 1)[0]}</span>
         </span>
-        <span class="text-muted-foreground truncate text-xs">{seed.sentence?.text ?? seed.page.title}</span>
+        <span class="text-muted-foreground truncate text-xs" dir="auto"
+          >{seed.sentence?.text ?? seed.page.title}</span
+        >
       </button>
     </li>
   {/each}

@@ -51,6 +51,16 @@ describe("markedHtml", () => {
   it("bolds between pairs of ** and escapes the rest, keeping a lone ** as typed", () => {
     expect(markedHtml("a <x> **b** c **d")).toBe("a &lt;x&gt; <b>b</b> c **d")
   })
+
+  it("bolds the whole Arabic word when the bold cuts it, so its letters stay joined", () => {
+    expect(markedHtml("قرأت ال**كتاب** أمس")).toBe("قرأت <b>الكتاب</b> أمس")
+    expect(markedHtml("قرأت **كتاب**ها أمس")).toBe("قرأت <b>كتابها</b> أمس")
+  })
+
+  it("keeps a bold part of a word in scripts whose letters do not join", () => {
+    expect(markedHtml("Rettungs**fonds**")).toBe("Rettungs<b>fonds</b>")
+    expect(markedHtml("קראתי את ה**ספר**")).toBe("קראתי את ה<b>ספר</b>")
+  })
 })
 
 describe("draftSentence", () => {

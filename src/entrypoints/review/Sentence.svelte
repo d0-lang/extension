@@ -33,15 +33,16 @@
       Put ** around what is bold. <Keycap>Enter</Keycap> keeps it, <Keycap>Esc</Keycap> undoes it.
     </p>
   {:else if seed.sentence === undefined}
-    <p class="px-2 text-xl leading-snug">{seed.word}</p>
+    <p class="px-2 text-xl leading-snug" dir="auto">{seed.word}</p>
   {:else}
     <button
       type="button"
       class={[
-        "[&_b]:text-link cursor-text rounded-md px-2 py-1 text-left text-xl leading-snug [&_b]:font-semibold",
+        "[&_b]:text-link cursor-text rounded-md px-2 py-1 text-start text-xl leading-snug [&_b]:font-semibold",
         review.selected("sentence") ? "bg-accent" : "hover:bg-accent/50",
       ]}
       title="Edit the sentence (E)"
+      dir="auto"
       onclick={() => review.edit("sentence")}
     >
       {#if html === ""}

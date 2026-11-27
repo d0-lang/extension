@@ -66,6 +66,7 @@
   {@attach start}
   bind:value={text}
   rows="1"
+  dir="auto"
   aria-label={label}
   class={[
     "border-input focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-md border bg-transparent px-2 py-1 outline-none focus-visible:ring-3 dark:bg-input/30",
