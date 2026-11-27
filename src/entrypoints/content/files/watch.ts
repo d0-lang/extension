@@ -2,7 +2,8 @@
 import { errAsync, ResultAsync } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { toError } from "$lib/errors"
-import { isFast } from "$lib/subtitles/cues"
+import { inOrder, isFast, type Cue } from "$lib/subtitles/cues"
+import { readTimed } from "$lib/subtitles/timed"
 import type { Track } from "$lib/subtitles/controller"
 import type { SiteFiles } from "./sites"
 import { readTtml, ttmlLanguage } from "./ttml"
@@ -14,12 +15,26 @@ const fetchText = (url: string): ResultAsync<string, Error> =>
       : errAsync(new Error(`HTTP ${response.status}`)),
   )
 
-/** `text` of a TTML file as a track, in the page's language when the file names none. */
-const trackOf = (text: string): Track => {
+/** The cues of a file in `format`, and the language it names, if it names one. */
+const cuesOf = (
+  text: string,
+  format: SiteFiles["format"],
+): { cues: Array<Cue>; lang: string | undefined } => {
+  if (format === "webvtt") {
+    return { cues: inOrder(readTimed(text)), lang: undefined }
+  }
   const doc = new DOMParser().parseFromString(text, "application/xml")
-  const cues = readTtml(doc)
-  const lang = ttmlLanguage(doc) ?? document.documentElement.lang.split("-")[0] ?? ""
-  return { lang, cues, fast: isFast(cues) }
+  return { cues: readTtml(doc), lang: ttmlLanguage(doc) }
+}
+
+/** `text` of `site`'s file at `url` as a track, in the language the file or its address names, or else the page's. */
+const trackOf = (text: string, site: SiteFiles, url: string): Track => {
+  const { cues, lang } = cuesOf(text, site.format)
+  return {
+    lang: lang ?? site.lang?.(url) ?? document.documentElement.lang.split("-")[0] ?? "",
+    cues,
+    fast: isFast(cues),
+  }
 }
 
 /** A read of a file the player asked for, and when it last asked for it. */
@@ -63,7 +78,7 @@ export const watchSiteFiles = (
     void fetchText(url).match(
       (text) => {
         if (latest?.read === number) {
-          track = trackOf(text)
+          track = trackOf(text, site, url)
         }
       },
       (error) => {

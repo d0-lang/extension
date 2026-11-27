@@ -1,6 +1,6 @@
 /** Subtitle files made of blocks of a timing line and text, like SRT and WebVTT. */
-import type { Cue } from "$lib/subtitles/cues"
-import { plainText } from "$lib/subtitles/markup"
+import type { Cue } from "./cues"
+import { plainText } from "./markup"
 
 /** `01:02:03,456`, or `02:03.456` without hours as WebVTT allows. */
 const TIME = String.raw`(?:(\d+):)?(\d{1,2}):(\d{2})[,.](\d{1,3})`

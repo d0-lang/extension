@@ -59,3 +59,50 @@ describe("ARD", () => {
     expect(replacesOwn(ard, video, undefined)).toBe(false)
   })
 })
+
+const arte = siteFilesOf("www.arte.tv")!
+
+describe("Arte", () => {
+  const files =
+    "https://arte-cmafhls.akamaized.net/am/cmaf/120000/120900/120956-000-A/2026112405312FB56B2A148AE8E920833F56F981B6/medias"
+
+  it("reads the subtitle files, not the seek bar's thumbnails or the playlists", () => {
+    expect(arte.file.test(`${files}/120956-000-A_st_VO-ANG_44145048_7519626_20261124052214.vtt`)).toBe(true)
+    expect(arte.file.test(`${files}/120956-000-A_st_VO-ANG_44145048_7519626_20261124052214.m3u8`)).toBe(false)
+    expect(arte.file.test(`${files}/120956-000-A_SPR.vtt`)).toBe(false)
+  })
+
+  it("names the language from the subtitles' version", () => {
+    expect(arte.lang?.(`${files}/120956-000-A_st_VO-ANG_44145048_7519626_20261124052214.vtt`)).toBe("en")
+    expect(arte.lang?.(`${files}/120956-000-A_st_VF-FRA_44145048_7389929_20261124052214.vtt`)).toBe("fr")
+    expect(arte.lang?.(`${files}/120956-000-A_st_VA-MAL_44145048_7475401_20261124052214.vtt`)).toBe("de")
+  })
+
+  /** Arte's player as far as the rule reads it, showing subtitles or not: its seek bar 89 px up a 576 px tall player. */
+  const artePlayer = (showing: boolean, controls = false) => {
+    document.body.innerHTML = `
+      <div class="avp-player${controls ? " showControls" : ""}" style="position: absolute; width: 1024px; height: 576px">
+        <div class="avp-content"><div class="avp-controlbar" style="position: absolute; bottom: 25px; height: 64px; width: 100%"></div></div>
+        <div class="vjs-dimensions">
+          <video></video>
+          <div class="vjs-text-track-display" aria-live="${showing ? "assertive" : "off"}"></div>
+        </div>
+      </div>`
+    return {
+      player: document.querySelector<HTMLElement>(".avp-player")!,
+      video: document.querySelector("video")!,
+    }
+  }
+
+  it("has its subtitles on while video.js shows a track, in the player it names", () => {
+    const { player, video } = artePlayer(true)
+    expect(arte.player?.(video)).toBe(player)
+    expect(replacesOwn(arte, video, player)).toBe(true)
+    expect(arte.isOn(artePlayer(false).video)).toBe(false)
+  })
+
+  it("keeps the subtitles above the seek bar only while the controls show", () => {
+    expect(arte.host.bars(artePlayer(true, true).player).bottom).toBe(89)
+    expect(arte.host.bars(artePlayer(true, false).player).bottom).toBeCloseTo(576 * 0.12)
+  })
+})

@@ -3,7 +3,7 @@ import { err, ok, ResultAsync, type Result } from "neverthrow"
 import { toError } from "$lib/errors"
 import { inOrder, type Cue } from "$lib/subtitles/cues"
 import { readAss } from "./ass"
-import { readTimed } from "./timed"
+import { readTimed } from "$lib/subtitles/timed"
 
 export type SubtitleFileError =
   { kind: "unsupported"; extension: string } | { kind: "unreadable"; cause: Error } | { kind: "empty" }

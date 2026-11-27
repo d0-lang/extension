@@ -28,6 +28,9 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   }
 
   const site = siteFilesOf(location.hostname)
+  /** The box the subtitles go in: the one the site names, or the one around the video about its size. */
+  const playerAround = (over: HTMLVideoElement): HTMLElement | undefined =>
+    site?.player?.(over) ?? playerOf(over)
   const files = site === undefined ? undefined : watchSiteFiles(ctx, site)
 
   /** The track the page has on, or else the file its player downloaded, while the player has its subtitles on. */
@@ -36,7 +39,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
     if (track !== undefined) {
       return trackOf(track)
     }
-    return site !== undefined && replacesOwn(site, over, playerOf(over)) ? files?.track() : undefined
+    return site !== undefined && replacesOwn(site, over, playerAround(over)) ? files?.track() : undefined
   }
   const hasSubtitles = (over: HTMLVideoElement): boolean =>
     activeTrack(over) !== undefined || site?.isOn(over) === true
@@ -69,7 +72,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
         dropStage()
         return undefined
       }
-      const found = playerOf(video)
+      const found = playerAround(video)
       if (found !== undefined) {
         dropStage()
       }
