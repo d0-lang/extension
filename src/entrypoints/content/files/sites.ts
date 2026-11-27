@@ -1,8 +1,11 @@
 /** Sites whose players download a subtitle file and draw it themselves, without a track the browser holds. */
+import type { SubtitleSite } from "$lib/storage"
 import type { Host } from "$lib/subtitles/host"
 import { VIDEO_HOST } from "../video/player"
 
 export type SiteFiles = {
+  /** Which of the switches in Integrations turns the site's subtitles on and off. */
+  id: SubtitleSite
   /** Whether a page's host is the site's. */
   hosts: RegExp
   /** The address of a subtitle file its player downloads. */
@@ -58,6 +61,7 @@ const ARD_HOST: SiteFiles["host"] = {
  * itself there.
  */
 const ARD: SiteFiles = {
+  id: "ard",
   hosts: /(?:^|\.)(?:ardmediathek|tagesschau)\.de$/u,
   file: /^https:\/\/(?:api\.ardmediathek\.de\/player-service\/subtitle\/ebutt\/|www\.tagesschau\.de\/.+\/ut-\d+\.xml$)/u,
   format: "ttml",
@@ -104,6 +108,7 @@ const ARTE_VERSIONS: Record<string, string> = { VA: "de", VOA: "de", VF: "fr", V
  * WebVTT file, named for its version, like `…_st_VO-ANG_….vtt` for English.
  */
 const ARTE: SiteFiles = {
+  id: "arte",
   hosts: /(?:^|\.)arte\.tv$/u,
   file: /^https:\/\/arte-cmafhls\.akamaized\.net\/.+_st_[^/]+\.vtt$/u,
   format: "webvtt",
@@ -139,6 +144,7 @@ const ZDF_HOST: SiteFiles["host"] = {
 
 /** ZDF's player downloads EBU-TT once its subtitles are picked in its language settings. */
 const ZDF: SiteFiles = {
+  id: "zdf",
   hosts: /(?:^|\.)zdf\.de$/u,
   file: /^https:\/\/utstreaming\.zdf\.de\/mtt\/.+\.xml$/u,
   format: "ttml",

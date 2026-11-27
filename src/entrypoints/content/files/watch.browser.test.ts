@@ -9,6 +9,7 @@ const FIXTURE = "/src/entrypoints/content/files/fixtures/ard.ttml"
 const ctx = { onInvalidated: () => {} } as unknown as ContentScriptContext
 
 const site: SiteFiles = {
+  id: "ard",
   hosts: /./u,
   file: /\/fixtures\/ard\.ttml$/u,
   format: "ttml",

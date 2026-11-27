@@ -1,5 +1,5 @@
 /** Subtitles on any site whose videos give the browser their tracks, like Vimeo, or whose player downloads a file we read. */
-import { getVideoSubtitles } from "$lib/storage"
+import { getSiteSubtitles, getVideoSubtitles, siteSubtitlesKey } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isFast, type Cue } from "$lib/subtitles/cues"
 import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "$lib/subtitles/controller"
@@ -63,8 +63,9 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
 
   const subtitles = showSubtitles(ctx, options, {
     host: site?.host ?? VIDEO_HOST,
-    isOn: getVideoSubtitles,
-    keys: ["videoSubtitles"],
+    // A site the extension reads files on has its own switch, as nothing else shows subtitles there.
+    isOn: site === undefined ? getVideoSubtitles : () => getSiteSubtitles(site.id),
+    keys: [site === undefined ? "videoSubtitles" : siteSubtitlesKey(site.id)],
     frame: () => {
       const value = video?.isConnected === true ? trackFor(video) : undefined
       // Nothing shows over a video that is itself fullscreen, so the browser draws its subtitles there.
