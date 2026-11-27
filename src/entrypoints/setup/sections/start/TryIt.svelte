@@ -5,14 +5,15 @@
   import { SAMPLE_ENTRIES, samplePieces } from "./sample"
 
   /**
-   * The sample sentence, where Alt over a word opens a popover with its made-up entries, as on a page. A click or a
-   * tap opens it too, since this page has no long-press button. `looked` is called on every word opened.
+   * The sample sentence, where holding Alt over a word opens a popover with its made-up entries, as on a page, and
+   * letting go closes it unless the pointer is on it. `looked` is called on every word opened.
    */
   let { looked }: { looked: () => void } = $props()
 
   const pieces = samplePieces()
   const audio = new AudioPlayer()
   let box = $state<HTMLElement>()
+  let popover = $state<HTMLElement>()
   /** The word open, and where its popover goes inside the box. */
   let open = $state<{ word: string; index: number; left: number; top: number }>()
 
@@ -48,10 +49,14 @@
         close()
       }
     }
-    // Firefox can open its menu bar when Alt is released.
     const onKeyUp = (event: KeyboardEvent) => {
-      if (event.code === "AltLeft" && open !== undefined) {
-        event.preventDefault()
+      if (event.code !== "AltLeft" || open === undefined) {
+        return
+      }
+      // Firefox can open its menu bar when Alt is released.
+      event.preventDefault()
+      if (popover?.matches(":hover") !== true) {
+        close()
       }
     }
     window.addEventListener("keydown", onKeyDown)
@@ -73,7 +78,6 @@
       show(event.target)
     }
   }}
-  onclick={(event) => show(event.target)}
   onpointerleave={close}
 >
   <p>
@@ -90,6 +94,7 @@
       class="bg-popover text-popover-foreground absolute z-10 flex w-75 max-w-full flex-col rounded-lg border text-sm shadow-lg [--radius:7px] [font-family:ui-sans-serif,system-ui,sans-serif]"
       style:left="{open.left}px"
       style:top="{open.top}px"
+      bind:this={popover}
       role="dialog"
       aria-label="Sample lookup"
     >
