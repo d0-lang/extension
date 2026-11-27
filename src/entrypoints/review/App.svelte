@@ -19,6 +19,8 @@
   let ipa = $state(true)
   let dark = $state(false)
   let legend = $state<KeyLegend>()
+  /** Where the Send button's card was as the last word went, for the finale to fly it from. */
+  let lastCard = $state.raw<DOMRect>()
 
   /**
    * Cards sent from this page, counting one still being sent. The list can empty before the send finishes, and the
@@ -117,7 +119,7 @@
       <!-- Nothing until storage answers, so the empty state does not flash. -->
     {:else if review.current === undefined || review.draft === undefined || fields === undefined}
       {#if sent > 0}
-        <AllSent count={sent} />
+        <AllSent count={sent} from={lastCard} />
       {:else}
         <NoWords />
       {/if}
@@ -132,7 +134,13 @@
           <WordList seeds={review.seeds} current={review.current.id} show={review.show} />
         </aside>
         <section class="flex min-w-0 flex-col gap-6">
-          <Editor {review} seed={review.current} draft={review.draft} sentence={fields.Sentence} />
+          <Editor
+            {review}
+            seed={review.current}
+            draft={review.draft}
+            sentence={fields.Sentence}
+            launch={(from) => (lastCard = from)}
+          />
           <div class="xl:hidden">
             <CardPreview
               {fields}

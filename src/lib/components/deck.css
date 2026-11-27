@@ -39,6 +39,23 @@
   transform-origin: 6px 18px;
 }
 
+/*
+ * One card, for one word. The pile slides to the middle and the cards behind hide, but a send still shows the card
+ * that swings up, as it becomes the one card.
+ */
+.dict-deck .dict-deck-pile {
+  transition: transform 0.3s ease;
+}
+
+.dict-deck[data-single] .dict-deck-pile {
+  transform: translate(4.7px, 1.5px);
+}
+
+.dict-deck[data-single] .dict-deck-under,
+.dict-deck[data-single]:not(.dict-deck-send) .dict-deck-back {
+  visibility: hidden;
+}
+
 .dict-deck .dict-deck-plus {
   fill: none;
   stroke: var(--link);
@@ -271,5 +288,6 @@
 @media (prefers-reduced-motion: reduce) {
   .dict-deck * {
     animation: none !important;
+    transition: none !important;
   }
 }

@@ -33,6 +33,8 @@ export class Review {
   sending = $state(false)
   /** How many cards this page has sent. */
   sent = $state(0)
+  /** How many sends this page has started, which the Send button plays as they start. */
+  sends = $state(0)
   error = $state<string>()
   /** Lemmas Anki has a DaDict note for, among those asked. */
   inAnki = $state<Record<string, boolean>>({})
@@ -240,6 +242,7 @@ export class Review {
       return
     }
     this.sending = true
+    this.sends++
     this.error = undefined
     this.dropArmed = false
     // A storage read can still throw, and "Sending…" must not stay for good.

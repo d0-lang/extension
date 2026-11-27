@@ -1,14 +1,41 @@
 <script lang="ts">
+  import { onMount, untrack } from "svelte"
+  import { prefersReducedMotion } from "svelte/motion"
   import Keycap from "$lib/components/Keycap.svelte"
 
-  /** Played once, when this page sent the last kept word. */
-  let { count }: { count: number } = $props()
+  /** Played once, when this page sent the last kept word. `from` is the Send button's card, which flies in first. */
+  let { count, from }: { count: number; from?: DOMRect } = $props()
+
+  const FLIGHT_MS = 500
+  let art = $state<SVGSVGElement>()
+  /** Read once, as the finale plays one way from the start. */
+  const start = untrack(() => from)
+  const flies = start !== undefined && !prefersReducedMotion.current
+
+  onMount(() => {
+    const card = art?.querySelector(".last")
+    if (!flies || art === undefined || card === null || card === undefined) {
+      return
+    }
+    const to = card.getBoundingClientRect()
+    // The button shows one card, 9 of its 24 units wide. The finale's card is in the middle of its own drawing.
+    const scale = (start.width * 9) / 24 / to.width
+    const x = start.left + start.width / 2 - (to.left + to.width / 2)
+    const y = start.top + start.height / 2 - (to.top + to.height / 2)
+    art.animate([{ transform: `translate(${x}px, ${y}px) scale(${scale})` }, { transform: "none" }], {
+      duration: FLIGHT_MS,
+      easing: "cubic-bezier(0.3, 0, 0.2, 1)",
+    })
+  })
 
   const SPARKS = [20, 80, 145, 205, 265, 325]
 </script>
 
-<div class="mx-auto flex max-w-md flex-col items-center gap-2 py-16 text-center">
-  <svg viewBox="0 0 24 24" class="all-sent mb-2 size-24" aria-hidden="true">
+<div
+  class="mx-auto flex max-w-md flex-col items-center gap-2 py-16 text-center"
+  style:--wait="{flies ? FLIGHT_MS : 0}ms"
+>
+  <svg bind:this={art} viewBox="0 0 24 24" class="all-sent mb-2 size-24" aria-hidden="true">
     {#each SPARKS as angle, index (angle)}
       <circle class="spark" cx="12" cy="12" r={index % 2 === 0 ? 0.8 : 0.6} style:--angle="{angle}deg" />
     {/each}
@@ -39,7 +66,7 @@
     stroke: currentColor;
     stroke-width: 1.2;
     transform-origin: 12px 19px;
-    animation: toss 1.8s forwards;
+    animation: toss 1.8s var(--wait) forwards;
   }
 
   /* Hidden until each starts to draw: a round cap on a dash of no length still paints a dot. */
@@ -56,22 +83,23 @@
   }
 
   .ring {
-    animation: draw-ring 1.8s forwards;
+    animation: draw-ring 1.8s var(--wait) forwards;
   }
 
   .tick {
-    animation: draw-tick 1.8s forwards;
+    animation: draw-tick 1.8s var(--wait) forwards;
   }
 
   .spark {
     fill: var(--link);
     opacity: 0;
     transform-origin: 12px 12px;
-    animation: spark 1.8s forwards;
+    animation: spark 1.8s var(--wait) forwards;
   }
 
+  /* The finale waits for the card to land, when it flies in. */
   .rise {
-    animation: rise 1.8s both;
+    animation: rise 1.8s var(--wait) both;
   }
 
   .rise.later {

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { flip } from "svelte/animate"
+  import { prefersReducedMotion } from "svelte/motion"
+  import { fly } from "svelte/transition"
   import Stressed from "$lib/popover/Stressed.svelte"
   import { cn } from "$lib/utils"
   import type { CardSeed } from "$lib/storage"
@@ -14,12 +17,15 @@
     show: (id: string) => void
     class?: string
   } = $props()
+
+  /** A word sent or dropped slides up out of the list, like a card off the pile, and the rest close up. */
+  const motion = $derived(prefersReducedMotion.current ? 0 : 250)
 </script>
 
 <ul class={cn("flex flex-col gap-0.5", className)} aria-label="Kept words">
   {#each seeds as seed (seed.id)}
     {@const lemma = seed.entries[seed.entry]?.lemma ?? seed.word}
-    <li>
+    <li animate:flip={{ duration: motion }} out:fly={{ y: -12, duration: motion }}>
       <button
         type="button"
         class={[

@@ -85,7 +85,7 @@
         class="text-base [--deck-fill:var(--primary)] hover:[--deck-fill:color-mix(in_oklch,var(--primary)_80%,var(--background))]"
         onclick={openReview}
       >
-        <Deck />
+        <Deck single={keptCount === 1} />
         {keptCount} kept {keptCount === 1 ? "word" : "words"}
       </Button>
     {/if}
