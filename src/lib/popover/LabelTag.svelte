@@ -15,6 +15,8 @@
   let focused = $state(false)
   /** Set by a click, so the tooltip stays and takes the pointer, for selecting its text. */
   let pinned = $state(false)
+  /** Set by the click that closes it, so the pointer still over the tag doesn't open it again until it leaves. */
+  let dismissed = false
   let place = $state<{ top: number; left: number }>()
   const open = $derived(hovered || focused || pinned)
 
@@ -83,10 +85,15 @@
       // A second click closes it. Focus from a click would keep it open, but focus from the keyboard stays.
       if (!pinned && event.detail > 0) {
         tag?.blur()
+        hovered = false
+        dismissed = true
       }
     }}
-    onpointermove={() => (hovered = true)}
-    onpointerleave={() => (hovered = false)}
+    onpointermove={() => (hovered = !dismissed)}
+    onpointerleave={() => {
+      hovered = false
+      dismissed = false
+    }}
     onfocus={() => (focused = true)}
     onblur={() => (focused = false)}>{label}</button
   ><!-- Always in the document, so a screen reader can read it as the tag's description. --><span

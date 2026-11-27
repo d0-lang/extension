@@ -31,14 +31,23 @@ describe("LabelTag", () => {
     unmount(app)
   })
 
-  it("lets go on a second click", () => {
+  it("lets go on a second click, and stays closed under the pointer until it leaves", () => {
     const target = document.body.appendChild(document.createElement("div"))
     const app = mount(LabelTag, { target, props: { label: "m", explanation: { name: "masculine" } } })
     const tag = target.querySelector("button")!
+    const tip = target.querySelector("[role=tooltip]")!
+    const move = () => tag.dispatchEvent(new PointerEvent("pointermove", { bubbles: true }))
+    move()
     tag.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }))
     tag.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }))
+    move()
     flushSync()
-    expect(target.querySelector("[role=tooltip]")!.classList).toContain("invisible")
+    expect(tip.classList).toContain("invisible")
+
+    tag.dispatchEvent(new PointerEvent("pointerleave"))
+    move()
+    flushSync()
+    expect(tip.classList).not.toContain("invisible")
     unmount(app)
   })
 })
