@@ -7,6 +7,7 @@
   import ChooseFiles from "../open/ChooseFiles.svelte"
   import Controls from "./Controls.svelte"
   import { actionOf } from "./keys"
+  import { Previews } from "./previews.svelte"
   import { getSound, setSound } from "./sound"
   import { showFileSubtitles } from "./subtitles"
 
@@ -69,6 +70,13 @@
     // Read so a new video clears the last one's failure.
     void video.url
     failed = false
+  })
+
+  let previews = $state<Previews>()
+  $effect(() => {
+    const made = new Previews(video.url)
+    previews = made
+    return () => made.stop()
   })
 
   const wake = () => {
@@ -181,6 +189,7 @@
     {track}
     {subtitleFiles}
     hidden={idle}
+    {previews}
     onToggle={toggle}
     onFullscreen={toggleFullscreen}
     {onFiles}

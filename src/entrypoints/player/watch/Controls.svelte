@@ -7,6 +7,8 @@
   import VolumeXIcon from "@lucide/svelte/icons/volume-x"
   import type { FileTrack } from "../open/subtitles"
   import SubtitleMenu from "./SubtitleMenu.svelte"
+  import type { Previews } from "./previews.svelte"
+  import SeekPreview from "./SeekPreview.svelte"
   import { formatTime } from "./time"
   import { keepFocus } from "./keys"
 
@@ -18,6 +20,7 @@
     paused,
     duration,
     fullscreen,
+    previews,
     track,
     subtitleFiles,
     hidden,
@@ -36,6 +39,7 @@
     subtitleFiles: ReadonlyArray<File>
     /** Faded out while the video plays and the pointer rests. */
     hidden: boolean
+    previews: Previews | undefined
     onToggle: () => void
     onFullscreen: () => void
     onFiles: (files: Iterable<File>) => void
@@ -52,15 +56,17 @@
 >
   <!-- Only the controls take the pointer. The shade above them is over the subtitles' lower half. -->
   <div data-controls class="flex flex-col gap-1 px-4 pb-3" class:pointer-events-auto={!hidden}>
-    <input
-      type="range"
-      aria-label="Seek"
-      min="0"
-      max={Number.isFinite(duration) ? duration : 0}
-      step="any"
-      bind:value={currentTime}
-      class="w-full cursor-pointer accent-white"
-    />
+    <SeekPreview {duration} {previews}>
+      <input
+        type="range"
+        aria-label="Seek"
+        min="0"
+        max={Number.isFinite(duration) ? duration : 0}
+        step="any"
+        bind:value={currentTime}
+        class="w-full cursor-pointer accent-white"
+      />
+    </SeekPreview>
     <div class="flex items-center gap-1">
       <button
         type="button"
