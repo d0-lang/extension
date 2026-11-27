@@ -53,6 +53,8 @@ export type Overlay = {
   mark: Paint
   /** Puts the subtitles back where they start, after a drag. */
   resetPosition: () => void
+  /** Keeps the subtitles where they are while a lookup of one of their words is open. */
+  hold: (held: boolean) => void
   /** Whether the word `hit` is under the mark now. */
   isMarked: (hit: WordHit) => boolean
   remove: () => void
@@ -217,6 +219,8 @@ export const createOverlay = (
   let clear = { top: -1, bottom: -1 }
   /** Whether the pointer is on the subtitles. */
   let hovered = false
+  /** Whether a lookup of one of their words is open. */
+  let held = false
   root.addEventListener("pointerenter", () => {
     hovered = true
   })
@@ -224,16 +228,15 @@ export const createOverlay = (
     hovered = false
   })
   /**
-   * Keeps the subtitles clear of the player's bars. Whether that moved them. They never move back toward the bars
-   * under the pointer or a lookup: the player sees no pointer over them and hides its bars, and they would drop away
-   * from the pointer and come back as the player shows its bars again.
+   * Keeps the subtitles clear of the player's bars. Whether that moved them. They stay put under the pointer or a
+   * lookup, unless the player changed size: the player sees no pointer over them and hides its bars, and a lookup's
+   * pause shows them, so they would move away from the pointer or out from under the popover.
    */
-  const clearBars = (): boolean => {
-    const measured = host.bars(player)
-    const held = hovered || marked.length > 0
-    const bars = held
-      ? { top: Math.max(measured.top, clear.top), bottom: Math.max(measured.bottom, clear.bottom) }
-      : measured
+  const clearBars = (resized = false): boolean => {
+    if (!resized && clear.bottom >= 0 && (hovered || held)) {
+      return false
+    }
+    const bars = host.bars(player)
     if (bars.top === clear.top && bars.bottom === clear.bottom) {
       return false
     }
@@ -246,7 +249,7 @@ export const createOverlay = (
   const resize = new ResizeObserver(() => {
     const size = Math.min(MAX_SIZE_PX, Math.max(MIN_SIZE_PX, player.clientHeight * SIZE_RATIO))
     root.style.setProperty("--dadict-caption-size", `${size}px`)
-    clearBars()
+    clearBars(true)
     place()
   })
   resize.observe(player)
@@ -310,6 +313,9 @@ export const createOverlay = (
         hit.element ?? undefined,
         marked.filter((range) => root.contains(range.commonAncestorContainer)),
       ),
+    hold: (value) => {
+      held = value
+    },
     resetPosition: () => {
       chosen = { x: 0, y: 0 }
       dragged = false

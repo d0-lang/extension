@@ -124,7 +124,9 @@ export const showSubtitles = (
       return
     }
     lookUp(hit, frame.track.lang)
-    // After the lookup, since opening it can close the one before, which plays the video again.
+    // After the lookup, since opening it can close the one before, which plays the video again and lets the
+    // subtitles move.
+    overlay.hold(true)
     const { video } = frame
     if (!video.paused) {
       video.pause()
@@ -174,6 +176,7 @@ export const showSubtitles = (
     },
     /** Plays the video again if a lookup paused it. */
     popoverClosed: () => {
+      overlay?.hold(false)
       stopWatchingPlay?.abort()
       stopWatchingPlay = undefined
       void pausedVideo?.play().catch(() => {})
