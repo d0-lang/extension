@@ -2,6 +2,7 @@ import {
   isAudioRequestMessage,
   isInAnkiMessage,
   isLookupRequestMessage,
+  isOpenReportMessage,
   isShownLookupMessage,
 } from "$lib/messages"
 import {
@@ -18,6 +19,7 @@ import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
 import { answer } from "./lookup"
 import { createMenuItem, listenToMenu, showMenuItem } from "./menu"
 import { isServerNotification, notify } from "./notifications"
+import { openReportBeside } from "./report"
 import { rememberShown } from "./shown"
 
 const setUp = () => {
@@ -102,6 +104,10 @@ export default defineBackground(() => {
       rememberShown(message, sender.tab?.id).catch((error) =>
         console.warn("Could not keep the last lookup", error),
       )
+      return
+    }
+    if (isOpenReportMessage(message)) {
+      openReportBeside(sender.tab).catch((error) => console.warn("Could not open the report page", error))
       return
     }
     if (!isLookupRequestMessage(message)) {

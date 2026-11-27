@@ -39,6 +39,7 @@
         { action: "Move between the parts of a word", keys: ["A", "D"] },
         { action: "Play the pronunciation", keys: ["E"] },
         { action: "Keep the word for Anki, when Anki is on", keys: ["Q"] },
+        { action: "Report a problem with the word", keys: ["B"] },
         { action: "Close the popover", keys: ["Esc"] },
       ],
     },

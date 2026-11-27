@@ -1,6 +1,6 @@
 /** Word lookup on a page: the popover, the session it searches with, and the subtitles that open it. */
 import { createKeeping } from "$lib/anki/keep"
-import { sendShownLookup } from "$lib/messages"
+import { openReport, sendShownLookup } from "$lib/messages"
 import { getAnkiEnabled, getMarkStyle, getShowIpa, getTheme } from "$lib/storage"
 import { isDark } from "$lib/theme"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
@@ -84,6 +84,7 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
         keeping: ankiEnabled
           ? createKeeping(context === undefined ? undefined : { text: context.text, at: context.at })
           : undefined,
+        report: openReport,
       }
     })
   }

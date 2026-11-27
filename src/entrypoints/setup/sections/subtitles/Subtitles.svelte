@@ -5,7 +5,7 @@
   import ArrowUpToLineIcon from "@lucide/svelte/icons/arrow-up-to-line"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
-  import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
+  import { ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import {
     DEFAULT_SUBTITLE_SETTINGS,
     getSubtitleSettings,
@@ -17,6 +17,7 @@
     type SubtitlePosition,
     type SubtitleSettings,
   } from "$lib/storage"
+  import Choice from "../../controls/Choice.svelte"
   import SectionTitle from "../../layout/SectionTitle.svelte"
   import SubtitlePreview from "./SubtitlePreview.svelte"
 
@@ -57,7 +58,6 @@
   }
 
   const onPosition = async (next: string) => {
-    // Pressing the active item deselects it, which leaves no position.
     const picked = positions.find((option) => option.value === next)
     if (picked === undefined) {
       return
@@ -137,12 +137,11 @@
             Where subtitles start in the player. Dragging them moves them for one video.
           </p>
         </div>
-        <ToggleGroup
-          type="single"
+        <Choice
           variant="outline"
           size="sm"
           value={settings.position}
-          onValueChange={(next) => void onPosition(next)}
+          onPick={(next) => void onPosition(next)}
         >
           {#each positions as option (option.value)}
             <ToggleGroupItem value={option.value}>
@@ -150,7 +149,7 @@
               {option.label}
             </ToggleGroupItem>
           {/each}
-        </ToggleGroup>
+        </Choice>
       </div>
     </div>
     <SubtitlePreview class={[!loaded && "invisible"]} {settings} />

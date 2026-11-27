@@ -99,6 +99,19 @@ export const sendShownLookup = (word: string, reply: LookupReply): void => {
     .catch((error: unknown) => console.warn("Could not keep the shown lookup", error))
 }
 
+/** Content to background: open the report page for the lookup this tab's popover shows. */
+export type OpenReportMessage = { type: "report:open" }
+
+export const isOpenReportMessage = (message: unknown): message is OpenReportMessage =>
+  (message as OpenReportMessage | undefined)?.type === "report:open"
+
+/** Ask the background to open the report page next to this tab. */
+export const openReport = (): void => {
+  browser.runtime
+    .sendMessage({ type: "report:open" } satisfies OpenReportMessage)
+    .catch((error: unknown) => console.warn("Could not open the report page", error))
+}
+
 export const isAudioRequestMessage = (message: unknown): message is AudioRequestMessage =>
   (message as AudioRequestMessage | undefined)?.type === "audio:request" &&
   typeof (message as AudioRequestMessage).url === "string"

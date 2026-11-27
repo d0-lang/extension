@@ -1,11 +1,11 @@
 <script lang="ts">
   import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right"
-  import BookmarkCheck from "@lucide/svelte/icons/bookmark-check"
-  import BookmarkPlus from "@lucide/svelte/icons/bookmark-plus"
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert"
   import Play from "@lucide/svelte/icons/play"
   import VolumeX from "@lucide/svelte/icons/volume-x"
   import type { KeepState } from "$lib/anki/keep"
+  import Deck from "$lib/components/Deck.svelte"
+  import { playDeck } from "$lib/components/deck"
   import { linkSense, playableAudio } from "$lib/dict/entries"
   import type { LookupEntry } from "$lib/dict/types"
   import type { PairLabels } from "$lib/storage"
@@ -93,7 +93,9 @@
             data-keep
             class={[
               "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md",
-              state === "kept" ? "bg-link/15 text-link" : "bg-muted text-foreground hover:bg-accent",
+              state === "kept"
+                ? "bg-link/15 text-link [--deck-fill:color-mix(in_oklch,var(--link)_15%,var(--popover))]"
+                : "bg-muted text-foreground hover:bg-accent [--deck-fill:var(--muted)] hover:[--deck-fill:var(--accent)]",
             ]}
             aria-label={state === "kept"
               ? `Remove ${entry.lemma} from the words kept for Anki`
@@ -102,17 +104,16 @@
             title={keepTitle[state ?? "none"]}
             onclick={(event) => {
               if (isUserKeep(event)) {
+                playDeck(event.currentTarget, state === "kept" ? "undo" : "keep")
                 keep.toggle(entries, index)
               }
             }}
           >
-            {#if state === "kept"}
-              <BookmarkCheck class="size-3" />
-            {:else if state === "anki"}
-              <TriangleAlert class="size-3" />
-            {:else}
-              <BookmarkPlus class="size-3" />
+            <!-- The deck stays in, only hidden, so keeping from "anki" has a deck to play on as it shows. -->
+            {#if state === "anki"}
+              <TriangleAlert class="size-4" />
             {/if}
+            <span class={state === "anki" ? "hidden" : "inline-flex"}><Deck class="size-4" /></span>
           </button>
         {/if}
         {#if url !== undefined}
@@ -129,11 +130,11 @@
             onclick={() => audio.play(url)}
           >
             {#if failed}
-              <VolumeX class="size-3" />
+              <VolumeX class="size-3.5" />
             {:else if going}
               <span class="dict-playing" aria-hidden="true"><span></span><span></span><span></span></span>
             {:else}
-              <Play class="size-3" />
+              <Play class="size-3.5" />
             {/if}
           </button>
         {/if}

@@ -2,6 +2,7 @@
   import { onMount } from "svelte"
   import CircleHelpIcon from "@lucide/svelte/icons/circle-help"
   import FlagIcon from "@lucide/svelte/icons/flag"
+  import Keycap from "$lib/components/Keycap.svelte"
   import PageHeader from "$lib/components/PageHeader.svelte"
   import { parseReportTab } from "$lib/report-page"
   import { getLastLookup, getServers } from "$lib/storage"
@@ -60,6 +61,9 @@
           >
         </span>
       </a>
+      <p class="text-muted-foreground text-sm">
+        Press <Keycap>B</Keycap> in the popover to come here with the word it shows.
+      </p>
     {/if}
   </main>
 </div>
