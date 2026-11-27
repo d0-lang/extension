@@ -39,28 +39,22 @@
   width: min(420px, calc(100vw - 16px));
 }
 
-/* Out of the word it opens on. Short, as it plays on every lookup. */
+/* Out of the word it opens on. Barely there, as it plays on every lookup. */
 .dict-popover {
-  animation: dict-popover-in 120ms ease-out;
+  animation: dict-popover-in 80ms ease-out;
 }
 
 @keyframes dict-popover-in {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.98);
   }
 }
 
-/* Only a slow answer says it is looking, so a fast one does not flash the line first. */
-.dict-pending {
-  opacity: 0;
-  animation: dict-pending-in 0s 150ms forwards;
-}
-
-@keyframes dict-pending-in {
-  to {
-    opacity: 1;
-  }
+/* Laid out and placed while it waits for a fast answer, then shown, which plays the entrance. */
+.dict-popover.dict-popover-waiting {
+  visibility: hidden;
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

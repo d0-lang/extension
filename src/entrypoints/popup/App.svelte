@@ -63,7 +63,7 @@
   }
 </script>
 
-<main class="flex w-60 flex-col gap-4 p-4">
+<main class="flex w-64 flex-col gap-4 p-4">
   <div class="flex items-center gap-3">
     {#if loaded}
       <SleepyLogo awake={lookupEnabled} />
