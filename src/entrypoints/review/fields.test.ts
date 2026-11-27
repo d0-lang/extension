@@ -51,6 +51,23 @@ describe("markedHtml", () => {
   it("bolds between pairs of ** and escapes the rest, keeping a lone ** as typed", () => {
     expect(markedHtml("a <x> **b** c **d")).toBe("a &lt;x&gt; <b>b</b> c **d")
   })
+
+  it("bolds the whole Arabic word when the bold cuts it, so its letters stay joined", () => {
+    expect(markedHtml("قرأت ال**كتاب** أمس")).toBe("قرأت <b>الكتاب</b> أمس")
+    expect(markedHtml("قرأت **كتاب**ها أمس")).toBe("قرأت <b>كتابها</b> أمس")
+    // Kasra is a mark Arabic shares with other scripts.
+    expect(markedHtml("بِ**كتاب**")).toBe("<b>بِكتاب</b>")
+    // Adlam's letters each take two code units.
+    expect(markedHtml("\u{1E900}**\u{1E901}**\u{1E902}")).toBe("<b>\u{1E900}\u{1E901}\u{1E902}</b>")
+    // A zero width joiner joins across the edge, and a non-joiner keeps the letters apart.
+    expect(markedHtml("ب\u200D**ت**")).toBe("<b>ب\u200Dت</b>")
+    expect(markedHtml("ب\u200C**ت**")).toBe("ب\u200C<b>ت</b>")
+  })
+
+  it("keeps a bold part of a word in scripts whose letters do not join", () => {
+    expect(markedHtml("Rettungs**fonds**")).toBe("Rettungs<b>fonds</b>")
+    expect(markedHtml("קראתי את ה**ספר**")).toBe("קראתי את ה<b>ספר</b>")
+  })
 })
 
 describe("draftSentence", () => {

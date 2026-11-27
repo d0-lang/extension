@@ -55,10 +55,42 @@ export const markedSentence = (text: string, spans: ReadonlyArray<[number, numbe
   return marked + text.slice(at, to) + (to < text.length ? "…" : "")
 }
 
-/** `marked` as HTML, with each pair of `**` bolding what is between. A lone `**` stays as typed. */
+/**
+ * Letters and marks of the scripts whose letters join up, like Arabic, and the zero width joiner that joins them. By
+ * script extensions, since vowel marks are shared.
+ */
+const JOINING =
+  /(?:(?=[\p{Script_Extensions=Arabic}\p{Script_Extensions=Syriac}\p{Script_Extensions=Nko}\p{Script_Extensions=Mongolian}\p{Script_Extensions=Adlam}])[\p{L}\p{M}]|\u200D)/u
+const JOINING_START = new RegExp(`^(?:${JOINING.source})+`, "u")
+const JOINING_END = new RegExp(`(?:${JOINING.source})+$`, "u")
+
+/**
+ * `parts` from splitting at `**`, with each bold part grown to the whole word where its edge cuts a word whose
+ * letters join. Chromium, which Anki draws cards with, does not join letters across a change of weight.
+ */
+const joinedParts = (parts: Array<string>): Array<string> => {
+  const grown = [...parts]
+  for (let index = 1; index < grown.length - 1; index += 2) {
+    const before = grown[index - 1]!.match(JOINING_END)?.[0] ?? ""
+    if (before !== "" && JOINING_START.test(grown[index]!)) {
+      grown[index - 1] = grown[index - 1]!.slice(0, -before.length)
+      grown[index] = before + grown[index]
+    }
+    const after = grown[index + 1]!.match(JOINING_START)?.[0] ?? ""
+    if (after !== "" && JOINING_END.test(grown[index]!)) {
+      grown[index + 1] = grown[index + 1]!.slice(after.length)
+      grown[index] += after
+    }
+  }
+  return grown
+}
+
+/**
+ * `marked` as HTML, with each pair of `**` bolding what is between. A lone `**` stays as typed. In a script whose
+ * letters join, the bold covers whole words.
+ */
 export const markedHtml = (marked: string): string =>
-  marked
-    .split(BOLD)
+  joinedParts(marked.split(BOLD))
     .map((part, index, parts) =>
       index % 2 === 0
         ? escapeHtml(part)

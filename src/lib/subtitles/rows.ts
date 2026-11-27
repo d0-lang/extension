@@ -44,6 +44,8 @@ const lineOf = (
 ): HTMLElement => {
   const line = document.createElement("span")
   line.dataset.line = ""
+  // A right-to-left line keeps its punctuation at its own end.
+  line.dir = "auto"
   let offset = 0
   for (const segment of segmentsOf(text, lang)) {
     const part = document.createElement("span")

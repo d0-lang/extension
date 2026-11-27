@@ -20,7 +20,8 @@ export const FIELDS = [
 export type Field = (typeof FIELDS)[number]
 
 // A word reached through a link has no sentence, so its front is the word.
-const QUESTION = `{{#Sentence}}<div class="sentence">{{Sentence}}</div>{{/Sentence}}{{^Sentence}}<div class="sentence">{{Word}}</div>{{/Sentence}}`
+// `dir="auto"` takes each field's direction from its own text, so Arabic or Hebrew reads right to left.
+const QUESTION = `{{#Sentence}}<div class="sentence" dir="auto">{{Sentence}}</div>{{/Sentence}}{{^Sentence}}<div class="sentence" dir="auto">{{Word}}</div>{{/Sentence}}`
 
 export const FRONT = `<div class="dadict">
   ${QUESTION}
@@ -29,14 +30,14 @@ export const FRONT = `<div class="dadict">
 export const BACK = `<div class="dadict">
   ${QUESTION}
   <hr id="answer">
-  <div class="head">
+  <div class="head" dir="auto">
     <span class="word">{{Word}}</span>
     {{#Part of speech}}<span class="pos">{{Part of speech}}</span>{{/Part of speech}}
     {{Audio}}
   </div>
-  {{#Reading}}<div class="reading">{{Reading}}</div>{{/Reading}}
+  {{#Reading}}<div class="reading" dir="auto">{{Reading}}</div>{{/Reading}}
   {{#Pronunciation}}<div class="ipa">{{Pronunciation}}</div>{{/Pronunciation}}
-  <div class="meaning">{{Meaning}}</div>
+  <div class="meaning" dir="auto">{{Meaning}}</div>
   {{#Source}}<div class="source">{{Source}}</div>{{/Source}}
 </div>`
 
@@ -45,7 +46,7 @@ export const CSS = `.card {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans CJK JP", sans-serif;
   font-size: 20px;
   line-height: 1.5;
-  text-align: left;
+  text-align: start;
   color: var(--fg, #1f1f1f);
   background: var(--canvas, #fff);
 }
@@ -60,7 +61,7 @@ hr#answer { border: 0; border-top: 1px solid var(--border, #d4d4d4); margin: 0.7
 .reading { font-size: 0.95em; }
 .head .replay-button svg { width: 1.4em; height: 1.4em; }
 .meaning { margin-top: 0.5rem; }
-.meaning ol { margin: 0; padding-left: 1.4em; }
+.meaning ol { margin: 0; padding-inline-start: 1.4em; }
 .meaning li + li { margin-top: 0.2em; }
 .meaning p { margin: 0; }
 .source { margin-top: 0.75rem; }

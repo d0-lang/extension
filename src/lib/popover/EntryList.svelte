@@ -76,7 +76,7 @@
       <div class="flex items-start gap-2">
         <!-- Inline, so the tags follow a long headword onto its last line. -->
         <div class="min-w-0 flex-1 leading-6 wrap-anywhere">
-          <h2 class="inline text-base font-semibold">
+          <h2 class="inline text-base font-semibold" dir="auto">
             <Stressed text={entry.lemma} />
           </h2>
           {#if posName(entry.pos) !== ""}{" "}<span class="text-muted-foreground text-xs"
@@ -141,7 +141,7 @@
       </div>
       <!-- Kana words often come with themselves as the reading. -->
       {#if entry.pron?.reading !== undefined && entry.pron.reading !== entry.lemma}
-        <p class="wrap-anywhere"><Stressed text={entry.pron.reading} /></p>
+        <p class="wrap-anywhere" dir="auto"><Stressed text={entry.pron.reading} /></p>
       {/if}
       {#if showIpa && ipa.length > 0}
         <p class="text-muted-foreground text-xs wrap-anywhere">
@@ -150,7 +150,7 @@
       {/if}
     </div>
     <!-- Two-digit numbers need the wider indent, or they run into the bar beside the whole word's entries. -->
-    <ol class={["flex list-decimal flex-col gap-1", entry.senses.length < 10 ? "pl-5" : "pl-7"]}>
+    <ol class={["flex list-decimal flex-col gap-1", entry.senses.length < 10 ? "ps-5" : "ps-7"]} dir="auto">
       {#each entry.senses as sense, senseIndex (senseIndex)}
         {@const linked = linkSense(sense.glosses.join("; "), sense.see ?? [])}
         <li
