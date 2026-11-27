@@ -18,6 +18,8 @@
   let popover = $state<HTMLElement>()
   /** What the pointer is over in the box, for Alt to open when it goes down. */
   let hovered: EventTarget | null = null
+  /** Whether left Alt is down, the one a page's lookups follow. Right Alt sets `altKey` too, but closes nothing. */
+  let altHeld = false
   /** The word open, and where its popover goes inside the box. */
   let open = $state<{ word: string; index: number; left: number; top: number }>()
   /** The word a long press selected, and where its Look up button goes inside the box. */
@@ -87,6 +89,7 @@
       }
       // A word already under the pointer opens as Alt goes down, without the pointer having to move.
       if (event.code === "AltLeft" && !event.repeat) {
+        altHeld = true
         show(hovered)
       }
     }
@@ -94,6 +97,7 @@
       if (event.code !== "AltLeft") {
         return
       }
+      altHeld = false
       // Firefox opens its menu bar when Alt is let go, which a page's content script stops but nothing does here.
       event.preventDefault()
       if (open !== undefined && popover?.matches(":hover") !== true) {
@@ -126,13 +130,19 @@
         }
       }, SETTLE_MS)
     }
+    // Alt let go in another window never comes back as a keyup here.
+    const onBlur = () => {
+      altHeld = false
+    }
     window.addEventListener("keydown", onKeyDown)
     window.addEventListener("keyup", onKeyUp)
+    window.addEventListener("blur", onBlur)
     window.addEventListener("pointerdown", onPointerDown)
     document.addEventListener("selectionchange", onSelectionChange)
     return () => {
       window.removeEventListener("keydown", onKeyDown)
       window.removeEventListener("keyup", onKeyUp)
+      window.removeEventListener("blur", onBlur)
       window.removeEventListener("pointerdown", onPointerDown)
       document.removeEventListener("selectionchange", onSelectionChange)
       clearTimeout(settle)
@@ -147,7 +157,7 @@
   role="presentation"
   onpointermove={(event) => {
     hovered = event.target
-    if (event.altKey) {
+    if (altHeld) {
       show(event.target)
     }
   }}

@@ -1,4 +1,4 @@
-import { getOnboarding, getServerByLang, ONBOARDING_KEY, setOnboarding, type Onboarding } from "$lib/storage"
+import { getOnboarding, getServerByLang, ONBOARDING_KEYS, setOnboarding, type Onboarding } from "$lib/storage"
 
 /** The Get started list's steps, read from what the user has done, kept current as it changes in any tab. */
 export class StartProgress {
@@ -22,7 +22,7 @@ export class StartProgress {
 
   watch = (): (() => void) => {
     const onChanged = (changes: Record<string, unknown>, area: string) => {
-      if (area === "local" && [ONBOARDING_KEY, "serverByLang"].some((key) => key in changes)) {
+      if (area === "local" && [...ONBOARDING_KEYS, "serverByLang"].some((key) => key in changes)) {
         void this.load()
       }
     }

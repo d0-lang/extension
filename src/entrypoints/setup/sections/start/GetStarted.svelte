@@ -24,6 +24,8 @@
   let triedHere = $state(false)
 
   const done = $derived([progress.steps[0], progress.steps[1] || triedHere, progress.steps[2]])
+  /** What the bar shows and reads out, counting a sample lookup before Next. */
+  const doneCount = $derived(done.filter(Boolean).length)
   /** The first step not moved past. The sample step is moved past with Next, the others by doing them. */
   const current = $derived(progress.steps.findIndex((step) => !step))
   const finished = $derived(progress.steps.every(Boolean))
@@ -48,12 +50,12 @@
     <div
       class="bg-muted h-1 overflow-hidden rounded-full"
       role="progressbar"
-      aria-valuenow={progress.done}
+      aria-valuenow={doneCount}
       aria-valuemax={3}
     >
       <div
         class="bg-primary h-full rounded-full transition-[width] duration-500 ease-[cubic-bezier(0.3,1.3,0.5,1)] motion-reduce:transition-none"
-        style:width="{(done.filter(Boolean).length / 3) * 100}%"
+        style:width="{(doneCount / 3) * 100}%"
       ></div>
     </div>
   </div>
