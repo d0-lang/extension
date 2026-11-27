@@ -18,10 +18,20 @@ describe("sectionGroups", () => {
     expect(
       sectionGroups().map(({ group, sections }) => [group, sections.map((section) => section.id)]),
     ).toEqual([
+      ["Welcome", ["start"]],
       ["Dictionaries", ["servers"]],
       ["Sites", ["integrations", "sites"]],
       ["Display", ["appearance", "subtitles", "hotkeys"]],
       ["Flashcards", ["anki"]],
+    ])
+  })
+
+  it("leaves out hidden sections, and a group left empty", () => {
+    expect(sectionGroups(["start"]).map(({ group }) => group)).toEqual([
+      "Dictionaries",
+      "Sites",
+      "Display",
+      "Flashcards",
     ])
   })
 })
