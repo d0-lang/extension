@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { ClassValue } from "svelte/elements"
-  import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
+  import { ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import type { SubtitleSettings } from "$lib/storage"
   import { createRows, type Styled } from "$lib/subtitles/rows"
   import "$lib/subtitles/rows.css"
+  import Choice from "../../controls/Choice.svelte"
   import { SAMPLES, type Pace } from "./sample"
 
   /**
@@ -49,7 +50,6 @@
   })
 
   const onPace = (next: string) => {
-    // Pressing the active item deselects it, which leaves no pace.
     if (next === "slow" || next === "fast") {
       index = 0
       pace = next
@@ -73,16 +73,15 @@
       ]}
     ></div>
   </div>
-  <ToggleGroup
-    type="single"
+  <Choice
     variant="outline"
     size="sm"
     class="self-center"
     value={pace}
-    onValueChange={onPace}
+    onPick={onPace}
     aria-label="How quickly the preview's lines change"
   >
     <ToggleGroupItem value="slow">Slow lines</ToggleGroupItem>
     <ToggleGroupItem value="fast">Fast lines</ToggleGroupItem>
-  </ToggleGroup>
+  </Choice>
 </div>
