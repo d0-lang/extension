@@ -343,6 +343,9 @@
   ]}
   style:top="{place.top}px"
   style:left="{place.left}px"
+  style:transform-origin="{(anchor.left + anchor.right) / 2 - place.left}px {place.side === 'below'
+    ? '0'
+    : '100%'}"
   style:max-height={place.maxHeight === undefined ? undefined : `${place.maxHeight}px`}
   style:min-height={lock === undefined || place.maxHeight === undefined
     ? undefined
@@ -363,7 +366,7 @@
     <!-- Every view gets its own scroller, starting from its own position. -->
     {#key view}
       {#await view.reply}
-        <p class="text-muted-foreground px-3 py-2" role="status">
+        <p class="dict-pending text-muted-foreground px-3 py-2" role="status">
           Looking up {view.word}…
         </p>
       {:then result}

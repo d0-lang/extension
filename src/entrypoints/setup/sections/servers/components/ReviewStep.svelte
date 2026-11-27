@@ -9,6 +9,7 @@
   import { creditSources, type LegalDocument } from "$lib/dict"
   import { pairName } from "$lib/languages"
   import { groupByTarget, pairMatches, sourceName } from "../languages"
+  import SignedSeal from "./SignedSeal.svelte"
   import type { ContextSending } from "$lib/storage"
   import { ServerSetup } from "../ServerSetup.svelte"
   import SourceCredits from "./SourceCredits.svelte"
@@ -80,6 +81,9 @@
 
   <!-- Room around the edges for focus rings, which the scroll would cut. A scrollbar takes part of the side's. -->
   <div class="-mx-4 -mt-1 flex min-h-0 flex-col gap-3 overflow-y-auto px-4 pt-1">
+    {#if setup.isNew}
+      <SignedSeal />
+    {/if}
     {#if draft.movedFrom !== undefined}
       <Alert>
         <AlertTitle>This server has moved</AlertTitle>
