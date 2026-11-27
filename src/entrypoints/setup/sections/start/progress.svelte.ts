@@ -13,8 +13,15 @@ export class StartProgress {
   steps = $derived([this.hasServer, this.onboarding.tried, this.onboarding.lookedUp])
   done = $derived(this.steps.filter(Boolean).length)
 
+  /** Counts the reads, so one that started earlier and lands later does not undo a newer one, like a Skip. */
+  private reads = 0
+
   load = async () => {
+    const read = ++this.reads
     const [onboarding, bound] = await Promise.all([getOnboarding(), getServerByLang()])
+    if (read !== this.reads) {
+      return
+    }
     this.onboarding = onboarding
     this.hasServer = Object.keys(bound).length > 0
     this.loaded = true
