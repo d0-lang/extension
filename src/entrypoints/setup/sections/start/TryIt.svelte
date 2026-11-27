@@ -51,12 +51,12 @@
       }
     }
     const onKeyUp = (event: KeyboardEvent) => {
-      if (event.code !== "AltLeft" || open === undefined) {
+      if (event.code !== "AltLeft") {
         return
       }
-      // Firefox can open its menu bar when Alt is released.
+      // Firefox opens its menu bar when Alt is let go, which a page's content script stops but nothing does here.
       event.preventDefault()
-      if (popover?.matches(":hover") !== true) {
+      if (open !== undefined && popover?.matches(":hover") !== true) {
         close()
       }
     }
