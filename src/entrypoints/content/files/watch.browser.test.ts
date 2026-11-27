@@ -7,7 +7,12 @@ const FIXTURE = "/src/entrypoints/content/files/fixtures/ard.ttml"
 
 const ctx = { onInvalidated: () => {} } as unknown as ContentScriptContext
 
-const site = { hosts: /./u, file: /\/fixtures\/ard\.ttml$/u, isOn: () => true, host: VIDEO_HOST }
+const site = {
+  hosts: /./u,
+  file: /\/fixtures\/ard\.ttml$/u,
+  isOn: () => true,
+  host: { ...VIDEO_HOST, ownSubtitles: ".own" },
+}
 
 it("reads the subtitle file once the page loads it", async () => {
   const files = watchSiteFiles(ctx, site)

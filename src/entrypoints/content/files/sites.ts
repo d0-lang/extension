@@ -9,7 +9,8 @@ export type SiteFiles = {
   file: RegExp
   /** Whether the player around `video` has its subtitles on, which the extension's then show in place of. */
   isOn: (video: HTMLVideoElement) => boolean
-  host: Host
+  /** The subtitles show only while the player holds what it draws its own in, so a change to it never shows both. */
+  host: Host & { ownSubtitles: string }
 }
 
 /** ARD's player, which the box the subtitles go in can be, or hold. */
@@ -20,7 +21,7 @@ const ardPlayerOf = (player: HTMLElement): Element | null =>
  * ARD's controls take a quarter of the player, so the subtitles move above its seek bar only while they show. ARD
  * marks that on the player.
  */
-const ARD_HOST: Host = {
+const ARD_HOST: SiteFiles["host"] = {
   bars: (player) => {
     const idle = VIDEO_HOST.bars(player)
     const ard = ardPlayerOf(player)
@@ -52,3 +53,13 @@ const SITES: ReadonlyArray<SiteFiles> = [ARD]
 /** The site `hostname` is, if its player is one of these. */
 export const siteFilesOf = (hostname: string): SiteFiles | undefined =>
   SITES.find(({ hosts }) => hosts.test(hostname))
+
+/**
+ * Whether the file shows in place of the subtitles of the player around `video`: while they are on, and only while
+ * `player` holds what it draws them in. After a change to the player, the page shows its own rather than both.
+ */
+export const replacesOwn = (
+  site: SiteFiles,
+  video: HTMLVideoElement,
+  player: HTMLElement | undefined,
+): boolean => player?.querySelector(site.host.ownSubtitles) != null && site.isOn(video)

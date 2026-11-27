@@ -3,7 +3,7 @@ import { getVideoSubtitles } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isFast, type Cue } from "$lib/subtitles/cues"
 import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "$lib/subtitles/controller"
-import { siteFilesOf } from "../files/sites"
+import { replacesOwn, siteFilesOf } from "../files/sites"
 import { watchSiteFiles } from "../files/watch"
 import { playerOf, VIDEO_HOST } from "./player"
 import { createStage, removeStages, type Stage } from "./stage"
@@ -36,7 +36,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
     if (track !== undefined) {
       return trackOf(track)
     }
-    return site?.isOn(over) === true ? files?.track() : undefined
+    return site !== undefined && replacesOwn(site, over, playerOf(over)) ? files?.track() : undefined
   }
   const hasSubtitles = (over: HTMLVideoElement): boolean =>
     activeTrack(over) !== undefined || site?.isOn(over) === true

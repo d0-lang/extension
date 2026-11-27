@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { siteFilesOf } from "./sites"
+import { replacesOwn, siteFilesOf } from "./sites"
 
 afterEach(() => document.body.replaceChildren())
 
@@ -11,6 +11,7 @@ const ardPlayer = ({ controls, subtitles }: { controls: boolean; subtitles: bool
         <video style="width: 100%; height: 100%"></video>
         <div class="ardplayer-controlbar" style="position: absolute; bottom: 130px; height: 20px; width: 100%"></div>
         <button><span class="ardplayer-icon ${subtitles ? "ardplayer-icon-utactive" : "ardplayer-icon-ut"}"></span></button>
+        <div class="ardplayer-viewport-addon-overlays"><div class="ardplayer-untertitel"></div></div>
       </div>
     </div>`
   return {
@@ -48,5 +49,13 @@ describe("ARD", () => {
     expect(ard.host.bars(ardPlayer({ controls: false, subtitles: true }).wrapper).bottom).toBeCloseTo(
       640 * 0.12,
     )
+  })
+
+  it("shows its file only while ARD still draws its own subtitles where they are hidden", () => {
+    const { wrapper, video } = ardPlayer({ controls: false, subtitles: true })
+    expect(replacesOwn(ard, video, wrapper)).toBe(true)
+    document.querySelector(".ardplayer-untertitel")!.className = "ardplayer-subtitles"
+    expect(replacesOwn(ard, video, wrapper)).toBe(false)
+    expect(replacesOwn(ard, video, undefined)).toBe(false)
   })
 })
