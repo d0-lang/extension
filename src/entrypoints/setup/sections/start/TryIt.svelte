@@ -58,16 +58,17 @@
   /** The sample word a touch selected, alone, once the selection settles. */
   const offerSelected = () => {
     const selection = getSelection()
-    const node = selection?.anchorNode
-    const span = (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-word]")
-    if (
-      selection === null ||
-      selection.isCollapsed ||
-      span === null ||
-      span === undefined ||
-      box?.contains(span) !== true ||
-      selection.toString().trim().toLowerCase() !== span.dataset.word
-    ) {
+    if (selection === null || selection.isCollapsed || selection.rangeCount === 0 || box === undefined) {
+      return
+    }
+    // Firefox on Android starts a long press's selection at the end of the text before the word, so its anchor is
+    // not in the word. The word is the one the selection covers and spells.
+    const range = selection.getRangeAt(0)
+    const text = selection.toString().trim().toLowerCase()
+    const span = [...box.querySelectorAll<HTMLElement>("[data-word]")].find(
+      (candidate) => candidate.dataset.word === text && range.intersectsNode(candidate),
+    )
+    if (span === undefined) {
       return
     }
     const outer = box.getBoundingClientRect()
@@ -101,8 +102,11 @@
     }
     let touching = false
     // A tap outside closes it, as a finger never leaves the box the way a mouse does.
+    /** Whether the last press was on the popover, whose own taps end the selection but should not close it. */
+    let onPopover = false
     const onPointerDown = (event: PointerEvent) => {
       touching = event.pointerType === "touch"
+      onPopover = event.target instanceof Node && popover?.contains(event.target) === true
       if (event.target instanceof Node && box?.contains(event.target) !== true) {
         close()
       }
@@ -110,6 +114,10 @@
     let settle: ReturnType<typeof setTimeout> | undefined
     // Only a touch selection gets the button, as on a page, where a mouse has Alt instead.
     const onSelectionChange = () => {
+      // As on a page, letting go of the word a long press opened closes its popover.
+      if (touching && !onPopover && getSelection()?.isCollapsed !== false) {
+        close()
+      }
       offer = undefined
       clearTimeout(settle)
       settle = setTimeout(() => {
@@ -161,10 +169,11 @@
   </p>
   {#if offer !== undefined}
     {@const offered = offer}
-    <!-- As a page's Look up button looks. A press on it must not end the selection. -->
+    <!-- Shaped like a page's Look up button, but in the theme's popover colours with a border, as a page's own dark one
+         is lost on a dark card. A press on it must not end the selection. -->
     <button
       type="button"
-      class="absolute z-10 -translate-x-1/2 cursor-pointer rounded-full bg-[#1c1c1c] px-3.5 py-2 text-sm leading-none font-medium text-white shadow-[0_2px_8px_rgb(0_0_0/0.3)] [font-family:system-ui,sans-serif]"
+      class="absolute z-10 -translate-x-1/2 cursor-pointer rounded-full border border-foreground/25 bg-popover px-3.5 py-2 text-sm leading-none font-medium text-popover-foreground shadow-[0_2px_8px_rgb(0_0_0/0.3)] [font-family:system-ui,sans-serif]"
       style:left="{offered.centre}px"
       style:top="{offered.top}px"
       onpointerdown={(event) => event.preventDefault()}

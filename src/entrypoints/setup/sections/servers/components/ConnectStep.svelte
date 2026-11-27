@@ -6,6 +6,7 @@
   import { Input } from "$lib/components/ui/input"
   import { Label } from "$lib/components/ui/label"
   import { HandshakeSession } from "../HandshakeSession.svelte"
+  import { hasMouse } from "../pointer"
   import { PUBLIC_SERVER } from "../public-server"
   import { ServerSetup } from "../ServerSetup.svelte"
 
@@ -90,7 +91,7 @@
         placeholder="https://dict.example.org"
         autocomplete="off"
         spellcheck="false"
-        autofocus
+        autofocus={hasMouse()}
         bind:value={url}
         oninput={session.clearWarnings}
       />
