@@ -3,6 +3,7 @@ import { getVideoSubtitles } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isFast, type Cue } from "$lib/subtitles/cues"
 import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "$lib/subtitles/controller"
+import { markReplacing } from "../files/replacing"
 import { replacesOwn, siteFilesOf } from "../files/sites"
 import { watchSiteFiles } from "../files/watch"
 import { playerOf, VIDEO_HOST } from "./player"
@@ -32,6 +33,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   const playerAround = (over: HTMLVideoElement): HTMLElement | undefined =>
     site?.player?.(over) ?? playerOf(over)
   const files = site === undefined ? undefined : watchSiteFiles(ctx, site)
+  const markReplaced = markReplacing(ctx)
 
   /** The track the page has on, or else the file its player downloaded, while the player has its subtitles on. */
   const trackFor = (over: HTMLVideoElement): Track | undefined => {
@@ -77,6 +79,11 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
         dropStage()
       }
       const player = found ?? stageOver(video)
+      // A site's file hides its own subtitles by a mark that outlasts a frame without the overlay, as in a switch to
+      // fullscreen.
+      if (found !== undefined && value === files?.track()) {
+        markReplaced(found)
+      }
       return value.cues.length === 0
         ? undefined
         : { player, video, track: value, hidden: false, key: video.currentSrc }
