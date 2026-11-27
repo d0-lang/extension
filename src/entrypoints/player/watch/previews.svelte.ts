@@ -19,7 +19,8 @@ export class Previews {
   #video = document.createElement("video")
   #canvas = document.createElement("canvas")
   #step = 0
-  #count = 0
+  /** Reactive, so a preview asked for before the copy loaded shows once frames come. */
+  #count = $state(0)
   #wanted: number | undefined
   #order: Array<number> = []
   #stopped = false
@@ -105,6 +106,10 @@ export class Previews {
     for (let next = this.#next(); next !== undefined && !this.#stopped; next = this.#next()) {
       if (!next.wanted) {
         await new Promise((resolve) => setTimeout(resolve, REST_MS))
+        // A stop meanwhile emptied the copy, which can't seek to a time any more.
+        if (this.#stopped) {
+          break
+        }
         // The pointer may have asked for another frame meanwhile.
         if (this.#wanted !== undefined && !this.frames.has(this.#wanted)) {
           this.#order.unshift(next.index)
@@ -146,7 +151,7 @@ export class Previews {
     }
     context.drawImage(this.#video, 0, 0, this.#canvas.width, this.#canvas.height)
     const blob = await new Promise<Blob | null>((resolve) => this.#canvas.toBlob(resolve, "image/jpeg", 0.7))
-    return blob === null ? undefined : URL.createObjectURL(blob)
+    return blob === null || this.#stopped ? undefined : URL.createObjectURL(blob)
   }
 }
 
