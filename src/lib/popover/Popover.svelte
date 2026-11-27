@@ -364,6 +364,9 @@
   ]}
   style:top="{place.top}px"
   style:left="{place.left}px"
+  style:transform-origin="{(anchor.left + anchor.right) / 2 - place.left}px {place.side === 'below'
+    ? '0'
+    : '100%'}"
   style:max-height={place.maxHeight === undefined ? undefined : `${place.maxHeight}px`}
   style:min-height={lock === undefined || place.maxHeight === undefined
     ? undefined

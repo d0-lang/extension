@@ -18,7 +18,8 @@
   })
 </script>
 
-<span class="sleepy relative inline-flex">
+<!-- A pixel in, as the buttons' rounded corners make their edge read further in than the logo's square one. -->
+<span class="sleepy relative ml-px inline-flex">
   <Logo class={["sleepy-logo h-7 w-6", !awake && "asleep", hop && "hop"]} />
   {#if !awake}
     <span class="zs text-muted-foreground" aria-hidden="true"><span>z</span><span>z</span><span>z</span></span
