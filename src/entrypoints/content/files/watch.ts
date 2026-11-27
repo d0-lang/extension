@@ -22,16 +22,29 @@ const trackOf = (text: string): Track => {
   return { lang, cues, fast: isFast(cues) }
 }
 
-/** A request the player made for a file, by when it started. */
-type Request = { url: string; start: number; failed: boolean }
+/** A read of a file the player asked for, and when it last asked for it. */
+type Request = { url: string; start: number; failed: boolean; read: number }
 
 /**
- * Whether the player's request for `url` at `start` is to be read, after `latest`. Requests can finish, and be
- * reported, in another order than the player made them, so an older one is not. The player asks again for the file it
- * has when its subtitles go back on, which needs no second read unless the first failed.
+ * The player's latest request once it asks for `url` at `start`, and whether that file is to be read, as the `read`th
+ * read. Requests can finish, and be reported, in another order than the player made them, so an older one changes
+ * nothing. The player asks again for the file it has when its subtitles go back on, which needs no second read unless
+ * the first failed, but is the latest request from then on.
  */
-export const isNewRequest = (latest: Request | undefined, url: string, start: number): boolean =>
-  latest === undefined || (start >= latest.start && (url !== latest.url || latest.failed))
+export const requested = (
+  latest: Request | undefined,
+  url: string,
+  start: number,
+  read: number,
+): { latest: Request | undefined; read: boolean } => {
+  if (latest !== undefined && start < latest.start) {
+    return { latest, read: false }
+  }
+  if (latest !== undefined && url === latest.url && !latest.failed) {
+    return { latest: { ...latest, start }, read: false }
+  }
+  return { latest: { url, start, failed: false, read }, read: true }
+}
 
 /**
  * Reads each subtitle file of `site` the page loads, which its player does when its subtitles go on. The file the
@@ -43,28 +56,34 @@ export const watchSiteFiles = (
 ): { track: () => Track | undefined } => {
   let track: Track | undefined
   let latest: Request | undefined
+  let reads = 0
 
-  const read = (url: string, start: number) => {
-    const request: Request = { url, start, failed: false }
-    latest = request
+  const read = (url: string, number: number) => {
     track = undefined
     void fetchText(url).match(
       (text) => {
-        if (latest === request) {
+        if (latest?.read === number) {
           track = trackOf(text)
         }
       },
       (error) => {
         console.warn("Could not read the subtitle file", url, error)
-        request.failed = true
+        if (latest?.read === number) {
+          latest = { ...latest, failed: true }
+        }
       },
     )
   }
 
   const observer = new PerformanceObserver((entries) => {
     for (const { name, startTime } of entries.getEntries()) {
-      if (site.file.test(name) && isNewRequest(latest, name, startTime)) {
-        read(name, startTime)
+      if (site.file.test(name)) {
+        const next = requested(latest, name, startTime, reads + 1)
+        latest = next.latest
+        if (next.read) {
+          reads++
+          read(name, reads)
+        }
       }
     }
   })
