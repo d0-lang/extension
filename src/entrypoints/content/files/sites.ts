@@ -72,6 +72,8 @@ const ARTE_HOST: SiteFiles["host"] = {
   // video.js draws them, as Arte's player is built on it.
   ownSubtitles: ".vjs-text-track-display",
   ownControls: ".avp-content",
+  // The controls' own backing darkens the whole video whenever the mouse moves over it.
+  ownShade: ".avp-content",
 }
 
 /** The languages of Arte's subtitle versions, like `ANG` in `VO-ANG`. */
