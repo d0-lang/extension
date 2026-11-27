@@ -40,6 +40,7 @@
     shown,
     paint = highlightRanges,
     keeping,
+    report,
   }: {
     word: string
     anchor: AnchorRect
@@ -67,6 +68,8 @@
     paint?: Paint
     /** Keeping entries for Anki, while it is on. */
     keeping?: Keeping
+    /** Opens the report page, on B. */
+    report?: () => void
   } = $props()
 
   /**
@@ -330,7 +333,13 @@
   }
 
   $effect(() =>
-    listenForKeys({ scroller: shownScroller, stepSegment, play: audio.play, keeps: keeping !== undefined }),
+    listenForKeys({
+      scroller: shownScroller,
+      stepSegment,
+      play: audio.play,
+      keeps: keeping !== undefined,
+      report,
+    }),
   )
 </script>
 
