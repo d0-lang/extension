@@ -10,8 +10,11 @@
   import { Switch } from "$lib/components/ui/switch"
   import { getAnkiEnabled, getLookupEnabled, getSeeds, getServerIssues, setLookupEnabled } from "$lib/storage"
   import { reportPagePath } from "$lib/report-page"
+  import SleepyLogo from "./SleepyLogo.svelte"
 
   let lookupEnabled = $state(false)
+  /** Set once storage answers, so the logo does not doze off and wake up on every open. */
+  let loaded = $state(false)
   let issueCount = $state(0)
   /** Words kept for Anki, while Anki is on. */
   let keptCount = $state(0)
@@ -24,6 +27,7 @@
       getSeeds(),
     ])
     lookupEnabled = enabled
+    loaded = true
     issueCount = Object.keys(issues).length
     keptCount = ankiEnabled ? seeds.length : 0
   })
@@ -59,9 +63,14 @@
   }
 </script>
 
-<main class="flex w-60 flex-col gap-4 p-4">
-  <div class="flex items-center justify-between gap-4">
-    <Label for="lookup-enabled" class="text-lg">Word lookup</Label>
+<main class="flex w-64 flex-col gap-4 p-4">
+  <div class="flex items-center gap-3">
+    {#if loaded}
+      <SleepyLogo awake={lookupEnabled} />
+    {:else}
+      <span class="w-6"></span>
+    {/if}
+    <Label for="lookup-enabled" class="flex-1 text-lg">Word lookup</Label>
     <Switch
       id="lookup-enabled"
       checked={lookupEnabled}

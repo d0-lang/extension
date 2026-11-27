@@ -86,6 +86,17 @@
   }
 
   let view = $state.raw<View>(untrack(() => ({ word, followed: false, reply: search?.() })))
+  /**
+   * Set once the first answer is in or 150 ms pass. A fast answer then opens once, where it ends up, instead of a
+   * small "Looking up…" below the word that jumps above it when the answer does not fit there.
+   */
+  const waits = untrack(() => view.reply !== undefined)
+  let ready = $state(!waits)
+  if (waits) {
+    const timer = setTimeout(() => (ready = true), 150)
+    void untrack(() => view.reply)?.finally(() => (ready = true))
+    onDestroy(() => clearTimeout(timer))
+  }
   let history = $state.raw<Array<View>>([])
   /** The split word's tab picked in this view. Kept out of `view`, which would rebuild the reply on every pick. */
   let tab = $state<number>()
@@ -347,11 +358,15 @@
   bind:this={element}
   class={[
     "dict-popover bg-popover text-popover-foreground fixed flex flex-col rounded-lg border font-sans text-sm shadow-lg",
+    !ready && "dict-popover-waiting",
     dark && "dark",
     wide && "wide",
   ]}
   style:top="{place.top}px"
   style:left="{place.left}px"
+  style:transform-origin="{(anchor.left + anchor.right) / 2 - place.left}px {place.side === 'below'
+    ? '0'
+    : '100%'}"
   style:max-height={place.maxHeight === undefined ? undefined : `${place.maxHeight}px`}
   style:min-height={lock === undefined || place.maxHeight === undefined
     ? undefined
