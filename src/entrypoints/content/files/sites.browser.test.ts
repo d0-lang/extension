@@ -25,7 +25,7 @@ const ard = siteFilesOf("www.ardmediathek.de")!
 describe("ARD", () => {
   it("is the Mediathek and tagesschau.de, which uses its player", () => {
     expect(siteFilesOf("www.tagesschau.de")).toBe(ard)
-    expect(siteFilesOf("www.zdf.de")).toBeUndefined()
+    expect(siteFilesOf("www.br.de")).toBeUndefined()
     expect(siteFilesOf("notardmediathek.de")).toBeUndefined()
   })
 
@@ -104,5 +104,45 @@ describe("Arte", () => {
   it("keeps the subtitles above the seek bar only while the controls show", () => {
     expect(arte.host.bars(artePlayer(true, true).player).bottom).toBe(89)
     expect(arte.host.bars(artePlayer(true, false).player).bottom).toBeCloseTo(576 * 0.12)
+  })
+})
+
+const zdf = siteFilesOf("www.zdf.de")!
+
+describe("ZDF", () => {
+  it("reads its subtitle files", () => {
+    expect(
+      zdf.file.test(
+        "https://utstreaming.zdf.de/mtt/zdf/26/10/261022_1000_sendung_dbw/5/F1054887_hoh_deu_Die_Bergretter_Stimmen_der_Vergangenheit_18_1_P0035270_F03_M01_52203694.xml",
+      ),
+    ).toBe(true)
+    expect(zdf.file.test("https://www.zdf.de/video/serien/die-bergretter-104")).toBe(false)
+  })
+
+  /** ZDF's player as far as the rule reads it: its bottom controls 150 px up an 800 px tall player. */
+  const zdfPlayer = (subtitles: string, idle: boolean) => {
+    document.body.innerHTML = `
+      <div class="zdfplayer-app${idle ? " zdfplayer-idle" : ""}" style="position: relative; width: 1280px; height: 800px">
+        <div class="zdfplayer-video-container"><video></video></div>
+        <div class="subtitles-3TXyQO zdfplayer-subtitles-unscoped"></div>
+        <div class="bottom-controls-22tEPl" style="position: absolute; bottom: 0; height: 150px; width: 100%"></div>
+        <form>${["hoh_deu", "off"].map((value) => `<input type="radio" name="subtitles" value="${value}" ${value === subtitles ? "checked" : ""}>`).join("")}</form>
+      </div>`
+    return {
+      player: document.querySelector<HTMLElement>(".zdfplayer-app")!,
+      video: document.querySelector("video")!,
+    }
+  }
+
+  it("has its subtitles on while one is picked, in the player it names", () => {
+    const { player, video } = zdfPlayer("hoh_deu", true)
+    expect(zdf.player?.(video)).toBe(player)
+    expect(replacesOwn(zdf, video, player)).toBe(true)
+    expect(zdf.isOn(zdfPlayer("off", true).video)).toBe(false)
+  })
+
+  it("keeps the subtitles above its controls only while the player is not idle", () => {
+    expect(zdf.host.bars(zdfPlayer("hoh_deu", false).player).bottom).toBe(150)
+    expect(zdf.host.bars(zdfPlayer("hoh_deu", true).player).bottom).toBeCloseTo(800 * 0.12)
   })
 })

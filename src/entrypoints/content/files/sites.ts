@@ -109,7 +109,39 @@ const ARTE: SiteFiles = {
   host: ARTE_HOST,
 }
 
-const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE]
+/**
+ * ZDF's controls show while the player is not idle. Its own class names end in a build's hash, so they are matched
+ * by how they start.
+ */
+const ZDF_HOST: SiteFiles["host"] = {
+  bars: (player) =>
+    clearOf(
+      player,
+      player.matches(".zdfplayer-idle") ? undefined : player.querySelector('[class*="bottom-controls-"]'),
+    ),
+  ownSubtitles: ".zdfplayer-subtitles-unscoped",
+  // The bars, the buttons in the middle, and the shade behind them.
+  ownControls:
+    '[class*="top-controls-container-"], [class*="center-controls-"], [class*="bottom-controls-"], .zdfplayer-dimmer',
+}
+
+/** ZDF's player downloads EBU-TT once its subtitles are picked in its language settings. */
+const ZDF: SiteFiles = {
+  hosts: /(?:^|\.)zdf\.de$/u,
+  file: /^https:\/\/utstreaming\.zdf\.de\/mtt\/.+\.xml$/u,
+  format: "ttml",
+  player: (video) => video.closest<HTMLElement>(".zdfplayer-app") ?? undefined,
+  // Its language settings stay in the player when closed, with "off" as a choice.
+  isOn: (video) => {
+    const picked = video
+      .closest(".zdfplayer-app")
+      ?.querySelector<HTMLInputElement>('input[name="subtitles"]:checked')
+    return picked != null && picked.value !== "off"
+  },
+  host: ZDF_HOST,
+}
+
+const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF]
 
 /** The site `hostname` is, if its player is one of these. */
 export const siteFilesOf = (hostname: string): SiteFiles | undefined =>

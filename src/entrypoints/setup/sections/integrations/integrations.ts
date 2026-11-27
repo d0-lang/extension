@@ -25,7 +25,7 @@ export const integrations: ReadonlyArray<Integration> = [
   {
     name: "Other sites",
     kind: "Video",
-    description: "Clickable subtitles on sites like Vimeo, the ARD Mediathek and Arte",
+    description: "Clickable subtitles on sites like Vimeo, ARD, ZDF and Arte",
     key: "videoSubtitles",
     get: getVideoSubtitles,
     set: setVideoSubtitles,
