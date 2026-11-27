@@ -53,16 +53,22 @@ export type Overlay = {
   mark: Paint
   /** Puts the subtitles back where they start, after a drag. */
   resetPosition: () => void
+  /** Keeps the subtitles where they are, and the player's controls hidden, while a lookup of one of their words is open. */
+  hold: (held: boolean) => void
   /** Whether the word `hit` is under the mark now. */
   isMarked: (hit: WordHit) => boolean
   remove: () => void
 }
 
-/** Hides what the player draws its own subtitles in, while the overlay is in it. */
-const hostCss = ({ ownSubtitles }: Host): string =>
-  ownSubtitles === undefined
-    ? ""
-    : `:has(> [data-dadict-captions]) :is(${ownSubtitles}) { display: none !important; }`
+/**
+ * Hides what the player draws its own subtitles in, while the overlay is in it, and its controls during a lookup. The
+ * controls go without the player's transition, which would show them for its length first.
+ */
+const hostCss = ({ ownSubtitles, ownControls }: Host): string => {
+  const subtitles = `:has(> [data-dadict-captions]) :is(${ownSubtitles}) { display: none !important; }`
+  const controls = `:has(> [data-dadict-captions][data-held]) :is(${ownControls}) { visibility: hidden !important; transition: none !important; }`
+  return (ownSubtitles === undefined ? "" : subtitles) + (ownControls === undefined ? "" : controls)
+}
 
 const addStyle = (host: Host) => {
   if (document.getElementById(STYLE_ID) === null) {
@@ -179,6 +185,8 @@ export const createOverlay = (
       root.style.setProperty("--dadict-anchor-row", String(Math.floor(at.anchor / 3)))
     }
   }
+  /** The bars kept clear last, written only when they change. */
+  let clear = { top: -1, bottom: -1 }
   const place = () => {
     const at = dragged ? undefined : creatorPlace
     anchorAt(at)
@@ -188,7 +196,11 @@ export const createOverlay = (
     if (root.hidden || (at === undefined && offset.x === 0 && offset.y === 0)) {
       return
     }
-    const shift = shiftInto(root.getBoundingClientRect(), safeArea(player, host))
+    // The bars kept clear, which a hold keeps as they were.
+    const shift = shiftInto(
+      root.getBoundingClientRect(),
+      safeArea(player, clear.bottom < 0 ? host.bars(player) : clear),
+    )
     moveTo({ x: offset.x + shift.x / player.clientWidth, y: offset.y + shift.y / player.clientHeight })
   }
   dragToMove(ctx, root, () => {
@@ -213,12 +225,39 @@ export const createOverlay = (
     }
   })
 
+  /** Whether the pointer is on the subtitles. */
+  let hovered = false
+  /** Whether a lookup of one of their words is open. */
+  let held = false
+  root.addEventListener("pointerenter", () => {
+    hovered = true
+  })
+  root.addEventListener("pointerleave", () => {
+    hovered = false
+  })
+  /**
+   * Keeps the subtitles clear of the player's bars. Whether that moved them. They stay put under the pointer or a
+   * lookup, unless the player changed size: the player sees no pointer over them and hides its bars, and a lookup's
+   * pause shows them, so they would move away from the pointer or out from under the popover.
+   */
+  const clearBars = (resized = false): boolean => {
+    if (!resized && clear.bottom >= 0 && (hovered || held)) {
+      return false
+    }
+    const bars = host.bars(player)
+    if (bars.top === clear.top && bars.bottom === clear.bottom) {
+      return false
+    }
+    clear = bars
+    root.style.setProperty("--dadict-caption-lift", `${bars.bottom}px`)
+    root.style.setProperty("--dadict-caption-drop", `${bars.top}px`)
+    return true
+  }
+
   const resize = new ResizeObserver(() => {
     const size = Math.min(MAX_SIZE_PX, Math.max(MIN_SIZE_PX, player.clientHeight * SIZE_RATIO))
     root.style.setProperty("--dadict-caption-size", `${size}px`)
-    const bars = host.bars(player)
-    root.style.setProperty("--dadict-caption-lift", `${bars.bottom}px`)
-    root.style.setProperty("--dadict-caption-drop", `${bars.top}px`)
+    clearBars(true)
     place()
   })
   resize.observe(player)
@@ -243,6 +282,10 @@ export const createOverlay = (
     host,
     element: root,
     show: (cue, lang) => {
+      // Some players' bars show and hide, and the subtitles move with them.
+      if (clearBars()) {
+        place()
+      }
       const visible = !root.hidden
       root.hidden = cue === undefined
       current = cue === undefined ? undefined : { cue, lang }
@@ -278,6 +321,10 @@ export const createOverlay = (
         hit.element ?? undefined,
         marked.filter((range) => root.contains(range.commonAncestorContainer)),
       ),
+    hold: (value) => {
+      held = value
+      root.toggleAttribute("data-held", value)
+    },
     resetPosition: () => {
       chosen = { x: 0, y: 0 }
       dragged = false

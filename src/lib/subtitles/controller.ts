@@ -70,6 +70,8 @@ export const showSubtitles = (
   let pausedVideo: HTMLVideoElement | undefined
   /** Ends the wait for `pausedVideo` to play by other means, like the space key. */
   let stopWatchingPlay: AbortController | undefined
+  /** Whether a lookup of a subtitle word is open, which an overlay made again while it is keeps holding. */
+  let lookingUp = false
   let running = false
 
   const removeOverlay = () => {
@@ -124,7 +126,10 @@ export const showSubtitles = (
       return
     }
     lookUp(hit, frame.track.lang)
-    // After the lookup, since opening it can close the one before, which plays the video again.
+    // After the lookup, since opening it can close the one before, which plays the video again and lets the
+    // subtitles move.
+    lookingUp = true
+    overlay.hold(true)
     const { video } = frame
     if (!video.paused) {
       video.pause()
@@ -150,6 +155,7 @@ export const showSubtitles = (
     if (overlay?.player !== player || overlaySlides !== slide) {
       removeOverlay()
       overlay = createOverlay(ctx, player, source.host, onWord, { ...settings, slide })
+      overlay.hold(lookingUp)
       copyMenu = addCopyMenu(ctx, overlay)
       overlaySlides = slide
     }
@@ -174,6 +180,8 @@ export const showSubtitles = (
     },
     /** Plays the video again if a lookup paused it. */
     popoverClosed: () => {
+      lookingUp = false
+      overlay?.hold(false)
       stopWatchingPlay?.abort()
       stopWatchingPlay = undefined
       void pausedVideo?.play().catch(() => {})

@@ -1,8 +1,10 @@
-/** Subtitles on any site whose videos give the browser their tracks, like Vimeo. */
+/** Subtitles on any site whose videos give the browser their tracks, like Vimeo, or whose player downloads a file we read. */
 import { getVideoSubtitles } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { isFast, type Cue } from "$lib/subtitles/cues"
 import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from "$lib/subtitles/controller"
+import { replacesOwn, siteFilesOf } from "../files/sites"
+import { watchSiteFiles } from "../files/watch"
 import { playerOf, VIDEO_HOST } from "./player"
 import { createStage, removeStages, type Stage } from "./stage"
 import { activeTrack, cuesOf } from "./tracks"
@@ -25,6 +27,20 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
     return read.value
   }
 
+  const site = siteFilesOf(location.hostname)
+  const files = site === undefined ? undefined : watchSiteFiles(ctx, site)
+
+  /** The track the page has on, or else the file its player downloaded, while the player has its subtitles on. */
+  const trackFor = (over: HTMLVideoElement): Track | undefined => {
+    const track = activeTrack(over)
+    if (track !== undefined) {
+      return trackOf(track)
+    }
+    return site !== undefined && replacesOwn(site, over, playerOf(over)) ? files?.track() : undefined
+  }
+  const hasSubtitles = (over: HTMLVideoElement): boolean =>
+    activeTrack(over) !== undefined || site?.isOn(over) === true
+
   /** Over a video with no player box around it. */
   let stage: Stage | undefined
   const dropStage = () => {
@@ -43,13 +59,13 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   ctx.onInvalidated(dropStage)
 
   const subtitles = showSubtitles(ctx, options, {
-    host: VIDEO_HOST,
+    host: site?.host ?? VIDEO_HOST,
     isOn: getVideoSubtitles,
     keys: ["videoSubtitles"],
     frame: () => {
-      const track = video?.isConnected === true ? activeTrack(video) : undefined
+      const value = video?.isConnected === true ? trackFor(video) : undefined
       // Nothing shows over a video that is itself fullscreen, so the browser draws its subtitles there.
-      if (video === undefined || track === undefined || document.fullscreenElement === video) {
+      if (video === undefined || value === undefined || document.fullscreenElement === video) {
         dropStage()
         return undefined
       }
@@ -58,7 +74,6 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
         dropStage()
       }
       const player = found ?? stageOver(video)
-      const value = trackOf(track)
       return value.cues.length === 0
         ? undefined
         : { player, video, track: value, hidden: false, key: video.currentSrc }
@@ -75,10 +90,7 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
       }
       // Another video that plays at the same time, like a muted preview, takes over only from one without subtitles.
       const current = video?.isConnected === true && !video.paused ? video : undefined
-      if (
-        current === undefined ||
-        (activeTrack(current) === undefined && activeTrack(target) !== undefined)
-      ) {
+      if (current === undefined || (!hasSubtitles(current) && hasSubtitles(target))) {
         video = target
         subtitles.start()
       }

@@ -1,6 +1,7 @@
 /* Scoped to the attribute, since the YouTube overlay puts the rows in the page's own DOM. */
 
-[data-dadict-captions] {
+/* The attribute twice outweighs a player's reset of the text in it, like ARD's `.ardplayer div { font: inherit }`. */
+[data-dadict-captions][data-dadict-captions] {
   text-align: center;
   /* Shows the line break between a cue's two lines, and after the cue before. */
   white-space: pre-line;

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cut down from an ARD subtitle file. -->
+<tt:tt xmlns:tt="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling" xml:lang="de-DE">
+  <tt:head>
+    <tt:styling>
+      <tt:style xml:id="textCyan" tts:color="#00FFFF" tts:backgroundColor="#000000c2" />
+    </tt:styling>
+  </tt:head>
+  <tt:body>
+    <tt:div>
+      <tt:p xml:id="sub0" begin="00:00:05.080" end="00:00:06.200">
+        <tt:span style="textCyan">Guten Abend!</tt:span>
+      </tt:p>
+    </tt:div>
+  </tt:body>
+</tt:tt>
