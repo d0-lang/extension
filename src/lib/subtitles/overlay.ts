@@ -53,18 +53,22 @@ export type Overlay = {
   mark: Paint
   /** Puts the subtitles back where they start, after a drag. */
   resetPosition: () => void
-  /** Keeps the subtitles where they are while a lookup of one of their words is open. */
+  /** Keeps the subtitles where they are, and the player's controls hidden, while a lookup of one of their words is open. */
   hold: (held: boolean) => void
   /** Whether the word `hit` is under the mark now. */
   isMarked: (hit: WordHit) => boolean
   remove: () => void
 }
 
-/** Hides what the player draws its own subtitles in, while the overlay is in it. */
-const hostCss = ({ ownSubtitles }: Host): string =>
-  ownSubtitles === undefined
-    ? ""
-    : `:has(> [data-dadict-captions]) :is(${ownSubtitles}) { display: none !important; }`
+/**
+ * Hides what the player draws its own subtitles in, while the overlay is in it, and its controls during a lookup. The
+ * controls go without the player's transition, which would show them for its length first.
+ */
+const hostCss = ({ ownSubtitles, ownControls }: Host): string => {
+  const subtitles = `:has(> [data-dadict-captions]) :is(${ownSubtitles}) { display: none !important; }`
+  const controls = `:has(> [data-dadict-captions][data-held]) :is(${ownControls}) { visibility: hidden !important; transition: none !important; }`
+  return (ownSubtitles === undefined ? "" : subtitles) + (ownControls === undefined ? "" : controls)
+}
 
 const addStyle = (host: Host) => {
   if (document.getElementById(STYLE_ID) === null) {
@@ -315,6 +319,7 @@ export const createOverlay = (
       ),
     hold: (value) => {
       held = value
+      root.toggleAttribute("data-held", value)
     },
     resetPosition: () => {
       chosen = { x: 0, y: 0 }

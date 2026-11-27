@@ -9,6 +9,8 @@ export type Host = {
   bars: (player: HTMLElement) => { top: number; bottom: number }
   /** What the player draws its own subtitles in, hidden while the extension's show. */
   ownSubtitles?: string
+  /** What the player draws its controls in, hidden while a lookup is open, since the pause for it would show them. */
+  ownControls?: string
   /** The player's own right-click menu, hidden when the subtitles' opens, since it would stay over it. */
   ownMenu?: string
 }

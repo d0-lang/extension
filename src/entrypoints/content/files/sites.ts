@@ -32,6 +32,8 @@ const ARD_HOST: Host = {
       : { top: 0, bottom: Math.max(idle.bottom, player.getBoundingClientRect().bottom - seek.top) }
   },
   ownSubtitles: ".ardplayer-untertitel",
+  // The bars, the big play button and the shade behind them.
+  ownControls: ".ardplayer-header, .ardplayer-center, .ardplayer-footer, .ardplayer-background",
 }
 
 /**
