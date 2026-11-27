@@ -55,9 +55,9 @@ export const markedSentence = (text: string, spans: ReadonlyArray<[number, numbe
   return marked + text.slice(at, to) + (to < text.length ? "…" : "")
 }
 
-/** Letters of the scripts whose letters join up, like Arabic. */
+/** Letters and marks of the scripts whose letters join up, like Arabic. By script extensions, since vowel marks are shared. */
 const JOINING =
-  /(?=[\p{Script=Arabic}\p{Script=Syriac}\p{Script=Nko}\p{Script=Mongolian}\p{Script=Adlam}])[\p{L}\p{M}]/u
+  /(?=[\p{Script_Extensions=Arabic}\p{Script_Extensions=Syriac}\p{Script_Extensions=Nko}\p{Script_Extensions=Mongolian}\p{Script_Extensions=Adlam}])[\p{L}\p{M}]/u
 const JOINING_START = new RegExp(`^(?:${JOINING.source})+`, "u")
 const JOINING_END = new RegExp(`(?:${JOINING.source})+$`, "u")
 
@@ -69,12 +69,12 @@ const joinedParts = (parts: Array<string>): Array<string> => {
   const grown = [...parts]
   for (let index = 1; index < grown.length - 1; index += 2) {
     const before = grown[index - 1]!.match(JOINING_END)?.[0] ?? ""
-    if (before !== "" && JOINING.test(grown[index]!.charAt(0))) {
+    if (before !== "" && JOINING_START.test(grown[index]!)) {
       grown[index - 1] = grown[index - 1]!.slice(0, -before.length)
       grown[index] = before + grown[index]
     }
     const after = grown[index + 1]!.match(JOINING_START)?.[0] ?? ""
-    if (after !== "" && JOINING.test(grown[index]!.at(-1) ?? "")) {
+    if (after !== "" && JOINING_END.test(grown[index]!)) {
       grown[index + 1] = grown[index + 1]!.slice(after.length)
       grown[index] += after
     }

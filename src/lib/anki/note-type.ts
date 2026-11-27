@@ -30,8 +30,8 @@ export const FRONT = `<div class="dadict">
 export const BACK = `<div class="dadict">
   ${QUESTION}
   <hr id="answer">
-  <div class="head">
-    <span class="word" dir="auto">{{Word}}</span>
+  <div class="head" dir="auto">
+    <span class="word">{{Word}}</span>
     {{#Part of speech}}<span class="pos">{{Part of speech}}</span>{{/Part of speech}}
     {{Audio}}
   </div>

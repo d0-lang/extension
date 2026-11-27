@@ -55,6 +55,10 @@ describe("markedHtml", () => {
   it("bolds the whole Arabic word when the bold cuts it, so its letters stay joined", () => {
     expect(markedHtml("قرأت ال**كتاب** أمس")).toBe("قرأت <b>الكتاب</b> أمس")
     expect(markedHtml("قرأت **كتاب**ها أمس")).toBe("قرأت <b>كتابها</b> أمس")
+    // Kasra is a mark Arabic shares with other scripts.
+    expect(markedHtml("بِ**كتاب**")).toBe("<b>بِكتاب</b>")
+    // Adlam's letters each take two code units.
+    expect(markedHtml("\u{1E900}**\u{1E901}**\u{1E902}")).toBe("<b>\u{1E900}\u{1E901}\u{1E902}</b>")
   })
 
   it("keeps a bold part of a word in scripts whose letters do not join", () => {

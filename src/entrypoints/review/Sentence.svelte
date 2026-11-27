@@ -52,5 +52,5 @@
       {/if}
     </button>
   {/if}
-  <p class="text-muted-foreground truncate px-2 text-xs">{seed.page.title || seed.page.url}</p>
+  <p class="text-muted-foreground truncate px-2 text-xs" dir="auto">{seed.page.title || seed.page.url}</p>
 </div>
