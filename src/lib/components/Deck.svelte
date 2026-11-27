@@ -8,7 +8,8 @@
   let { class: className, ...rest }: SVGAttributes<SVGSVGElement> = $props()
 </script>
 
-<svg viewBox="0 0 24 24" aria-hidden="true" class={["dict-deck", className]} {...rest}>
+<!-- Moved so the fan at rest sits in the middle: the upright card hugs the left, the tilted one reaches x 20. -->
+<svg viewBox="-1.3 0.5 24 24" aria-hidden="true" class={["dict-deck", className]} {...rest}>
   <g class="dict-deck-pile">
     <rect class="dict-deck-under" x="1.5" y="4" width="9" height="14" rx="2" />
     <rect class="dict-deck-back" x="1.5" y="4" width="9" height="14" rx="2" />
