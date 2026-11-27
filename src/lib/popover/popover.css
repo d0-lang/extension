@@ -39,19 +39,18 @@
   width: min(420px, calc(100vw - 16px));
 }
 
-/* Out of the word it opens on. Barely there, as it plays on every lookup. */
+/* A quick fade, barely there, as it plays on every lookup. */
 .dict-popover {
-  animation: dict-popover-in 80ms ease-out;
+  animation: dict-popover-in 70ms ease-out;
 }
 
 @keyframes dict-popover-in {
   from {
     opacity: 0;
-    transform: scale(0.98);
   }
 }
 
-/* Laid out and placed while it waits for a fast answer, then shown, which plays the entrance. */
+/* Laid out and placed while it waits for a fast answer, then shown, which plays the fade. */
 .dict-popover.dict-popover-waiting {
   visibility: hidden;
   animation: none;
