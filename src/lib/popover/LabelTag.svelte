@@ -13,8 +13,25 @@
   /** Set by a move over the tag, not on entering it, since the popover can open with the tag under a still cursor. */
   let hovered = $state(false)
   let focused = $state(false)
+  /** Set by a click, so the tooltip stays and takes the pointer, for selecting its text. */
+  let pinned = $state(false)
   let place = $state<{ top: number; left: number }>()
-  const open = $derived(hovered || focused)
+  const open = $derived(hovered || focused || pinned)
+
+  // A press anywhere but the tag or the tooltip lets a pinned tooltip go. The tag's own click toggles it.
+  $effect(() => {
+    if (!pinned) {
+      return
+    }
+    const unpin = (event: PointerEvent) => {
+      const path = event.composedPath()
+      if ((tag === undefined || !path.includes(tag)) && (tip === undefined || !path.includes(tip))) {
+        pinned = false
+      }
+    }
+    window.addEventListener("pointerdown", unpin, { capture: true })
+    return () => window.removeEventListener("pointerdown", unpin, { capture: true })
+  })
 
   // Fixed, so the scroller does not clip it. It sits below the tag, or above it near the bottom of the viewport,
   // and stays within the popover's sides.
@@ -43,6 +60,7 @@
     // A scroll moves the tag away from where the tooltip was placed.
     const close = () => {
       hovered = false
+      pinned = false
       tag?.blur()
     }
     window.addEventListener("scroll", close, { capture: true, passive: true })
@@ -60,6 +78,13 @@
     aria-describedby={tipId}
     class="bg-muted align-baseline leading-[normal] text-muted-foreground hover:text-foreground focus-visible:text-foreground cursor-help rounded px-1 text-xs whitespace-nowrap underline decoration-dotted underline-offset-2"
     data-label
+    onclick={(event) => {
+      pinned = !pinned
+      // A second click closes it. Focus from a click would keep it open, but focus from the keyboard stays.
+      if (!pinned && event.detail > 0) {
+        tag?.blur()
+      }
+    }}
     onpointermove={() => (hovered = true)}
     onpointerleave={() => (hovered = false)}
     onfocus={() => (focused = true)}
@@ -69,7 +94,8 @@
     id={tipId}
     role="tooltip"
     class={[
-      "bg-popover text-popover-foreground pointer-events-none fixed z-10 flex w-max max-w-64 flex-col gap-0.5 rounded-md border px-2 py-1.5 text-xs whitespace-normal shadow-md",
+      "bg-popover text-popover-foreground fixed z-10 flex w-max max-w-64 cursor-text flex-col gap-0.5 rounded-md border px-2 py-1.5 text-xs whitespace-normal shadow-md select-text",
+      !pinned && "pointer-events-none",
       (!open || place === undefined) && "invisible",
     ]}
     style:top="{place?.top ?? 0}px"
