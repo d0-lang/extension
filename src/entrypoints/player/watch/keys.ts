@@ -1,12 +1,14 @@
 /** The player's keys, like a video site's. */
 
-export type PlayerAction = "toggle" | "back" | "forward" | "fullscreen" | "mute"
+export type PlayerAction = "toggle" | "back" | "forward" | "louder" | "quieter" | "fullscreen" | "mute"
 
 const ACTIONS: Record<string, PlayerAction> = {
   " ": "toggle",
   k: "toggle",
   arrowleft: "back",
   arrowright: "forward",
+  arrowup: "louder",
+  arrowdown: "quieter",
   f: "fullscreen",
   m: "mute",
 }
@@ -16,7 +18,8 @@ const TAKES_KEYS = "input:not([type=range]), textarea, select, button, [contente
 
 /**
  * What `event` does to the player. Nothing with a modifier, which may be a lookup's Alt or the browser's own, nor in
- * an element that takes the key itself. A slider keeps its arrows.
+ * an element that takes the key itself. The arrows stay the player's on a clicked slider, which would step by its own
+ * amount instead.
  */
 export const actionOf = (event: KeyboardEvent): PlayerAction | undefined => {
   if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
@@ -24,10 +27,7 @@ export const actionOf = (event: KeyboardEvent): PlayerAction | undefined => {
   }
   const target = event.target instanceof Element ? event.target : null
   const key = event.key.toLowerCase()
-  if (
-    target?.closest(TAKES_KEYS) != null ||
-    (target instanceof HTMLInputElement && key.startsWith("arrow"))
-  ) {
+  if (target?.closest(TAKES_KEYS) != null) {
     return undefined
   }
   return ACTIONS[key]

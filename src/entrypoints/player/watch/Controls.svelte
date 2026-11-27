@@ -9,6 +9,7 @@
   import SubtitleMenu from "./SubtitleMenu.svelte"
   import type { Previews } from "./previews.svelte"
   import SeekPreview from "./SeekPreview.svelte"
+  import Slider from "./Slider.svelte"
   import { formatTime } from "./time"
   import { keepFocus } from "./keys"
 
@@ -57,14 +58,12 @@
   <!-- Only the controls take the pointer. The shade above them is over the subtitles' lower half. -->
   <div data-controls class="flex flex-col gap-1 px-4 pb-3" class:pointer-events-auto={!hidden}>
     <SeekPreview {duration} {previews}>
-      <input
-        type="range"
-        aria-label="Seek"
-        min="0"
+      <Slider
+        bind:value={currentTime}
         max={Number.isFinite(duration) ? duration : 0}
         step="any"
-        bind:value={currentTime}
-        class="w-full cursor-pointer accent-white"
+        label="Seek"
+        class="w-full"
       />
     </SeekPreview>
     <div class="flex items-center gap-1">
@@ -88,14 +87,13 @@
       >
         {#if muted || volume === 0}<VolumeXIcon class="size-5" />{:else}<Volume2Icon class="size-5" />{/if}
       </button>
-      <input
-        type="range"
-        aria-label="Volume"
-        min="0"
-        max="1"
-        step="0.05"
+      <Slider
         bind:value={volume}
-        class="w-20 cursor-pointer accent-white"
+        max={1}
+        step={0.05}
+        label="Volume"
+        filled={muted ? 0 : volume}
+        class="w-20"
       />
       <span class="ml-2 text-sm tabular-nums">{formatTime(currentTime)} / {formatTime(duration)}</span>
       <div class="flex-1"></div>

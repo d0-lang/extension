@@ -32,6 +32,8 @@
 
   /** How far the arrow keys skip. */
   const SKIP_SECONDS = 5
+  /** How much the up and down arrows change the volume. */
+  const VOLUME_STEP = 0.05
   /** How long the pointer rests before the controls fade, while the video plays. */
   const IDLE_MS = 2500
 
@@ -64,6 +66,10 @@
       .finally(() => {
         soundRead = true
       })
+  })
+
+  $effect(() => {
+    document.title = `${video.name} · DaDict`
   })
 
   $effect(() => {
@@ -119,6 +125,13 @@
         break
       case "forward":
         element.currentTime = Math.min(element.duration, element.currentTime + SKIP_SECONDS)
+        break
+      case "louder":
+        volume = Math.min(1, volume + VOLUME_STEP)
+        muted = false
+        break
+      case "quieter":
+        volume = Math.max(0, volume - VOLUME_STEP)
         break
       case "fullscreen":
         toggleFullscreen()

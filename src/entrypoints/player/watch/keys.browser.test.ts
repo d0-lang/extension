@@ -23,6 +23,7 @@ describe("actionOf", () => {
     expect(press(" ")).toBe("toggle")
     expect(press("K")).toBe("toggle")
     expect(press("ArrowLeft")).toBe("back")
+    expect(press("ArrowUp")).toBe("louder")
     expect(press("f")).toBe("fullscreen")
   })
 
@@ -31,10 +32,10 @@ describe("actionOf", () => {
     expect(press("f", document.body, { ctrlKey: true })).toBeUndefined()
   })
 
-  it("leaves keys to a field or a button, and arrows to a slider", () => {
+  it("leaves keys to a field or a button, but not a slider", () => {
     expect(press("f", element("<input type=text>"))).toBeUndefined()
     expect(press(" ", element("<button>Play</button>"))).toBeUndefined()
-    expect(press("ArrowRight", element("<input type=range>"))).toBeUndefined()
+    expect(press("ArrowRight", element("<input type=range>"))).toBe("forward")
     expect(press(" ", element("<input type=range>"))).toBe("toggle")
   })
 })
