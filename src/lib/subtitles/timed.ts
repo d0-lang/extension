@@ -1,6 +1,6 @@
 /** Subtitle files made of blocks of a timing line and text, like SRT and WebVTT. */
 import type { Cue } from "./cues"
-import { plainText } from "./markup"
+import { hexColour, styledText } from "./markup"
 
 /** `01:02:03,456`, or `02:03.456` without hours as WebVTT allows. */
 const TIME = String.raw`(?:(\d+):)?(\d{1,2}):(\d{2})[,.](\d{1,3})`
@@ -20,16 +20,31 @@ export const timingOf = (line: string): { startMs: number; endMs: number } | und
   return { startMs: msOf(startH, startM!, startS!, startF!), endMs: msOf(endH, endM!, endS!, endF!) }
 }
 
+/** The colours a WebVTT file's style blocks give its classes, like `::cue(.yellow) { color: yellow; }`. */
+const coloursOf = (blocks: ReadonlyArray<string>): Map<string, string> =>
+  new Map(
+    blocks
+      .filter((block) => block.trimStart().startsWith("STYLE"))
+      .flatMap((block) => [...block.matchAll(/::cue\(\.([\w-]+)\)\s*\{[^}]*?\bcolor\s*:\s*([^;}]+)/gu)])
+      .flatMap(([, name, value]) => {
+        const colour = hexColour(value!)
+        return colour === undefined ? [] : [[name!, colour] as [string, string]]
+      }),
+  )
+
 /**
- * The cues of an SRT or WebVTT file, as plain text, in the order the file has them. A block without a timing line,
- * like WebVTT's header or a `NOTE`, is skipped, and so is a number or name above the timing line.
+ * The cues of an SRT or WebVTT file, with their colours, italics and bold, in the order the file has them. A block
+ * without a timing line, like WebVTT's header, a style block or a `NOTE`, is skipped, and so is a number or name above
+ * the timing line.
  */
-export const readTimed = (text: string): Array<Cue> =>
-  text
-    .replace(/\r\n?/gu, "\n")
-    .split(/\n[^\S\n]*\n/u)
-    .flatMap((block) => {
-      const lines = block.split("\n")
-      const at = lines.findIndex((line) => timingOf(line) !== undefined)
-      return at === -1 ? [] : [{ ...timingOf(lines[at]!)!, text: plainText(lines.slice(at + 1).join("\n")) }]
-    })
+export const readTimed = (text: string): Array<Cue> => {
+  const blocks = text.replace(/\r\n?/gu, "\n").split(/\n[^\S\n]*\n/u)
+  const colours = coloursOf(blocks)
+  return blocks.flatMap((block) => {
+    const lines = block.split("\n")
+    const at = lines.findIndex((line) => timingOf(line) !== undefined)
+    return at === -1
+      ? []
+      : [{ ...timingOf(lines[at]!)!, ...styledText(lines.slice(at + 1).join("\n"), colours) }]
+  })
+}
