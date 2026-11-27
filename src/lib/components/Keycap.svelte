@@ -13,7 +13,8 @@
 <Kbd
   class={cn(
     "border-foreground/20 border border-b-2 bg-transparent",
-    rest.title !== undefined && "pointer-events-auto cursor-help hover:translate-y-px hover:border-b",
+    rest.title !== undefined &&
+      "pointer-events-auto cursor-help transition-[translate,border-bottom-width] duration-100 hover:translate-y-px hover:border-b",
     className,
   )}
   {...rest}
