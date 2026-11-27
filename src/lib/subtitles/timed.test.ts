@@ -80,4 +80,17 @@ describe("readTimed's styles", () => {
       { bold: true, from: 5, to: 8 },
     ])
   })
+
+  it("takes a style block's text colour, not its background's, and ignores classes it does not know", () => {
+    const vtt = [
+      "WEBVTT",
+      "",
+      "STYLE",
+      "::cue(.speaker) { background-color: black; color: yellow; }",
+      "",
+      "00:00:01.000 --> 00:00:02.000",
+      "<c.speaker>Ja</c> <c.constructor>nein</c>",
+    ].join("\n")
+    expect(readTimed(vtt)[0]?.styles).toEqual([{ color: "#ffff00", from: 0, to: 2 }])
+  })
 })

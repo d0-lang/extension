@@ -29,22 +29,25 @@ export const plainText = (text: string): string =>
     .join("\n")
 
 /** Colours by name, for WebVTT's colour classes and the names its style blocks and SRT's `<font>` use. */
-const NAMED: Record<string, string> = {
-  white: "#ffffff",
-  black: "#000000",
-  red: "#ff0000",
-  lime: "#00ff00",
-  green: "#008000",
-  blue: "#0000ff",
-  yellow: "#ffff00",
-  cyan: "#00ffff",
-  aqua: "#00ffff",
-  magenta: "#ff00ff",
-  fuchsia: "#ff00ff",
-  orange: "#ffa500",
-  gray: "#808080",
-  grey: "#808080",
-}
+const NAMED = new Map([
+  ["white", "#ffffff"],
+  ["black", "#000000"],
+  ["red", "#ff0000"],
+  ["lime", "#00ff00"],
+  ["green", "#008000"],
+  ["blue", "#0000ff"],
+  ["yellow", "#ffff00"],
+  ["cyan", "#00ffff"],
+  ["aqua", "#00ffff"],
+  ["magenta", "#ff00ff"],
+  ["fuchsia", "#ff00ff"],
+  ["orange", "#ffa500"],
+  ["gray", "#808080"],
+  ["grey", "#808080"],
+])
+
+/** What text is drawn in when nothing names a colour, so it is no style of its own. */
+const WHITE = "#ffffff"
 
 /** `value` as `#rrggbb`, from a name, `#rgb` or `#rrggbb`. Nothing for another way of writing a colour. */
 export const hexColour = (value: string): string | undefined => {
@@ -55,7 +58,7 @@ export const hexColour = (value: string): string | undefined => {
   if (/^#[0-9a-f]{3}$/u.test(colour)) {
     return `#${[...colour.slice(1)].map((digit) => digit + digit).join("")}`
   }
-  return NAMED[colour]
+  return NAMED.get(colour)
 }
 
 /** A tag that styles what it holds, with its classes and attributes; any other tag; an ASS override; an entity; text. */
@@ -81,7 +84,7 @@ const tagStyle = (
       : classes
           .split(".")
           .filter((name) => name !== "")
-          .map((name) => colours.get(name) ?? NAMED[name])
+          .map((name) => colours.get(name) ?? NAMED.get(name))
           .find((colour) => colour !== undefined)
   const color = named === undefined ? undefined : hexColour(named)
   return color === undefined ? {} : { color }
@@ -90,7 +93,7 @@ const tagStyle = (
 /** `style` as the overlay takes it: only what differs from plain white text. */
 const drawnStyle = ({ color, italic, bold }: TextStyle): TextStyle | undefined => {
   const style: TextStyle = {
-    ...(color !== undefined && color !== NAMED.white && { color }),
+    ...(color !== undefined && color !== WHITE && { color }),
     ...(italic === true && { italic }),
     ...(bold === true && { bold }),
   }

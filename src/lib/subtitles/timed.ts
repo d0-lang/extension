@@ -20,12 +20,15 @@ export const timingOf = (line: string): { startMs: number; endMs: number } | und
   return { startMs: msOf(startH, startM!, startS!, startF!), endMs: msOf(endH, endM!, endS!, endF!) }
 }
 
-/** The colours a WebVTT file's style blocks give its classes, like `::cue(.yellow) { color: yellow; }`. */
+/**
+ * The colours a WebVTT file's style blocks give its classes, like `::cue(.yellow) { color: yellow; }`. Only `color`
+ * where a declaration starts, so not the end of `background-color`.
+ */
 const coloursOf = (blocks: ReadonlyArray<string>): Map<string, string> =>
   new Map(
     blocks
       .filter((block) => block.trimStart().startsWith("STYLE"))
-      .flatMap((block) => [...block.matchAll(/::cue\(\.([\w-]+)\)\s*\{[^}]*?\bcolor\s*:\s*([^;}]+)/gu)])
+      .flatMap((block) => [...block.matchAll(/::cue\(\.([\w-]+)\)\s*\{(?:[^}]*;)?\s*color\s*:\s*([^;}]+)/gu)])
       .flatMap(([, name, value]) => {
         const colour = hexColour(value!)
         return colour === undefined ? [] : [[name!, colour] as [string, string]]
