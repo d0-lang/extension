@@ -215,9 +215,25 @@ export const createOverlay = (
 
   /** The bars kept clear last, written only when they change. */
   let clear = { top: -1, bottom: -1 }
-  /** Keeps the subtitles clear of the player's bars. Whether that moved them. */
+  /** Whether the pointer is on the subtitles. */
+  let hovered = false
+  root.addEventListener("pointerenter", () => {
+    hovered = true
+  })
+  root.addEventListener("pointerleave", () => {
+    hovered = false
+  })
+  /**
+   * Keeps the subtitles clear of the player's bars. Whether that moved them. They never move back toward the bars
+   * under the pointer or a lookup: the player sees no pointer over them and hides its bars, and they would drop away
+   * from the pointer and come back as the player shows its bars again.
+   */
   const clearBars = (): boolean => {
-    const bars = host.bars(player)
+    const measured = host.bars(player)
+    const held = hovered || marked.length > 0
+    const bars = held
+      ? { top: Math.max(measured.top, clear.top), bottom: Math.max(measured.bottom, clear.bottom) }
+      : measured
     if (bars.top === clear.top && bars.bottom === clear.bottom) {
       return false
     }
