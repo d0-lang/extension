@@ -18,6 +18,8 @@
     return servers.watch()
   })
 
+  /** A phone, which looks words up with a long press and the Look up button, as it has no Alt to hold. */
+  const touch = matchMedia("(hover: none) and (pointer: coarse)").matches
   /** Set by the first sample lookup. The step stays open until Next, so the sample can be tried for a while. */
   let triedHere = $state(false)
 
@@ -66,8 +68,11 @@
     </Step>
     <Step title="Try it here" done={done[1] === true} current={current === 1}>
       <p class="text-muted-foreground text-sm">
-        Hold <Keycap>Alt</Keycap> and point at a word. On a phone, tap one here. On other pages, long-press it and
-        tap <span class="text-foreground">Look up</span>.
+        {#if touch}
+          Long-press a word, then tap <span class="text-foreground">Look up</span> under it.
+        {:else}
+          Hold <Keycap>Alt</Keycap> and point at a word.
+        {/if}
       </p>
       <TryIt looked={() => (triedHere = true)} />
       <div class="flex min-h-8 items-center gap-3">

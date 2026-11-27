@@ -5,9 +5,10 @@
   import { SAMPLE_ENTRIES, samplePieces } from "./sample"
 
   /**
-   * The sample sentence, where holding Alt over a word opens a popover with its made-up entries, as on a page, and
-   * letting go closes it unless the pointer is on it. A mouse click does nothing, as on a page, but a tap opens it, as
-   * this page has no Look up button for a phone to press. `looked` is called on every word opened.
+   * The sample sentence, where a word opens a popover with its made-up entries the way it does on a page: Alt held
+   * over it, which closes as Alt is let go unless the pointer is on it, or on a phone a long press and the Look up
+   * button under it. A page's content script does not run here, so this does both itself. `looked` is called on every
+   * word opened.
    */
   let { looked }: { looked: () => void } = $props()
 
@@ -17,9 +18,17 @@
   let popover = $state<HTMLElement>()
   /** The word open, and where its popover goes inside the box. */
   let open = $state<{ word: string; index: number; left: number; top: number }>()
+  /** The word a long press selected, and where its Look up button goes inside the box. */
+  let offer = $state<{ span: HTMLElement; centre: number; top: number }>()
 
-  const show = (target: EventTarget | null) => {
-    if (!(target instanceof HTMLElement) || box === undefined) {
+  /** As on a page: the selection's handles sit under it, and the button and popover go below them. */
+  const HANDLES_PX = 28
+  /** As on a page: the button waits for the selection to stop changing, like when a handle is dragged. */
+  const SETTLE_MS = 300
+
+  /** Opens `target`'s word below it, and below the selection's handles after a long press. */
+  const show = (target: EventTarget | null, gap = 6) => {
+    if (!(target instanceof Element) || box === undefined) {
       return
     }
     const span = target.closest<HTMLElement>("[data-word]")
@@ -34,7 +43,7 @@
       index,
       // Kept inside the box, which is narrower than a page on a phone.
       left: Math.max(0, Math.min(rect.left - outer.left, outer.width - 300)),
-      top: rect.bottom - outer.top + 6,
+      top: rect.bottom - outer.top + gap,
     }
     looked()
   }
@@ -42,6 +51,30 @@
   const close = () => {
     open = undefined
     audio.stop()
+  }
+
+  /** The sample word a touch selected, alone, once the selection settles. */
+  const offerSelected = () => {
+    const selection = getSelection()
+    const node = selection?.anchorNode
+    const span = (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-word]")
+    if (
+      selection === null ||
+      selection.isCollapsed ||
+      span === null ||
+      span === undefined ||
+      box?.contains(span) !== true ||
+      selection.toString().trim().toLowerCase() !== span.dataset.word
+    ) {
+      return
+    }
+    const outer = box.getBoundingClientRect()
+    const rect = selection.getRangeAt(0).getBoundingClientRect()
+    offer = {
+      span,
+      centre: (rect.left + rect.right) / 2 - outer.left,
+      top: rect.bottom - outer.top + HANDLES_PX,
+    }
   }
 
   onMount(() => {
@@ -60,19 +93,35 @@
         close()
       }
     }
+    let touching = false
     // A tap outside closes it, as a finger never leaves the box the way a mouse does.
     const onPointerDown = (event: PointerEvent) => {
+      touching = event.pointerType === "touch"
       if (event.target instanceof Node && box?.contains(event.target) !== true) {
         close()
       }
     }
+    let settle: ReturnType<typeof setTimeout> | undefined
+    // Only a touch selection gets the button, as on a page, where a mouse has Alt instead.
+    const onSelectionChange = () => {
+      offer = undefined
+      clearTimeout(settle)
+      settle = setTimeout(() => {
+        if (touching) {
+          offerSelected()
+        }
+      }, SETTLE_MS)
+    }
     window.addEventListener("keydown", onKeyDown)
     window.addEventListener("keyup", onKeyUp)
     window.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("selectionchange", onSelectionChange)
     return () => {
       window.removeEventListener("keydown", onKeyDown)
       window.removeEventListener("keyup", onKeyUp)
       window.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("selectionchange", onSelectionChange)
+      clearTimeout(settle)
       audio.stop()
     }
   })
@@ -80,7 +129,7 @@
 
 <div
   bind:this={box}
-  class="relative rounded-lg border border-dashed px-4 py-3 text-lg select-none"
+  class="relative rounded-lg border border-dashed px-4 py-3 text-lg pointer-fine:select-none"
   role="presentation"
   onpointermove={(event) => {
     if (event.altKey) {
@@ -93,11 +142,6 @@
       close()
     }
   }}
-  onpointerup={(event) => {
-    if (event.pointerType === "touch") {
-      show(event.target)
-    }
-  }}
 >
   <p>
     {#each pieces as piece, index (index)}{#if piece.word === undefined}{piece.text}{:else}<span
@@ -107,6 +151,24 @@
           >{piece.text}</span
         >{/if}{/each}
   </p>
+  {#if offer !== undefined}
+    {@const offered = offer}
+    <!-- As a page's Look up button looks. A press on it must not end the selection. -->
+    <button
+      type="button"
+      class="absolute z-10 -translate-x-1/2 cursor-pointer rounded-full bg-[#1c1c1c] px-3.5 py-2 text-sm leading-none font-medium text-white shadow-[0_2px_8px_rgb(0_0_0/0.3)] [font-family:system-ui,sans-serif]"
+      style:left="{offered.centre}px"
+      style:top="{offered.top}px"
+      onpointerdown={(event) => event.preventDefault()}
+      onmousedown={(event) => event.preventDefault()}
+      onclick={() => {
+        // Read before `offer` goes, which `offered` follows.
+        const { span } = offered
+        offer = undefined
+        show(span, HANDLES_PX)
+      }}>Look up</button
+    >
+  {/if}
   {#if open !== undefined}
     <!-- As `.dict-popover` sets it up on a page, with the system font a page's popover uses. -->
     <div
