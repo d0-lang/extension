@@ -76,6 +76,15 @@ const ARTE_HOST: SiteFiles["host"] = {
   ownShade: ".avp-content",
 }
 
+/** The subtitles the viewer last picked in Arte's menu, like `en-subtitles`, as Arte keeps them in the page's storage. */
+const storedArteCaption = (): string | undefined => {
+  try {
+    return localStorage.getItem("arte_vp.userPreferredCaption") ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** The languages of Arte's subtitle versions, like `ANG` in `VO-ANG`. */
 const ARTE_LANGUAGES: Record<string, string> = {
   DEU: "de",
@@ -104,10 +113,11 @@ const ARTE: SiteFiles = {
   },
   // The box around the video is taller than the player, so the player is named.
   player: (video) => video.closest<HTMLElement>(".avp-player") ?? undefined,
-  // video.js reads a showing track out to screen readers as it changes. Arte's menu is gone once it closes.
-  isOn: (video) =>
-    video.closest(".avp-player")?.querySelector(".vjs-text-track-display")?.getAttribute("aria-live") ===
-    "assertive",
+  // Arte keeps the viewer's pick from its menu, which is gone once it closes. "none" is its automatic choice.
+  isOn: () => {
+    const picked = storedArteCaption()
+    return picked !== undefined && picked !== "none"
+  },
   host: ARTE_HOST,
 }
 

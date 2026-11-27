@@ -78,15 +78,12 @@ describe("Arte", () => {
     expect(arte.lang?.(`${files}/120956-000-A_st_VA-MAL_44145048_7475401_20261124052214.vtt`)).toBe("de")
   })
 
-  /** Arte's player as far as the rule reads it, showing subtitles or not: its seek bar 89 px up a 576 px tall player. */
-  const artePlayer = (showing: boolean, controls = false) => {
+  /** Arte's player as far as the rule reads it: its seek bar 89 px up a 576 px tall player. */
+  const artePlayer = (controls = false) => {
     document.body.innerHTML = `
       <div class="avp-player${controls ? " showControls" : ""}" style="position: absolute; width: 1024px; height: 576px">
         <div class="avp-content"><div class="avp-controlbar" style="position: absolute; bottom: 25px; height: 64px; width: 100%"></div></div>
-        <div class="vjs-dimensions">
-          <video></video>
-          <div class="vjs-text-track-display" aria-live="${showing ? "assertive" : "off"}"></div>
-        </div>
+        <div class="vjs-dimensions"><video></video><div class="vjs-text-track-display"></div></div>
       </div>`
     return {
       player: document.querySelector<HTMLElement>(".avp-player")!,
@@ -94,16 +91,20 @@ describe("Arte", () => {
     }
   }
 
-  it("has its subtitles on while video.js shows a track, in the player it names", () => {
-    const { player, video } = artePlayer(true)
+  it("has its subtitles on while the viewer's pick in its menu is a track, in the player it names", () => {
+    const { player, video } = artePlayer()
+    localStorage.setItem("arte_vp.userPreferredCaption", "en-subtitles")
     expect(arte.player?.(video)).toBe(player)
     expect(replacesOwn(arte, video, player)).toBe(true)
-    expect(arte.isOn(artePlayer(false).video)).toBe(false)
+    localStorage.setItem("arte_vp.userPreferredCaption", "none")
+    expect(arte.isOn(video)).toBe(false)
+    localStorage.removeItem("arte_vp.userPreferredCaption")
+    expect(arte.isOn(video)).toBe(false)
   })
 
   it("keeps the subtitles above the seek bar only while the controls show", () => {
-    expect(arte.host.bars(artePlayer(true, true).player).bottom).toBe(89)
-    expect(arte.host.bars(artePlayer(true, false).player).bottom).toBeCloseTo(576 * 0.12)
+    expect(arte.host.bars(artePlayer(true).player).bottom).toBe(89)
+    expect(arte.host.bars(artePlayer(false).player).bottom).toBeCloseTo(576 * 0.12)
   })
 })
 
