@@ -1,6 +1,8 @@
 /** The settings sections, in the sidebar's order. Each opens at its `#id`. */
 
 export const sections = [
+  // Only while Get started is unfinished.
+  { id: "start", label: "Get started", group: "Welcome" },
   { id: "servers", label: "Servers", group: "Dictionaries" },
   { id: "integrations", label: "Integrations", group: "Sites" },
   { id: "sites", label: "Blocked sites", group: "Sites" },
@@ -12,7 +14,7 @@ export const sections = [
 
 export type SectionId = (typeof sections)[number]["id"]
 
-/** Shown beside the sidebar when the address names no section. */
+/** Shown beside the sidebar when the address names no section, once Get started is done or skipped. */
 export const FIRST_SECTION: SectionId = "servers"
 
 /** The section a `location.hash` like `#servers` names. Unset for none, which a phone shows as the list of sections. */
@@ -20,13 +22,17 @@ export const sectionOf = (hash: string): SectionId | undefined =>
   sections.find((section) => `#${section.id}` === hash)?.id
 
 /** The sections under each group's name, in order. */
-export const sectionGroups = (): Array<{ group: string; sections: Array<(typeof sections)[number]> }> =>
-  sections.reduce<Array<{ group: string; sections: Array<(typeof sections)[number]> }>>((groups, section) => {
-    const last = groups.at(-1)
-    if (last?.group === section.group) {
-      last.sections.push(section)
-    } else {
-      groups.push({ group: section.group, sections: [section] })
-    }
-    return groups
-  }, [])
+export const sectionGroups = (
+  hidden: ReadonlyArray<SectionId> = [],
+): Array<{ group: string; sections: Array<(typeof sections)[number]> }> =>
+  sections
+    .filter((section) => !hidden.includes(section.id))
+    .reduce<Array<{ group: string; sections: Array<(typeof sections)[number]> }>>((groups, section) => {
+      const last = groups.at(-1)
+      if (last?.group === section.group) {
+        last.sections.push(section)
+      } else {
+        groups.push({ group: section.group, sections: [section] })
+      }
+      return groups
+    }, [])

@@ -18,3 +18,7 @@ export const serversNote = (servers: number, issues: number): Note | undefined =
 /** Unset while none are blocked. */
 export const blockedNote = (blocked: number): Note | undefined =>
   blocked === 0 ? undefined : { text: `${blocked} ${blocked === 1 ? "site" : "sites"}` }
+
+/** How many of Get started's steps are done, while some are left. */
+export const startNote = (done: number, total: number): Note | undefined =>
+  done >= total ? undefined : { text: `${done} of ${total} done`, tone: "start" }
