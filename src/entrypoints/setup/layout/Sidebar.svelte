@@ -9,9 +9,10 @@
   import PaletteIcon from "@lucide/svelte/icons/palette"
   import PlugIcon from "@lucide/svelte/icons/plug"
   import ServerIcon from "@lucide/svelte/icons/server"
+  import SparklesIcon from "@lucide/svelte/icons/sparkles"
   import { reportPagePath } from "$lib/report-page"
   import { cn } from "$lib/utils"
-  import { blockedNote, serversNote, type Note } from "./notes"
+  import { blockedNote, serversNote, startNote, type Note } from "./notes"
   import { sectionGroups, type SectionId } from "./sections"
   import { Summary } from "./summary.svelte"
 
@@ -19,9 +20,19 @@
    * The sections, grouped. From `md` up it is the sidebar beside the open section, which `active` marks.
    * Below that it is a screen of its own, the one a phone opens on.
    */
-  let { active, class: className }: { active: SectionId; class?: string } = $props()
+  let {
+    active,
+    start,
+    class: className,
+  }: {
+    active: SectionId
+    /** Get started's steps done, while it shows. Unset hides it. */
+    start?: { done: number; total: number }
+    class?: string
+  } = $props()
 
   const icons: Record<SectionId, typeof ServerIcon> = {
+    start: SparklesIcon,
     servers: ServerIcon,
     integrations: PlugIcon,
     sites: BanIcon,
@@ -31,14 +42,18 @@
     anki: GraduationCapIcon,
   }
 
-  const groups = sectionGroups()
+  const groups = $derived(sectionGroups(start === undefined ? ["start"] : []))
   const version = browser.runtime.getManifest().version
   const summary = new Summary()
 
   /** The line under a section's name, where it has one. None until the counts load, so "Add one to start" does not flash. */
   const notes = $derived<Partial<Record<SectionId, Note>>>(
     summary.loaded
-      ? { servers: serversNote(summary.servers, summary.issues), sites: blockedNote(summary.blocked) }
+      ? {
+          servers: serversNote(summary.servers, summary.issues),
+          sites: blockedNote(summary.blocked),
+          start: start === undefined ? undefined : startNote(start.done, start.total),
+        }
       : {},
   )
 

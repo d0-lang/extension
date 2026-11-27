@@ -3,6 +3,7 @@
   import { Dialog, DialogContent } from "$lib/components/ui/dialog"
   import type { HandshakeOk } from "$lib/dict"
   import { HandshakeSession } from "../HandshakeSession.svelte"
+  import { hasMouse } from "../pointer"
   import { ServerSetup } from "../ServerSetup.svelte"
   import ConnectStep from "./ConnectStep.svelte"
   import IdentityStep from "./IdentityStep.svelte"
@@ -11,6 +12,7 @@
   let { setup }: { setup: ServerSetup } = $props()
 
   const session = new HandshakeSession()
+  let content = $state<HTMLElement | null>(null)
   let url = $state("")
 
   const finish = async (run: () => Promise<HandshakeOk | undefined>) => {
@@ -42,7 +44,17 @@
     }
   }}
 >
-  <DialogContent class="flex max-h-[85svh] flex-col sm:max-w-md">
+  <!-- On a phone the dialog takes the focus itself, not its first field, whose keyboard would cover it. -->
+  <DialogContent
+    bind:ref={content}
+    class="flex max-h-[85svh] flex-col sm:max-w-md"
+    onOpenAutoFocus={(event) => {
+      if (!hasMouse()) {
+        event.preventDefault()
+        content?.focus()
+      }
+    }}
+  >
     {#if setup.draft !== null}
       <ReviewStep {setup} />
     {:else if session.identityUrls !== null}

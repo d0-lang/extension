@@ -5,7 +5,7 @@ import {
   isOpenReportMessage,
   isShownLookupMessage,
 } from "$lib/messages"
-import { clearLastLookup, isSeedKey } from "$lib/storage"
+import { clearLastLookup, closeOnboardingIfSetUp, getServers, isSeedKey, startOnboarding } from "$lib/storage"
 import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./action"
 import { inAnki } from "./anki"
 import { fetchAudio } from "./audio"
@@ -28,11 +28,14 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(({ reason }) => {
     setUp()
     if (reason === "install") {
+      // Stored at once, so a later update knows this one started with Get started.
+      void startOnboarding()
       void openSetup()
     }
     // An update restarts the client too, and a dev reload counts as one.
     if (reason === "update") {
       void check()
+      void getServers().then((servers) => closeOnboardingIfSetUp(Object.keys(servers).length > 0))
     }
   })
   // A persistent Firefox background page does not keep its menu items across restarts.

@@ -9,14 +9,25 @@
   import Hotkeys from "./sections/Hotkeys.svelte"
   import Integrations from "./sections/integrations/Integrations.svelte"
   import Servers from "./sections/servers"
+  import GetStarted from "./sections/start/GetStarted.svelte"
+  import { StartProgress } from "./sections/start/progress.svelte"
   import BlockedSites from "./sections/sites/BlockedSites.svelte"
   import Subtitles from "./sections/subtitles/Subtitles.svelte"
 
   const route = new Route()
-  onMount(route.watch)
+  const start = new StartProgress()
+  onMount(() => {
+    void start.load()
+    const stopStart = start.watch()
+    const stopRoute = route.watch()
+    return () => {
+      stopStart()
+      stopRoute()
+    }
+  })
 
-  /** From `md` up a section is always open beside the sidebar. */
-  const open = $derived(route.section ?? FIRST_SECTION)
+  /** From `md` up a section is always open beside the sidebar: Get started until it is done or skipped. */
+  const open = $derived(route.section ?? (start.shown ? "start" : FIRST_SECTION))
 </script>
 
 <!-- From `xl` up, with room to spare, the whole page is one card in the middle of the window. -->
@@ -32,6 +43,7 @@
     >
       <Sidebar
         active={open}
+        start={start.shown ? { done: start.done, total: start.steps.length } : undefined}
         class="min-h-[calc(100svh-3.5rem)] md:sticky md:top-14 md:h-[calc(100svh-3.5rem)] md:min-h-0 md:overflow-y-auto xl:static xl:h-auto {route.section ===
         undefined
           ? ''
@@ -46,7 +58,11 @@
       >
         <!-- One column for every section, so the title stays put when the section changes. Sections size to it. -->
         <div class="@container mx-auto w-full max-w-5xl">
-          {#if open === "servers"}
+          {#if !start.loaded}
+            <!-- Nothing until it is known whether Get started opens first, so Servers does not flash before it. -->
+          {:else if open === "start"}
+            <GetStarted progress={start} />
+          {:else if open === "servers"}
             <Servers />
           {:else if open === "integrations"}
             <Integrations />
