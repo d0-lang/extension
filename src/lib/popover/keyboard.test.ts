@@ -86,6 +86,19 @@ describe("listenForKeys", () => {
     scroller.remove()
   })
 
+  it("opens the report page on a real B, once per press, and lets B reach the page without a report", () => {
+    const report = vi.fn()
+    stop = listenForKeys({ stepSegment: () => false, scroller: () => undefined, play: () => {}, report })
+    expect(pressReal("KeyB")).toBe(false)
+    expect(pressReal("KeyB", { repeat: true })).toBe(false)
+    expect(press("KeyB")).toBe(true)
+    expect(report).toHaveBeenCalledTimes(1)
+    stop()
+
+    listen()
+    expect(pressReal("KeyB")).toBe(true)
+  })
+
   it("leaves the arrow keys to the page", () => {
     const stepSegment = listen()
     expect(press("ArrowLeft", { altKey: true })).toBe(true)

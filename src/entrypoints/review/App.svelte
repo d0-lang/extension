@@ -1,13 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import Keycap from "$lib/components/Keycap.svelte"
   import PageHeader from "$lib/components/PageHeader.svelte"
   import { playableAudio } from "$lib/dict/entries"
   import { getShowIpa } from "$lib/storage"
+  import AllSent from "./AllSent.svelte"
   import CardPreview from "./CardPreview.svelte"
   import Editor from "./Editor.svelte"
   import { noteFields } from "./fields"
+  import KeyLegend from "./KeyLegend.svelte"
   import { reviewAction } from "./keys"
+  import { legendRow, pressedKeys } from "./legend"
+  import NoWords from "./NoWords.svelte"
   import { Review } from "./review.svelte"
   import WordList from "./WordList.svelte"
 
@@ -15,6 +18,15 @@
   /** Whether cards get IPA, as the popover shows it. */
   let ipa = $state(true)
   let dark = $state(false)
+  let legend = $state<KeyLegend>()
+  /** Where the Send button's card was as the last word went, for the finale to fly it from. */
+  let lastCard = $state.raw<DOMRect>()
+
+  /**
+   * Cards sent from this page, counting one still being sent. The list can empty before the send finishes, and the
+   * page should not show "No kept words" in between.
+   */
+  const sent = $derived(review.sent + (review.sending ? 1 : 0))
 
   const fields = $derived.by(() => {
     const { current, draft } = review
@@ -23,35 +35,6 @@
     }
     return noteFields(current, draft, ipa)
   })
-
-  /** Each row's key groups do the same, so they are joined with "or". */
-  const legend = [
-    {
-      groups: [
-        ["W", "S"],
-        ["K", "J"],
-      ],
-      action: "Move up and down",
-    },
-    {
-      groups: [
-        ["Shift", "W", "S"],
-        ["Shift", "K", "J"],
-      ],
-      action: "Previous or next word",
-    },
-    {
-      groups: [
-        ["A", "D"],
-        ["H", "L"],
-      ],
-      action: "Another entry of the word",
-    },
-    { groups: [["Space"], ["Enter"], ["1–9"]], action: "Pick a meaning" },
-    { groups: [["E"], ["I"]], action: "Edit" },
-    { groups: [["Ctrl", "Enter"]], action: "Send to Anki" },
-    { groups: [["X"]], action: "Drop the word" },
-  ]
 
   onMount(() => {
     void getShowIpa().then((shown) => (ipa = shown))
@@ -87,6 +70,10 @@
     // A held key repeats, and two drops in a row drop the word, so only a fresh press counts.
     if (event.repeat && (action.kind === "drop" || action.kind === "activate")) {
       return
+    }
+    const row = legendRow(action, review.focus)
+    if (row !== undefined) {
+      legend?.flash(row, pressedKeys(event))
     }
     // Only a second drop in a row drops.
     if (action.kind !== "drop") {
@@ -131,13 +118,11 @@
     {#if !review.loaded}
       <!-- Nothing until storage answers, so the empty state does not flash. -->
     {:else if review.current === undefined || review.draft === undefined || fields === undefined}
-      <div class="mx-auto flex max-w-md flex-col gap-2 py-16 text-center">
-        <h1 class="text-xl font-semibold">No kept words</h1>
-        <p class="text-muted-foreground text-sm">
-          Press <Keycap>Q</Keycap> in the popover, or its bookmark button, to keep a word with its sentence. It
-          waits here until you pick its meanings and send it to Anki.
-        </p>
-      </div>
+      {#if sent > 0}
+        <AllSent count={sent} from={lastCard} />
+      {:else}
+        <NoWords />
+      {/if}
     {:else}
       <div
         class="grid grid-cols-[minmax(0,1fr)] items-start gap-6 md:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_minmax(0,24rem)]"
@@ -149,7 +134,13 @@
           <WordList seeds={review.seeds} current={review.current.id} show={review.show} />
         </aside>
         <section class="flex min-w-0 flex-col gap-6">
-          <Editor {review} seed={review.current} draft={review.draft} sentence={fields.Sentence} />
+          <Editor
+            {review}
+            seed={review.current}
+            draft={review.draft}
+            sentence={fields.Sentence}
+            launch={(from) => (lastCard = from)}
+          />
           <div class="xl:hidden">
             <CardPreview
               {fields}
@@ -166,17 +157,7 @@
               playableAudio(review.entry, review.current.server) !== undefined}
             {dark}
           />
-          <dl class="text-muted-foreground grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
-            {#each legend as row (row.action)}
-              <dt class="flex flex-wrap items-center gap-1">
-                {#each row.groups as keys, group (group)}
-                  {#if group > 0}<span class="px-0.5">or</span>{/if}
-                  {#each keys as key, index (index)}<Keycap>{key}</Keycap>{/each}
-                {/each}
-              </dt>
-              <dd>{row.action}</dd>
-            {/each}
-          </dl>
+          <KeyLegend bind:this={legend} />
         </section>
       </div>
     {/if}

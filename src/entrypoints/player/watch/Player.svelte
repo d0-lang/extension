@@ -7,6 +7,8 @@
   import ChooseFiles from "../open/ChooseFiles.svelte"
   import Controls from "./Controls.svelte"
   import { actionOf } from "./keys"
+  import { Previews } from "./previews.svelte"
+  import { getSound, setSound } from "./sound"
   import { showFileSubtitles } from "./subtitles"
 
   /** A video filling the page, with clickable subtitles over it and the controls under them. */
@@ -30,6 +32,8 @@
 
   /** How far the arrow keys skip. */
   const SKIP_SECONDS = 5
+  /** How much the up and down arrows change the volume. */
+  const VOLUME_STEP = 0.05
   /** How long the pointer rests before the controls fade, while the video plays. */
   const IDLE_MS = 2500
 
@@ -43,6 +47,8 @@
   let fullscreen = $state(false)
   let idle = $state(false)
   let failed = $state(false)
+  /** Set once the stored volume is in, so the default it starts at is not saved over it. */
+  let soundRead = false
   let idleTimer: ReturnType<typeof setTimeout> | undefined
 
   onMount(() => {
@@ -51,12 +57,32 @@
     )
     lookup.useSubtitles(subtitles)
     subtitles.start()
+    void getSound()
+      .then((sound) => {
+        volume = sound.volume
+        muted = sound.muted
+      })
+      .catch(() => {})
+      .finally(() => {
+        soundRead = true
+      })
+  })
+
+  $effect(() => {
+    document.title = `${video.name} · DaDict`
   })
 
   $effect(() => {
     // Read so a new video clears the last one's failure.
     void video.url
     failed = false
+  })
+
+  let previews = $state<Previews>()
+  $effect(() => {
+    const made = new Previews(video.url)
+    previews = made
+    return () => made.stop()
   })
 
   const wake = () => {
@@ -100,6 +126,13 @@
       case "forward":
         element.currentTime = Math.min(element.duration, element.currentTime + SKIP_SECONDS)
         break
+      case "louder":
+        volume = Math.min(1, volume + VOLUME_STEP)
+        muted = false
+        break
+      case "quieter":
+        volume = Math.max(0, volume - VOLUME_STEP)
+        break
       case "fullscreen":
         toggleFullscreen()
         break
@@ -140,6 +173,11 @@
     onpause={() => {
       idle = false
     }}
+    onvolumechange={() => {
+      if (soundRead) {
+        void setSound({ volume: element.volume, muted: element.muted }).catch(() => {})
+      }
+    }}
     onerror={() => {
       failed = true
     }}
@@ -164,6 +202,7 @@
     {track}
     {subtitleFiles}
     hidden={idle}
+    {previews}
     onToggle={toggle}
     onFullscreen={toggleFullscreen}
     {onFiles}

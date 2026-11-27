@@ -8,7 +8,7 @@
   import EyeIcon from "@lucide/svelte/icons/eye"
   import { Button } from "$lib/components/ui/button"
   import { Dialog, DialogContent, DialogHeader, DialogTitle } from "$lib/components/ui/dialog"
-  import { ToggleGroup, ToggleGroupItem } from "$lib/components/ui/toggle-group"
+  import { ToggleGroupItem } from "$lib/components/ui/toggle-group"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
   import {
@@ -21,6 +21,7 @@
     type MarkStyle,
     type Theme,
   } from "$lib/storage"
+  import Choice from "../../controls/Choice.svelte"
   import SectionTitle from "../../layout/SectionTitle.svelte"
   import LanguageOrder from "./LanguageOrder.svelte"
   import PopoverPreview from "./PopoverPreview.svelte"
@@ -64,7 +65,6 @@
   })
 
   const onTheme = async (next: string) => {
-    // Pressing the active item deselects it, which leaves no theme.
     const picked = themes.find((option) => option.value === next)
     if (picked === undefined) {
       return
@@ -74,7 +74,6 @@
   }
 
   const onMarkStyle = async (next: string) => {
-    // Pressing the active item deselects it, which leaves no style.
     const picked = markStyles.find((option) => option.value === next)
     if (picked === undefined) {
       return
@@ -106,20 +105,14 @@
           <p class="text-sm font-medium">Theme</p>
           <p class="text-muted-foreground text-sm">Applies to settings and the lookup popover.</p>
         </div>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={theme}
-          onValueChange={(next) => void onTheme(next)}
-        >
+        <Choice variant="outline" size="sm" value={theme} onPick={(next) => void onTheme(next)}>
           {#each themes as option (option.value)}
             <ToggleGroupItem value={option.value}>
               <option.icon />
               {option.label}
             </ToggleGroupItem>
           {/each}
-        </ToggleGroup>
+        </Choice>
       </div>
       {#if underlines}
         <div class="flex flex-wrap items-center justify-between gap-4 p-4">
@@ -129,20 +122,14 @@
               How the word is marked on the page while its popover is open.
             </p>
           </div>
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            value={markStyle}
-            onValueChange={(next) => void onMarkStyle(next)}
-          >
+          <Choice variant="outline" size="sm" value={markStyle} onPick={(next) => void onMarkStyle(next)}>
             {#each markStyles as option (option.value)}
               <ToggleGroupItem value={option.value}>
                 <option.icon />
                 {option.label}
               </ToggleGroupItem>
             {/each}
-          </ToggleGroup>
+          </Choice>
         </div>
       {/if}
       <div class="flex items-center justify-between gap-4 p-4">

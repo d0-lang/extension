@@ -26,7 +26,7 @@ const ankiError = (kind: AnkiError["kind"], message: string): AnkiError => ({ ki
 export const ankiErrorText = (error: AnkiError): string => {
   switch (error.kind) {
     case "offline":
-      return "Anki is not answering. Open Anki, and install the AnkiConnect add-on if you have not."
+      return "Anki is not answering. Open it, with the AnkiConnect add-on installed."
     case "denied":
       return "AnkiConnect turned this browser away. Connect again and allow it in the dialog Anki shows."
     case "key":
