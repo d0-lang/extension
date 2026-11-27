@@ -62,7 +62,7 @@
   .slider::-moz-range-track {
     height: 4px;
     border-radius: 9999px;
-    background: var(--track);
+    background: linear-gradient(to right, var(--link) var(--filled), rgb(255 255 255 / 0.25) var(--filled));
   }
   .slider::-moz-range-thumb {
     width: 12px;
