@@ -7,6 +7,7 @@
   import ChooseFiles from "../open/ChooseFiles.svelte"
   import Controls from "./Controls.svelte"
   import { actionOf } from "./keys"
+  import { getSound, setSound } from "./sound"
   import { showFileSubtitles } from "./subtitles"
 
   /** A video filling the page, with clickable subtitles over it and the controls under them. */
@@ -43,6 +44,8 @@
   let fullscreen = $state(false)
   let idle = $state(false)
   let failed = $state(false)
+  /** Set once the stored volume is in, so the default it starts at is not saved over it. */
+  let soundRead = false
   let idleTimer: ReturnType<typeof setTimeout> | undefined
 
   onMount(() => {
@@ -51,6 +54,15 @@
     )
     lookup.useSubtitles(subtitles)
     subtitles.start()
+    void getSound()
+      .then((sound) => {
+        volume = sound.volume
+        muted = sound.muted
+      })
+      .catch(() => {})
+      .finally(() => {
+        soundRead = true
+      })
   })
 
   $effect(() => {
@@ -139,6 +151,11 @@
     onplay={wake}
     onpause={() => {
       idle = false
+    }}
+    onvolumechange={() => {
+      if (soundRead) {
+        void setSound({ volume: element.volume, muted: element.muted }).catch(() => {})
+      }
     }}
     onerror={() => {
       failed = true
