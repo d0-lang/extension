@@ -1,5 +1,4 @@
 /** Where in the player the subtitles may be dragged. */
-import type { Host } from "./host"
 
 export type Box = { top: number; bottom: number; left: number; right: number }
 
@@ -22,11 +21,10 @@ export const shiftInto = (box: Box, area: Box): { x: number; y: number } => ({
   y: shiftAlong(box.top, box.bottom, area.top, area.bottom),
 })
 
-/** The player, less its own bars and a margin. */
-export const safeArea = (player: HTMLElement, host: Host): Box => {
+/** The player, less `bars`, how far its own bars reach in, and a margin. */
+export const safeArea = (player: HTMLElement, bars: { top: number; bottom: number }): Box => {
   const box = player.getBoundingClientRect()
   const margin = box.height * MARGIN_RATIO
-  const bars = host.bars(player)
   return {
     top: box.top + bars.top + margin,
     bottom: box.bottom - bars.bottom - margin,

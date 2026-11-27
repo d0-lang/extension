@@ -52,16 +52,19 @@ const attributeStyle = (element: Element): TextStyle => {
   }
 }
 
+/** The style each id in the file names. */
+type Styles = (id: string) => TextStyle
+
 /** The styles an element names in `style`, then its own attributes, each over the one before. */
-const ownStyle = (element: Element, styles: ReadonlyMap<string, TextStyle>): TextStyle =>
+const ownStyle = (element: Element, styles: Styles): TextStyle =>
   Object.assign(
     {},
-    ...(element.getAttribute("style") ?? "").split(/\s+/u).map((id) => styles.get(id) ?? {}),
+    ...(element.getAttribute("style") ?? "").split(/\s+/u).map(styles),
     attributeStyle(element),
   )
 
 /** The style `element` and the elements around it set, the nearest winning. */
-const styleAt = (element: Element | null, styles: ReadonlyMap<string, TextStyle>): TextStyle =>
+const styleAt = (element: Element | null, styles: Styles): TextStyle =>
   element === null || element.namespaceURI !== TT
     ? {}
     : { ...styleAt(element.parentElement, styles), ...ownStyle(element, styles) }
@@ -77,7 +80,7 @@ const drawnStyle = ({ color, italic, bold }: TextStyle): TextStyle | undefined =
 }
 
 /** The characters under `node`, each with its style. A `<br>` is a line break. */
-const charsOf = (node: Node, style: TextStyle, styles: ReadonlyMap<string, TextStyle>): Array<Char> => {
+const charsOf = (node: Node, style: TextStyle, styles: Styles): Array<Char> => {
   if (node.nodeType === node.TEXT_NODE) {
     const drawn = drawnStyle(style)
     return [...(node.textContent ?? "")].map((char) => ({ char, style: drawn }))
@@ -114,6 +117,32 @@ const regionOf = (element: Element | null): string | undefined =>
     ? undefined
     : (element.getAttribute("region") ?? regionOf(element.parentElement))
 
+/**
+ * The styles of the file by id, each with the styles it names, which can come later in the file. A style that names
+ * itself, through others or not, stops there.
+ */
+const stylesOf = (root: Element): Styles => {
+  const elements = new Map(
+    [...root.getElementsByTagNameNS(TT, "style")].map((style) => [
+      style.getAttributeNS(XML, "id") ?? "",
+      style,
+    ]),
+  )
+  const resolve = (id: string, seen: ReadonlySet<string> = new Set()): TextStyle => {
+    const element = elements.get(id)
+    return element === undefined || seen.has(id)
+      ? {}
+      : ownStyle(element, (named) => resolve(named, new Set([...seen, id])))
+  }
+  const resolved = new Map<string, TextStyle>()
+  return (id) => {
+    if (!resolved.has(id)) {
+      resolved.set(id, resolve(id))
+    }
+    return resolved.get(id)!
+  }
+}
+
 /** The file's language, like `de` for `de-DE`. */
 export const ttmlLanguage = (doc: Document): string | undefined =>
   doc.documentElement.getAttributeNS(XML, "lang")?.split("-")[0]?.toLowerCase() || undefined
@@ -125,10 +154,7 @@ export const ttmlLanguage = (doc: Document): string | undefined =>
 export const readTtml = (doc: Document): Array<Cue> => {
   const root = doc.documentElement
   const frameRate = Number(root.getAttributeNS(TTP, "frameRate")) || 30
-  const styles = new Map<string, TextStyle>()
-  for (const style of root.getElementsByTagNameNS(TT, "style")) {
-    styles.set(style.getAttributeNS(XML, "id") ?? "", ownStyle(style, styles))
-  }
+  const styles = stylesOf(root)
   const places = new Map<string, Place>()
   for (const region of root.getElementsByTagNameNS(TT, "region")) {
     const place = placeOfRegion(region)

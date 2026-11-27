@@ -56,6 +56,24 @@ describe("readTtml", () => {
     ])
   })
 
+  it("follows styles that name styles further down the file, and stops at one that names itself", () => {
+    const xml = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling"
+      xmlns:xml="http://www.w3.org/XML/1998/namespace">
+      <head><styling>
+        <style xml:id="speaker" style="cyan" tts:fontStyle="italic" />
+        <style xml:id="cyan" tts:color="#00FFFF" />
+        <style xml:id="loop" style="loop" tts:fontWeight="bold" />
+      </styling></head>
+      <body><div>
+        <p begin="0s" end="1s"><span style="speaker">Hallo</span></p>
+        <p begin="1s" end="2s"><span style="loop">Tschüss</span></p>
+      </div></body></tt>`
+    expect(readTtml(parse(xml)).map(({ styles }) => styles)).toEqual([
+      [{ color: "#00ffff", italic: true, from: 0, to: 5 }],
+      [{ bold: true, from: 0, to: 7 }],
+    ])
+  })
+
   it("takes styles set on the element and its parents, and leaves out cues without a time", () => {
     const xml = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling">
       <body><div tts:fontStyle="italic">

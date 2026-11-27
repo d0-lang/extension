@@ -185,6 +185,8 @@ export const createOverlay = (
       root.style.setProperty("--dadict-anchor-row", String(Math.floor(at.anchor / 3)))
     }
   }
+  /** The bars kept clear last, written only when they change. */
+  let clear = { top: -1, bottom: -1 }
   const place = () => {
     const at = dragged ? undefined : creatorPlace
     anchorAt(at)
@@ -194,7 +196,11 @@ export const createOverlay = (
     if (root.hidden || (at === undefined && offset.x === 0 && offset.y === 0)) {
       return
     }
-    const shift = shiftInto(root.getBoundingClientRect(), safeArea(player, host))
+    // The bars kept clear, which a hold keeps as they were.
+    const shift = shiftInto(
+      root.getBoundingClientRect(),
+      safeArea(player, clear.bottom < 0 ? host.bars(player) : clear),
+    )
     moveTo({ x: offset.x + shift.x / player.clientWidth, y: offset.y + shift.y / player.clientHeight })
   }
   dragToMove(ctx, root, () => {
@@ -219,8 +225,6 @@ export const createOverlay = (
     }
   })
 
-  /** The bars kept clear last, written only when they change. */
-  let clear = { top: -1, bottom: -1 }
   /** Whether the pointer is on the subtitles. */
   let hovered = false
   /** Whether a lookup of one of their words is open. */
