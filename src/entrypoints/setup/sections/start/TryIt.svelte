@@ -16,6 +16,8 @@
   const audio = new AudioPlayer()
   let box = $state<HTMLElement>()
   let popover = $state<HTMLElement>()
+  /** What the pointer is over in the box, for Alt to open when it goes down. */
+  let hovered: EventTarget | null = null
   /** The word open, and where its popover goes inside the box. */
   let open = $state<{ word: string; index: number; left: number; top: number }>()
   /** The word a long press selected, and where its Look up button goes inside the box. */
@@ -82,6 +84,10 @@
       if (event.key === "Escape") {
         close()
       }
+      // A word already under the pointer opens as Alt goes down, without the pointer having to move.
+      if (event.code === "AltLeft" && !event.repeat) {
+        show(hovered)
+      }
     }
     const onKeyUp = (event: KeyboardEvent) => {
       if (event.code !== "AltLeft") {
@@ -132,11 +138,13 @@
   class="relative rounded-lg border border-dashed px-4 py-3 text-lg pointer-fine:select-none"
   role="presentation"
   onpointermove={(event) => {
+    hovered = event.target
     if (event.altKey) {
       show(event.target)
     }
   }}
   onpointerleave={(event) => {
+    hovered = null
     // A finger leaves as it lifts, which would close what the tap just opened.
     if (event.pointerType !== "touch") {
       close()
