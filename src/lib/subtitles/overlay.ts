@@ -213,12 +213,24 @@ export const createOverlay = (
     }
   })
 
+  /** The bars kept clear last, written only when they change. */
+  let clear = { top: -1, bottom: -1 }
+  /** Keeps the subtitles clear of the player's bars. Whether that moved them. */
+  const clearBars = (): boolean => {
+    const bars = host.bars(player)
+    if (bars.top === clear.top && bars.bottom === clear.bottom) {
+      return false
+    }
+    clear = bars
+    root.style.setProperty("--dadict-caption-lift", `${bars.bottom}px`)
+    root.style.setProperty("--dadict-caption-drop", `${bars.top}px`)
+    return true
+  }
+
   const resize = new ResizeObserver(() => {
     const size = Math.min(MAX_SIZE_PX, Math.max(MIN_SIZE_PX, player.clientHeight * SIZE_RATIO))
     root.style.setProperty("--dadict-caption-size", `${size}px`)
-    const bars = host.bars(player)
-    root.style.setProperty("--dadict-caption-lift", `${bars.bottom}px`)
-    root.style.setProperty("--dadict-caption-drop", `${bars.top}px`)
+    clearBars()
     place()
   })
   resize.observe(player)
@@ -243,6 +255,10 @@ export const createOverlay = (
     host,
     element: root,
     show: (cue, lang) => {
+      // Some players' bars show and hide, and the subtitles move with them.
+      if (clearBars()) {
+        place()
+      }
       const visible = !root.hidden
       root.hidden = cue === undefined
       current = cue === undefined ? undefined : { cue, lang }

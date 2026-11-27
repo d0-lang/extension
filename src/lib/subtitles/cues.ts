@@ -27,6 +27,25 @@ export const cueAt = (cues: ReadonlyArray<Cue>, ms: number): Cue | undefined => 
   return index === undefined ? undefined : cues[index]
 }
 
+/**
+ * `cues` with a place kept only where it is not the one most of them have, which is where the subtitles start anyway.
+ */
+export const dropUsualPlace = (cues: ReadonlyArray<Cue>): Array<Cue> => {
+  const counts = new Map<string, number>()
+  for (const { place } of cues) {
+    const key = JSON.stringify(place)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const usual = [...counts].reduce<[string, number] | undefined>(
+    (most, entry) => (most === undefined || entry[1] > most[1] ? entry : most),
+    undefined,
+  )?.[0]
+  return cues.map(({ place, ...cue }) => ({
+    ...cue,
+    ...(JSON.stringify(place) !== usual && { place }),
+  }))
+}
+
 /** The previous cue shows above the current one unless it ended longer ago than this before the current one began. */
 const PREVIOUS_GAP_MS = 3000
 

@@ -2,7 +2,7 @@
 import { styledOf, type Char } from "$lib/subtitles/chars"
 import type { Place, TextStyle } from "$lib/subtitles/rows"
 import { SOUND, SOUND_ONLY } from "./clean"
-import type { Cue } from "$lib/subtitles/cues"
+import { dropUsualPlace, type Cue } from "$lib/subtitles/cues"
 import type { Json3 } from "./json3"
 
 type Pen = NonNullable<Json3["pens"]>[number]
@@ -69,19 +69,8 @@ export const creatorCues = (json3: Json3): Array<Cue> => {
       },
     ]
   })
-  const counts = new Map<string, number>()
-  for (const { place } of cues) {
-    const key = JSON.stringify(place)
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-  const usual = [...counts].reduce<[string, number] | undefined>(
-    (most, entry) => (most === undefined || entry[1] > most[1] ? entry : most),
-    undefined,
-  )?.[0]
   // Only one cue shows at a time, so an overlap ends at the next start.
-  return cues.map(({ place, ...cue }, index) => ({
-    ...cue,
-    endMs: Math.min(cue.endMs, cues[index + 1]?.startMs ?? Infinity),
-    ...(JSON.stringify(place) !== usual && { place }),
-  }))
+  return dropUsualPlace(
+    cues.map((cue, index) => ({ ...cue, endMs: Math.min(cue.endMs, cues[index + 1]?.startMs ?? Infinity) })),
+  )
 }
