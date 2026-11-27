@@ -6,7 +6,8 @@
 
   /**
    * The sample sentence, where holding Alt over a word opens a popover with its made-up entries, as on a page, and
-   * letting go closes it unless the pointer is on it. `looked` is called on every word opened.
+   * letting go closes it unless the pointer is on it. A mouse click does nothing, as on a page, but a tap opens it, as
+   * this page has no Look up button for a phone to press. `looked` is called on every word opened.
    */
   let { looked }: { looked: () => void } = $props()
 
@@ -59,11 +60,19 @@
         close()
       }
     }
+    // A tap outside closes it, as a finger never leaves the box the way a mouse does.
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && box?.contains(event.target) !== true) {
+        close()
+      }
+    }
     window.addEventListener("keydown", onKeyDown)
     window.addEventListener("keyup", onKeyUp)
+    window.addEventListener("pointerdown", onPointerDown)
     return () => {
       window.removeEventListener("keydown", onKeyDown)
       window.removeEventListener("keyup", onKeyUp)
+      window.removeEventListener("pointerdown", onPointerDown)
       audio.stop()
     }
   })
@@ -78,7 +87,17 @@
       show(event.target)
     }
   }}
-  onpointerleave={close}
+  onpointerleave={(event) => {
+    // A finger leaves as it lifts, which would close what the tap just opened.
+    if (event.pointerType !== "touch") {
+      close()
+    }
+  }}
+  onpointerup={(event) => {
+    if (event.pointerType === "touch") {
+      show(event.target)
+    }
+  }}
 >
   <p>
     {#each pieces as piece, index (index)}{#if piece.word === undefined}{piece.text}{:else}<span

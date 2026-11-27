@@ -18,8 +18,6 @@
     return servers.watch()
   })
 
-  /** Without a keyboard there is no Alt to try the sample with, so Next is there from the start. */
-  const touch = matchMedia("(pointer: coarse)").matches
   /** Set by the first sample lookup. The step stays open until Next, so the sample can be tried for a while. */
   let triedHere = $state(false)
 
@@ -68,12 +66,12 @@
     </Step>
     <Step title="Try it here" done={done[1] === true} current={current === 1}>
       <p class="text-muted-foreground text-sm">
-        Hold <Keycap>Alt</Keycap> and point at a word. On a phone, long-press a word on any page and tap
-        <span class="text-foreground">Look up</span>.
+        Hold <Keycap>Alt</Keycap> and point at a word. On a phone, tap one here. On other pages, long-press it and
+        tap <span class="text-foreground">Look up</span>.
       </p>
       <TryIt looked={() => (triedHere = true)} />
       <div class="flex min-h-8 items-center gap-3">
-        {#if triedHere || touch}
+        {#if triedHere}
           <Button class="animate-in fade-in slide-in-from-bottom-1" onclick={() => void progress.tried()}
             >Next</Button
           >
