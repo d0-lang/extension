@@ -59,6 +59,9 @@ describe("markedHtml", () => {
     expect(markedHtml("بِ**كتاب**")).toBe("<b>بِكتاب</b>")
     // Adlam's letters each take two code units.
     expect(markedHtml("\u{1E900}**\u{1E901}**\u{1E902}")).toBe("<b>\u{1E900}\u{1E901}\u{1E902}</b>")
+    // A zero width joiner joins across the edge, and a non-joiner keeps the letters apart.
+    expect(markedHtml("ب\u200D**ت**")).toBe("<b>ب\u200Dت</b>")
+    expect(markedHtml("ب\u200C**ت**")).toBe("ب\u200C<b>ت</b>")
   })
 
   it("keeps a bold part of a word in scripts whose letters do not join", () => {

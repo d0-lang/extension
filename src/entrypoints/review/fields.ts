@@ -55,9 +55,12 @@ export const markedSentence = (text: string, spans: ReadonlyArray<[number, numbe
   return marked + text.slice(at, to) + (to < text.length ? "…" : "")
 }
 
-/** Letters and marks of the scripts whose letters join up, like Arabic. By script extensions, since vowel marks are shared. */
+/**
+ * Letters and marks of the scripts whose letters join up, like Arabic, and the zero width joiner that joins them. By
+ * script extensions, since vowel marks are shared.
+ */
 const JOINING =
-  /(?=[\p{Script_Extensions=Arabic}\p{Script_Extensions=Syriac}\p{Script_Extensions=Nko}\p{Script_Extensions=Mongolian}\p{Script_Extensions=Adlam}])[\p{L}\p{M}]/u
+  /(?:(?=[\p{Script_Extensions=Arabic}\p{Script_Extensions=Syriac}\p{Script_Extensions=Nko}\p{Script_Extensions=Mongolian}\p{Script_Extensions=Adlam}])[\p{L}\p{M}]|\u200D)/u
 const JOINING_START = new RegExp(`^(?:${JOINING.source})+`, "u")
 const JOINING_END = new RegExp(`(?:${JOINING.source})+$`, "u")
 
