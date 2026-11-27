@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @import "../../styles/tokens.css";
 @import "./entries.css";
+@import "../components/deck.css";
 
 @source './*.svelte';
 @source '../components/Keycap.svelte';

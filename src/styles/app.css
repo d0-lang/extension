@@ -5,6 +5,7 @@
 @import "@fontsource-variable/geist";
 @import "./tokens.css";
 @import "../lib/popover/entries.css";
+@import "../lib/components/deck.css";
 
 @custom-variant dark (&:is(.dark *));
 @plugin '@tailwindcss/typography';

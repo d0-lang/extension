@@ -1,5 +1,8 @@
 <script lang="ts">
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert"
+  import { untrack } from "svelte"
+  import Deck from "$lib/components/Deck.svelte"
+  import { playDeck } from "$lib/components/deck"
   import { Button } from "$lib/components/ui/button"
   import Keycap from "$lib/components/Keycap.svelte"
   import { posName } from "$lib/popover/labels"
@@ -23,6 +26,16 @@
   } = $props()
 
   const entry = $derived(seed.entries[draft.entry])
+
+  let sendIcon = $state<HTMLElement>()
+  /** The sends already shown, so only a new one tosses a card off the deck. */
+  let tossed = untrack(() => review.sent)
+  $effect(() => {
+    if (review.sent > tossed) {
+      playDeck(sendIcon, "send")
+    }
+    tossed = review.sent
+  })
 
   /** The ring a selected button gets, as the keys move onto it. */
   const buttonRing = (target: Focus) => (review.focus === target ? "ring-ring/60 ring-3" : undefined)
@@ -67,13 +80,17 @@
 
   <div class="flex flex-wrap items-center gap-2">
     <Button
-      class={buttonRing("send")}
+      class={[
+        "[--deck-fill:var(--primary)] hover:[--deck-fill:color-mix(in_oklch,var(--primary)_80%,var(--background))]",
+        buttonRing("send"),
+      ]}
       disabled={draft.senses.length === 0 || review.sending}
       onclick={() => {
         review.focus = "send"
         void review.send()
       }}
     >
+      <span bind:this={sendIcon} class="inline-flex"><Deck class="size-4" /></span>
       {review.sending ? "Sending…" : "Send to Anki"}
       <Keycap>Ctrl</Keycap><Keycap>Enter</Keycap>
     </Button>

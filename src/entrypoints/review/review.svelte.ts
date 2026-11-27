@@ -31,6 +31,8 @@ export class Review {
   /** Set by the first drop, so the second one drops. Anything else in between undoes it. */
   dropArmed = $state(false)
   sending = $state(false)
+  /** How many cards this page has sent. */
+  sent = $state(0)
   error = $state<string>()
   /** Lemmas Anki has a DaDict note for, among those asked. */
   inAnki = $state<Record<string, boolean>>({})
@@ -242,7 +244,10 @@ export class Review {
     this.dropArmed = false
     // A storage read can still throw, and "Sending…" must not stay for good.
     try {
-      await this.sendWord(current, draft)
+      // Counted with the end of "Sending…", so the two never show as one card too many.
+      if (await this.sendWord(current, draft)) {
+        this.sent++
+      }
     } catch {
       this.error = "Could not send the card. Try again."
     } finally {
@@ -250,17 +255,18 @@ export class Review {
     }
   }
 
-  private sendWord = async (current: CardSeed, draft: CardDraft) => {
+  /** Whether the card went to Anki and the word off the list. */
+  private sendWord = async (current: CardSeed, draft: CardDraft): Promise<boolean> => {
     // The switch may have been turned off since this page opened.
     if (!(await getAnkiEnabled())) {
       this.error = "Adding words to Anki is off in Settings."
-      return
+      return false
     }
     const next = this.following()
     const sent = await sendCard(current, draft)
     if (sent.isErr()) {
       this.error = ankiErrorText(sent.error)
-      return
+      return false
     }
     // The user may have moved to another word while this one was sent.
     const lemma = current.entries[draft.entry]?.lemma ?? current.word
@@ -268,12 +274,13 @@ export class Review {
       // Sending it again would add a second card.
       this.inAnki = { ...this.inAnki, [lemma]: true }
       this.error = `${lemma} is in Anki, but could not be taken off this list. Drop it instead of sending it again.`
-      return
+      return false
     }
     const stayed = this.currentId === undefined || this.currentId === current.id
     if (stayed && next !== undefined) {
       this.show(next)
     }
+    return true
   }
 
   /** The first call only arms it. */

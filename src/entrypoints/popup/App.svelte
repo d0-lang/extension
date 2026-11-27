@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import BookmarkIcon from "@lucide/svelte/icons/bookmark"
   import BugIcon from "@lucide/svelte/icons/bug"
   import ClapperboardIcon from "@lucide/svelte/icons/clapperboard"
   import SettingsIcon from "@lucide/svelte/icons/settings"
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert"
+  import Deck from "$lib/components/Deck.svelte"
   import { Button } from "$lib/components/ui/button"
   import { Label } from "$lib/components/ui/label"
   import { Switch } from "$lib/components/ui/switch"
@@ -80,8 +80,12 @@
   {/if}
   <div class="flex flex-col gap-2">
     {#if keptCount > 0}
-      <Button size="lg" class="text-base" onclick={openReview}>
-        <BookmarkIcon />
+      <Button
+        size="lg"
+        class="text-base [--deck-fill:var(--primary)] hover:[--deck-fill:color-mix(in_oklch,var(--primary)_80%,var(--background))]"
+        onclick={openReview}
+      >
+        <Deck />
         {keptCount} kept {keptCount === 1 ? "word" : "words"}
       </Button>
     {/if}
