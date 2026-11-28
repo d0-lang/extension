@@ -36,6 +36,12 @@ const fileOf = (site: SiteFiles, url: string): SiteFile | undefined =>
 /** How many reads are kept to tell the extension's requests from the player's, more than the player makes at once. */
 const READS_KEPT = 8
 
+/**
+ * How soon after a read starts the extension's own request starts, as the read asks at once. A request the player
+ * makes later, while the read goes on, is still the player's.
+ */
+const OWN_REQUEST_MS = 100
+
 /** A read of a file the player asked for, and when it last asked for it. */
 type Request = { url: string; start: number; failed: boolean; read: number }
 
@@ -72,33 +78,27 @@ export const watchSiteFiles = (
   let latest: Request | undefined
   let reads = 0
   /**
-   * Each file read, and from when until when. The page lists the extension's own requests with the player's, so a
-   * request for one in that time is the read's, which would otherwise start another read once it failed, or a read of
-   * an older file once the player asked for another.
+   * When each file's read started. The page lists the extension's own requests with the player's, so a request for one
+   * right then is the read's, which would otherwise start another read once it failed, or a read of an older file once
+   * the player asked for another.
    */
-  const reading: Array<{ name: string; from: number; to: number }> = []
+  const reading: Array<{ name: string; from: number }> = []
   const isReading = (name: string, start: number): boolean =>
-    reading.some((read) => name === read.name && start >= read.from && start <= read.to)
+    reading.some((read) => name === read.name && start >= read.from && start - read.from <= OWN_REQUEST_MS)
 
   const read = (file: SiteFile, url: string, number: number) => {
     track = undefined
-    const record = { name: file.name, from: performance.now(), to: Infinity }
-    reading.push(record)
+    reading.push({ name: file.name, from: performance.now() })
     if (reading.length > READS_KEPT) {
       reading.shift()
     }
-    const done = () => {
-      record.to = performance.now()
-    }
     void file.text().match(
       (text) => {
-        done()
         if (latest?.read === number) {
           track = trackOf(text, site, url)
         }
       },
       (error) => {
-        done()
         console.warn("Could not read the subtitle file", file.name, error)
         if (latest?.read === number) {
           latest = { ...latest, failed: true }

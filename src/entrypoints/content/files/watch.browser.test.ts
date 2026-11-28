@@ -1,4 +1,4 @@
-import { okAsync } from "neverthrow"
+import { okAsync, ResultAsync } from "neverthrow"
 import { expect, it, vi } from "vitest"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { VIDEO_HOST } from "../video/player"
@@ -98,4 +98,39 @@ it("reads the file the player asked for last, when it asks for two at once", asy
   await new Promise((resolve) => setTimeout(resolve, 500))
   expect([asked("first"), asked("second")]).toEqual([2, 2])
   requests.mockRestore()
+})
+
+it("reads the file the player asks for again while an older read of it goes on", async () => {
+  const pending: Array<() => void> = []
+  const vtt = (line: string) => `WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n${line}\n`
+  let firstA = true
+  const files = watchSiteFiles(ctx, {
+    ...site,
+    file: /\/pieces\/[ab]\.vtt$/u,
+    format: "webvtt",
+    wholeFile: (url) => ({
+      name: url,
+      text: () => {
+        const line = url.endsWith("a.vtt") ? "A" : "B"
+        if (line === "A" && firstA) {
+          firstA = false
+          return ResultAsync.fromSafePromise(
+            new Promise<string>((resolve) => pending.push(() => resolve(vtt(line)))),
+          )
+        }
+        return okAsync(vtt(line))
+      },
+    }),
+  })
+  const shown = () => files.track()?.cues[0]?.text
+  await fetch("/pieces/a.vtt")
+  await vi.waitFor(() => expect(pending).toHaveLength(1))
+  await fetch("/pieces/b.vtt")
+  await vi.waitFor(() => expect(shown()).toBe("B"))
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  await fetch("/pieces/a.vtt")
+  await vi.waitFor(() => expect(shown()).toBe("A"))
+  pending[0]?.()
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  expect(shown()).toBe("A")
 })
