@@ -117,4 +117,20 @@ describe("inOrder", () => {
       },
     ])
   })
+
+  it("keeps a cue that carries on the one before as one, so it does not show again as the line before", () => {
+    const line = { text: "Raz", styles: [{ color: "#ffff00", from: 0, to: 3 }] }
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 1000, ...line },
+        { startMs: 1000, endMs: 3000, ...line },
+        { startMs: 3000, endMs: 4000, text: "Raz" },
+        { startMs: 5000, endMs: 6000, text: "Raz" },
+      ]),
+    ).toEqual([
+      { startMs: 0, endMs: 3000, ...line },
+      { startMs: 3000, endMs: 4000, text: "Raz" },
+      { startMs: 5000, endMs: 6000, text: "Raz" },
+    ])
+  })
 })

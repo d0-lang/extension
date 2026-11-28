@@ -6,6 +6,7 @@ import { showSubtitles, type Subtitles, type SubtitlesOptions, type Track } from
 import { replacesOwn, siteFilesOf } from "../files/sites"
 import { watchSiteFiles } from "../files/watch"
 import { playerOf, VIDEO_HOST } from "./player"
+import { trackSiteOf } from "./sites"
 import { createStage, removeStages, type Stage } from "./stage"
 import { activeTrack, cuesOf } from "./tracks"
 
@@ -28,6 +29,9 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   }
 
   const site = siteFilesOf(location.hostname)
+  const trackSite = site === undefined ? trackSiteOf(location.hostname) : undefined
+  /** The site with its own switch, whether the extension reads its files or the video's track. */
+  const ownSite = site ?? trackSite
   /** The box the subtitles go in: the one the site names, or the one around the video about its size. */
   const playerAround = (over: HTMLVideoElement): HTMLElement | undefined =>
     site?.player?.(over) ?? playerOf(over)
@@ -37,7 +41,9 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   const trackFor = (over: HTMLVideoElement): Track | undefined => {
     const track = activeTrack(over)
     if (track !== undefined) {
-      return trackOf(track)
+      return trackSite === undefined || playerAround(over)?.querySelector(trackSite.host.ownSubtitles) != null
+        ? trackOf(track)
+        : undefined
     }
     return site !== undefined && replacesOwn(site, over, playerAround(over)) ? files?.track() : undefined
   }
@@ -62,10 +68,10 @@ export const showVideoSubtitles = (ctx: ContentScriptContext, options: Subtitles
   ctx.onInvalidated(dropStage)
 
   const subtitles = showSubtitles(ctx, options, {
-    host: site?.host ?? VIDEO_HOST,
-    // A site the extension reads files on has its own switch, as nothing else shows subtitles there.
-    isOn: site === undefined ? getVideoSubtitles : () => getSiteSubtitles(site.id),
-    keys: [site === undefined ? "videoSubtitles" : siteSubtitlesKey(site.id)],
+    host: ownSite?.host ?? VIDEO_HOST,
+    // A site with code of its own has its own switch, which alone turns the subtitles on there.
+    isOn: ownSite === undefined ? getVideoSubtitles : () => getSiteSubtitles(ownSite.id),
+    keys: [ownSite === undefined ? "videoSubtitles" : siteSubtitlesKey(ownSite.id)],
     frame: () => {
       const value = video?.isConnected === true ? trackFor(video) : undefined
       // Nothing shows over a video that is itself fullscreen, so the browser draws its subtitles there.

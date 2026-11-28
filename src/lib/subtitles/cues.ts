@@ -116,7 +116,8 @@ export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): 
 
 /**
  * `cues` in the order they show, one at a time, without empty ones. Cues that start together, like two speakers', are
- * one cue with a line each, and an overlap ends at the next start.
+ * one cue with a line each, and an overlap ends at the next start. A cue that only carries on the one before, with the
+ * same text from where it ends, is part of it, so the line does not show again as the one before.
  */
 export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
   const sorted = cues
@@ -149,4 +150,19 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
   return together
     .map((cue, index) => ({ ...cue, endMs: Math.min(cue.endMs, together[index + 1]?.startMs ?? Infinity) }))
     .filter(({ startMs, endMs }) => startMs < endMs)
+    .reduce<Array<Cue>>((joined, cue) => {
+      const last = joined.at(-1)
+      if (last !== undefined && last.endMs === cue.startMs && sameText(last, cue)) {
+        joined[joined.length - 1] = { ...last, endMs: cue.endMs }
+      } else {
+        joined.push(cue)
+      }
+      return joined
+    }, [])
 }
+
+/** Whether two cues show the same, styles and place too. */
+const sameText = (a: Cue, b: Cue): boolean =>
+  a.text === b.text &&
+  JSON.stringify(a.styles) === JSON.stringify(b.styles) &&
+  JSON.stringify(a.place) === JSON.stringify(b.place)

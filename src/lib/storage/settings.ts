@@ -120,8 +120,8 @@ export const setVideoSubtitles = async (videoSubtitles: boolean): Promise<void> 
   await browser.storage.local.set({ videoSubtitles })
 }
 
-/** Sites whose players download their subtitle files, which the extension reads to show them, each with its switch. */
-export type SubtitleSite = "ard" | "zdf" | "arte" | "rtve"
+/** Sites with code of their own for their subtitles, each with its switch. */
+export type SubtitleSite = "ard" | "zdf" | "arte" | "rtve" | "nhk"
 
 /** The storage key of `site`'s switch. */
 export const siteSubtitlesKey = (site: SubtitleSite): string => `${site}Subtitles`
