@@ -85,6 +85,14 @@ describe("decodeSubtitles", () => {
     expect(await read(bytesOf("zh.gbk.srt"), "zh")).toContain("谢谢你的关心")
   })
 
+  it("reads a named file in whichever of its language's encodings it is valid in when no language is found", async () => {
+    // 字 in EUC-JP, which is not valid Shift_JIS.
+    const nothing: Detect = async () => []
+    expect(await decodeSubtitles(new Uint8Array([0xbb, 0xfa]).buffer, "ja", (text) => text, nothing)).toBe(
+      "字",
+    )
+  })
+
   it("leaves encodings that garbled text is found in as surely to the file's name", async () => {
     expect(await read(bytesOf("el.windows-1253.srt"), "el")).toContain("Γεια σου")
     expect(await read(bytesOf("ko.euc-kr.srt"), "ko")).toContain("안녕하세요")

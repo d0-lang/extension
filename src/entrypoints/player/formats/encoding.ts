@@ -102,7 +102,11 @@ export const decodeSubtitles = async (
   const named = encodingsOf(lang)
   // Of a language with more than one, the encoding its text is found in, as one may read the other's bytes too.
   const chosen = named.length > 1 ? await found(bytes, named, sample, detect) : undefined
-  return chosen ?? readable(bytes, named[0]!) ?? decode(bytes, named[0]!, false)!
+  return (
+    chosen ??
+    named.map((encoding) => readable(bytes, encoding)).find((text) => text !== undefined) ??
+    decode(bytes, named[0]!, false)!
+  )
 }
 
 /** `bytes` in `encoding`, unless they are not valid in it or come out garbled into half-width katakana. */
