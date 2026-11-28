@@ -1,3 +1,4 @@
+import { okAsync } from "neverthrow"
 import { expect, it, vi } from "vitest"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { VIDEO_HOST } from "../video/player"
@@ -52,4 +53,21 @@ it("reads a WebVTT file in the language its address names", async () => {
     cues: [{ startMs: 1000, endMs: 3000, text: "Dachshunds are not only trendy\nin Germany at the moment." }],
     fast: false,
   })
+})
+
+it("reads the whole file once for all of its pieces", async () => {
+  const text = vi.fn(() => okAsync("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHola\n"))
+  const files = watchSiteFiles(ctx, {
+    ...site,
+    file: /\/pieces\/es\/s_\d+\.m4s$/u,
+    format: "webvtt",
+    wholeFile: () => ({ name: "es", text }),
+    lang: () => "es",
+  })
+  await fetch("/pieces/es/s_1.m4s")
+  await fetch("/pieces/es/s_2.m4s")
+  await vi.waitFor(() => expect(files.track()).toBeDefined())
+  expect(files.track()?.cues).toEqual([{ startMs: 1000, endMs: 2000, text: "Hola" }])
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  expect(text).toHaveBeenCalledOnce()
 })

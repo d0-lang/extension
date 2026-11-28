@@ -1,19 +1,11 @@
 /** The subtitle file a site's player downloads, read as the page loads it. */
-import { errAsync, ResultAsync } from "neverthrow"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
-import { toError } from "$lib/errors"
 import { inOrder, isFast, type Cue } from "$lib/subtitles/cues"
 import { readTimed } from "$lib/subtitles/timed"
 import type { Track } from "$lib/subtitles/controller"
+import { fetchText, type SiteFile } from "./fetch"
 import type { SiteFiles } from "./sites"
 import { readTtml, ttmlLanguage } from "./ttml"
-
-const fetchText = (url: string): ResultAsync<string, Error> =>
-  ResultAsync.fromPromise(fetch(url), toError).andThen((response) =>
-    response.ok
-      ? ResultAsync.fromPromise(response.text(), toError)
-      : errAsync(new Error(`HTTP ${response.status}`)),
-  )
 
 /** The cues of a file in `format`, and the language it names, if it names one. */
 const cuesOf = (
@@ -36,6 +28,10 @@ const trackOf = (text: string, site: SiteFiles, url: string): Track => {
     fast: isFast(cues),
   }
 }
+
+/** The file the player asked for at `url`, or the whole one a piece there is part of. */
+const fileOf = (site: SiteFiles, url: string): SiteFile | undefined =>
+  site.wholeFile === undefined ? { name: url, text: () => fetchText(url) } : site.wholeFile(url)
 
 /** A read of a file the player asked for, and when it last asked for it. */
 type Request = { url: string; start: number; failed: boolean; read: number }
@@ -73,16 +69,16 @@ export const watchSiteFiles = (
   let latest: Request | undefined
   let reads = 0
 
-  const read = (url: string, number: number) => {
+  const read = (file: SiteFile, url: string, number: number) => {
     track = undefined
-    void fetchText(url).match(
+    void file.text().match(
       (text) => {
         if (latest?.read === number) {
           track = trackOf(text, site, url)
         }
       },
       (error) => {
-        console.warn("Could not read the subtitle file", url, error)
+        console.warn("Could not read the subtitle file", file.name, error)
         if (latest?.read === number) {
           latest = { ...latest, failed: true }
         }
@@ -92,12 +88,13 @@ export const watchSiteFiles = (
 
   const observer = new PerformanceObserver((entries) => {
     for (const { name, startTime } of entries.getEntries()) {
-      if (site.file.test(name)) {
-        const next = requested(latest, name, startTime, reads + 1)
+      const file = site.file.test(name) ? fileOf(site, name) : undefined
+      if (file !== undefined) {
+        const next = requested(latest, file.name, startTime, reads + 1)
         latest = next.latest
         if (next.read) {
           reads++
-          read(name, reads)
+          read(file, name, reads)
         }
       }
     }

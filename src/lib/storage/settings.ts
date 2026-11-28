@@ -121,7 +121,7 @@ export const setVideoSubtitles = async (videoSubtitles: boolean): Promise<void> 
 }
 
 /** Sites whose players download their subtitle files, which the extension reads to show them, each with its switch. */
-export type SubtitleSite = "ard" | "zdf" | "arte"
+export type SubtitleSite = "ard" | "zdf" | "arte" | "rtve"
 
 /** The storage key of `site`'s switch. */
 export const siteSubtitlesKey = (site: SubtitleSite): string => `${site}Subtitles`

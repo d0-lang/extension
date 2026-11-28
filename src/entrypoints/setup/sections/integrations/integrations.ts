@@ -44,6 +44,7 @@ export const integrations: ReadonlyArray<Integration> = [
   siteIntegration("ard", "ARD Mediathek", "Clickable subtitles, on tagesschau.de too"),
   siteIntegration("zdf", "ZDF", "Clickable subtitles"),
   siteIntegration("arte", "Arte", "Clickable subtitles"),
+  siteIntegration("rtve", "RTVE Play", "Clickable subtitles"),
   {
     name: "Other sites",
     kind: "Video",

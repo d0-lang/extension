@@ -2,6 +2,8 @@
 import type { SubtitleSite } from "$lib/storage"
 import type { Host } from "$lib/subtitles/host"
 import { VIDEO_HOST } from "../video/player"
+import type { SiteFile } from "./fetch"
+import { rtveFileOf, rtveLanguage, RTVE_PIECE } from "./rtve"
 
 export type SiteFiles = {
   /** Which of the switches in Integrations turns the site's subtitles on and off. */
@@ -11,6 +13,11 @@ export type SiteFiles = {
   /** The address of a subtitle file its player downloads. */
   file: RegExp
   format: "ttml" | "webvtt"
+  /**
+   * For a player that streams its subtitles in pieces, which `file` then matches: the whole file a piece at `url` is
+   * part of, named the same for every piece of it, and how to read it.
+   */
+  wholeFile?: (url: string) => SiteFile | undefined
   /** The language of the file at an address, for a format that does not name it. */
   lang?: (url: string) => string | undefined
   /** The box the subtitles go in, for a player whose box is not the one around `video` that is about its size. */
@@ -159,7 +166,37 @@ const ZDF: SiteFiles = {
   host: ZDF_HOST,
 }
 
-const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF]
+/**
+ * RTVE's controls take a strip under the picture once a video starts, as RTVE shortens the picture for them, so the
+ * subtitles keep clear of all of it.
+ */
+const RTVE_HOST: SiteFiles["host"] = {
+  bars: (player) => {
+    const picture = player.querySelector<HTMLElement>(".vjs-tech") ?? player
+    const strip = player.getBoundingClientRect().bottom - picture.getBoundingClientRect().bottom
+    return { top: 0, bottom: Math.max(0, strip) + VIDEO_HOST.bars(picture).bottom }
+  },
+  ownSubtitles: ".theoplayer-texttracks",
+}
+
+/** RTVE Play's player is THEOplayer, in a video.js skin, which streams the subtitles picked in its menu in pieces. */
+const RTVE: SiteFiles = {
+  id: "rtve",
+  hosts: /(?:^|\.)rtve\.es$/u,
+  file: RTVE_PIECE,
+  format: "webvtt",
+  wholeFile: rtveFileOf,
+  lang: rtveLanguage,
+  // The box around the video is the picture alone, without the strip of controls under it.
+  player: (video) => video.closest<HTMLElement>(".theoplayer-skin") ?? undefined,
+  // Its menu stays in the player when closed, with one language checked, or "off".
+  isOn: (video) =>
+    video.closest(".theoplayer-skin")?.querySelector('.theo-text-track-menu-item[aria-checked="true"]') !=
+    null,
+  host: RTVE_HOST,
+}
+
+const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF, RTVE]
 
 /** The site `hostname` is, if its player is one of these. */
 export const siteFilesOf = (hostname: string): SiteFiles | undefined =>
