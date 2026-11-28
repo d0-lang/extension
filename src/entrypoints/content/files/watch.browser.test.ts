@@ -74,7 +74,8 @@ it("reads the whole file once for all of its pieces", async () => {
 
 it("reads a file that failed again only when the player asks for it again, not on its own request", async () => {
   const requests = vi.spyOn(window, "fetch")
-  const files = watchSiteFiles(ctx, { ...site, file: /\/missing\.ttml$/u })
+  // Like ARD's, it matches the extension's own request too, which then has to be told apart.
+  const files = watchSiteFiles(ctx, { ...site, file: /\/missing\.ttml/u })
   const asked = () =>
     requests.mock.calls.filter(([url]) => /\/missing\.ttml(?:#|$)/u.test(String(url))).length
   await fetch("/missing.ttml")
