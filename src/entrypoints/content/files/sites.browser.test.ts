@@ -147,3 +147,48 @@ describe("ZDF", () => {
     expect(zdf.host.bars(zdfPlayer("hoh_deu", true).player).bottom).toBeCloseTo(800 * 0.12)
   })
 })
+
+const rtve = siteFilesOf("www.rtve.es")!
+
+describe("RTVE Play", () => {
+  /** RTVE's player as far as the rule reads it: a 600 px tall player whose picture leaves 200 px for its controls. */
+  const rtvePlayer = (checked: "es" | "off") => {
+    document.body.innerHTML = `
+      <div class="theoplayer-skin" style="position: absolute; width: 1000px; height: 600px">
+        <div class="vjs-tech" style="height: 400px"><video></video><div class="theoplayer-texttracks"></div></div>
+        <ul class="theo-menu">
+          <li class="theo-menu-item" aria-checked="${checked === "off"}">Subtítulos Off</li>
+          <li class="theo-menu-item theo-text-track-menu-item" aria-checked="${checked === "es"}">Español (ES)</li>
+        </ul>
+      </div>`
+    return {
+      player: document.querySelector<HTMLElement>(".theoplayer-skin")!,
+      video: document.querySelector("video")!,
+    }
+  }
+
+  it("has its subtitles on while a language is checked in its menu, in the player it names", () => {
+    const on = rtvePlayer("es")
+    expect(rtve.player?.(on.video)).toBe(on.player)
+    expect(replacesOwn(rtve, on.video, on.player)).toBe(true)
+    expect(rtve.isOn(rtvePlayer("off").video)).toBe(false)
+  })
+
+  it("keeps the subtitles above the strip of controls under the picture", () => {
+    expect(rtve.host.bars(rtvePlayer("es").player).bottom).toBeCloseTo(200 + 400 * 0.12)
+  })
+
+  it("keeps the subtitles above the seek bar over the picture only while the controls show", () => {
+    const fullscreen = (state: string) => {
+      document.body.innerHTML = `
+        <div class="theoplayer-skin vjs-has-started ${state}" style="position: absolute; width: 1000px; height: 600px">
+          <div class="vjs-tech" style="height: 600px"><video></video></div>
+          <div class="vjs-progress-control" style="position: absolute; bottom: 100px; height: 6px; width: 100%"></div>
+        </div>`
+      return document.querySelector<HTMLElement>(".theoplayer-skin")!
+    }
+    expect(rtve.host.bars(fullscreen("vjs-user-active vjs-playing")).bottom).toBe(106)
+    expect(rtve.host.bars(fullscreen("vjs-user-inactive vjs-paused")).bottom).toBe(106)
+    expect(rtve.host.bars(fullscreen("vjs-user-inactive vjs-playing")).bottom).toBeCloseTo(600 * 0.12)
+  })
+})

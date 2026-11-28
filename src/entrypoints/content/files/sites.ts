@@ -2,6 +2,8 @@
 import type { SubtitleSite } from "$lib/storage"
 import type { Host } from "$lib/subtitles/host"
 import { VIDEO_HOST } from "../video/player"
+import type { SiteFile } from "./fetch"
+import { rtveFileOf, rtveLanguage, RTVE_PIECE } from "./rtve"
 
 export type SiteFiles = {
   /** Which of the switches in Integrations turns the site's subtitles on and off. */
@@ -11,6 +13,11 @@ export type SiteFiles = {
   /** The address of a subtitle file its player downloads. */
   file: RegExp
   format: "ttml" | "webvtt"
+  /**
+   * For a player that streams its subtitles in pieces, which `file` then matches: the whole file a piece at `url` is
+   * part of, named the same for every piece of it, and how to read it.
+   */
+  wholeFile?: (url: string) => SiteFile | undefined
   /** The language of the file at an address, for a format that does not name it. */
   lang?: (url: string) => string | undefined
   /** The box the subtitles go in, for a player whose box is not the one around `video` that is about its size. */
@@ -159,7 +166,47 @@ const ZDF: SiteFiles = {
   host: ZDF_HOST,
 }
 
-const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF]
+/**
+ * Once a video starts, RTVE shortens the picture for a strip of controls under it, so the subtitles keep clear of all
+ * of it. In fullscreen, the controls are over the picture, so the subtitles move above its seek bar while they show.
+ */
+const RTVE_HOST: SiteFiles["host"] = {
+  bars: (player) => {
+    const picture = player.querySelector<HTMLElement>(".vjs-tech") ?? player
+    const strip = Math.max(0, player.getBoundingClientRect().bottom - picture.getBoundingClientRect().bottom)
+    // Like video.js, RTVE fades its controls out only while the video plays with nobody using it.
+    const idle = player.matches(".vjs-has-started.vjs-user-inactive:not(.vjs-paused)")
+    const controls = clearOf(player, idle ? undefined : player.querySelector(".vjs-progress-control"))
+    return { top: 0, bottom: Math.max(strip + VIDEO_HOST.bars(picture).bottom, controls.bottom) }
+  },
+  ownSubtitles: ".theoplayer-texttracks",
+  // The bars, the skip buttons and the play button that covers the whole player.
+  ownControls: ".vjs-control-bar",
+  // Its shade stops at the seek bar, and is darkest right behind the subtitles.
+  ownShade: ".theo-player-wrapper",
+  // In fullscreen, a second play button sits between the skip buttons, over the picture, where the subtitles go. On a
+  // phone, it is the only one, and higher up.
+  inTheWay: ".theoplayer-skin:not(.theo-mobile) .custom-big-play-pause-button",
+}
+
+/** RTVE Play's player is THEOplayer, in a video.js skin, which streams the subtitles picked in its menu in pieces. */
+const RTVE: SiteFiles = {
+  id: "rtve",
+  hosts: /(?:^|\.)rtve\.es$/u,
+  file: RTVE_PIECE,
+  format: "webvtt",
+  wholeFile: rtveFileOf,
+  lang: rtveLanguage,
+  // The box around the video is the picture alone, without the strip of controls under it.
+  player: (video) => video.closest<HTMLElement>(".theoplayer-skin") ?? undefined,
+  // Its menu stays in the player when closed, with one language checked, or "off".
+  isOn: (video) =>
+    video.closest(".theoplayer-skin")?.querySelector('.theo-text-track-menu-item[aria-checked="true"]') !=
+    null,
+  host: RTVE_HOST,
+}
+
+const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF, RTVE]
 
 /** The site `hostname` is, if its player is one of these. */
 export const siteFilesOf = (hostname: string): SiteFiles | undefined =>

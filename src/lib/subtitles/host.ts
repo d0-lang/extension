@@ -11,8 +11,13 @@ export type Host = {
   ownSubtitles?: string
   /** What the player draws its controls in, hidden while a lookup is open, since the pause for it would show them. */
   ownControls?: string
-  /** What darkens the whole video behind the player's controls, kept clear while the overlay is in it. */
+  /**
+   * What darkens the whole video behind the player's controls, itself or by a `::before` or `::after`, kept clear while
+   * the overlay is in it.
+   */
   ownShade?: string
+  /** What of the player's sits where the subtitles go and would be under them, hidden while the overlay is in it. */
+  inTheWay?: string
   /** The player's own right-click menu, hidden when the subtitles' opens, since it would stay over it. */
   ownMenu?: string
 }
