@@ -1,24 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { cuesOf, decodeText, extensionOf, isSubtitleFile, readSubtitleFile } from "./read"
+import { cuesOf, extensionOf, isSubtitleFile, readSubtitleFile } from "./read"
 
 const SRT = "1\n00:00:01,000 --> 00:00:02,000\nŻółw\n"
-
-describe("decodeText", () => {
-  it("reads UTF-8, with or without a byte order mark", () => {
-    const bytes = new TextEncoder().encode(SRT)
-    expect(decodeText(bytes.buffer)).toBe(SRT)
-    expect(decodeText(new Uint8Array([0xef, 0xbb, 0xbf, ...bytes]).buffer)).toBe(SRT)
-  })
-
-  it("reads UTF-16 that says so", () => {
-    const le = [
-      0xff,
-      0xfe,
-      ...[...SRT].flatMap((char) => [char.charCodeAt(0) & 0xff, char.charCodeAt(0) >> 8]),
-    ]
-    expect(decodeText(new Uint8Array(le).buffer)).toBe(SRT)
-  })
-})
 
 describe("cuesOf", () => {
   it("reads SRT and WebVTT", () => {

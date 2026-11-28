@@ -2,7 +2,9 @@
 import { err, ok, ResultAsync, type Result } from "neverthrow"
 import { toError } from "$lib/errors"
 import { inOrder, type Cue } from "$lib/subtitles/cues"
+import { languageInName } from "../open/language"
 import { readAss } from "./ass"
+import { decodeSubtitles, type Detect } from "./encoding"
 import { readTimed } from "$lib/subtitles/timed"
 
 export type SubtitleFileError =
@@ -17,17 +19,26 @@ export const extensionOf = (name: string): string => /\.([^.]+)$/u.exec(name)?.[
 /** Whether `name` looks like a subtitle file. */
 export const isSubtitleFile = (name: string): boolean => SUBTITLE_EXTENSIONS.includes(extensionOf(name))
 
-/** A file's text. A byte order mark says UTF-16. Anything else is read as UTF-8. */
-export const decodeText = (bytes: ArrayBuffer): string => {
-  const view = new Uint8Array(bytes)
-  const encoding =
-    view[0] === 0xff && view[1] === 0xfe
-      ? "utf-16le"
-      : view[0] === 0xfe && view[1] === 0xff
-        ? "utf-16be"
-        : "utf-8"
-  return new TextDecoder(encoding).decode(view)
-}
+/** How much of a file's cues the language its encoding is told by is read from. */
+const SAMPLE_CHARS = 2000
+
+/** Some of the cues `text` holds as file `name`, without the file's own words, like an ASS file's headings. */
+const sampleOf = (name: string, text: string): string =>
+  cuesOf(name, text)
+    .map((cues) =>
+      cues
+        .map((cue) => cue.text)
+        .join("\n")
+        .slice(0, SAMPLE_CHARS),
+    )
+    .unwrapOr("")
+
+/** The languages `text` is in, by the browser's own detection, which keeps it on this device. */
+const detectWithBrowser: Detect = (text) =>
+  browser.i18n
+    .detectLanguage(text)
+    .then(({ languages }) => languages)
+    .catch(() => [])
 
 /** The cues of a subtitle file's `text`, in the order they show. */
 export const cuesOf = (name: string, text: string): Result<Array<Cue>, SubtitleFileError> => {
@@ -39,9 +50,21 @@ export const cuesOf = (name: string, text: string): Result<Array<Cue>, SubtitleF
   return cues.length === 0 ? err({ kind: "empty" }) : ok(cues)
 }
 
-/** The cues of a subtitle `file`, in the order they show. */
-export const readSubtitleFile = (file: File): ResultAsync<Array<Cue>, SubtitleFileError> =>
+/**
+ * The cues of a subtitle `file`, in the order they show, in the encoding it was saved in. `detect` stands in for the
+ * browser's language detection.
+ */
+export const readSubtitleFile = (
+  file: File,
+  detect: Detect = detectWithBrowser,
+): ResultAsync<Array<Cue>, SubtitleFileError> =>
   ResultAsync.fromPromise(file.arrayBuffer(), (cause): SubtitleFileError => ({
     kind: "unreadable",
     cause: toError(cause),
-  })).andThen((bytes) => cuesOf(file.name, decodeText(bytes)))
+  }))
+    .andThen((bytes) =>
+      ResultAsync.fromSafePromise(
+        decodeSubtitles(bytes, languageInName(file.name), (text) => sampleOf(file.name, text), detect),
+      ),
+    )
+    .andThen((text) => cuesOf(file.name, text))
