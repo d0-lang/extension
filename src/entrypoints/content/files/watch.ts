@@ -29,18 +29,25 @@ const trackOf = (text: string, site: SiteFiles, url: string): Track => {
   }
 }
 
+/**
+ * What the extension's own requests end in. The page lists them with the player's, and one for a file that failed
+ * would otherwise start another read. The server never sees it.
+ */
+const OWN = "#dadict"
+
+/** `url` as the extension asks for it. */
+const ownRequest = (url: string): string => {
+  const own = new URL(url)
+  own.hash = OWN
+  return own.href
+}
+
+/** Whether a request the page lists is the extension's own. */
+const isOwn = (url: string): boolean => URL.canParse(url) && new URL(url).hash === OWN
+
 /** The file the player asked for at `url`, or the whole one a piece there is part of. */
 const fileOf = (site: SiteFiles, url: string): SiteFile | undefined =>
-  site.wholeFile === undefined ? { name: url, text: () => fetchText(url) } : site.wholeFile(url)
-
-/** How many reads are kept to tell the extension's requests from the player's, more than the player makes at once. */
-const READS_KEPT = 8
-
-/**
- * How soon after a read starts the extension's own request starts, as the read asks at once. A request the player
- * makes later, while the read goes on, is still the player's.
- */
-const OWN_REQUEST_MS = 100
+  site.wholeFile === undefined ? { name: url, text: () => fetchText(ownRequest(url)) } : site.wholeFile(url)
 
 /** A read of a file the player asked for, and when it last asked for it. */
 type Request = { url: string; start: number; failed: boolean; read: number }
@@ -77,21 +84,8 @@ export const watchSiteFiles = (
   let track: Track | undefined
   let latest: Request | undefined
   let reads = 0
-  /**
-   * When each file's read started. The page lists the extension's own requests with the player's, so a request for one
-   * right then is the read's, which would otherwise start another read once it failed, or a read of an older file once
-   * the player asked for another.
-   */
-  const reading: Array<{ name: string; from: number }> = []
-  const isReading = (name: string, start: number): boolean =>
-    reading.some((read) => name === read.name && start >= read.from && start - read.from <= OWN_REQUEST_MS)
-
   const read = (file: SiteFile, url: string, number: number) => {
     track = undefined
-    reading.push({ name: file.name, from: performance.now() })
-    if (reading.length > READS_KEPT) {
-      reading.shift()
-    }
     void file.text().match(
       (text) => {
         if (latest?.read === number) {
@@ -109,8 +103,8 @@ export const watchSiteFiles = (
 
   const observer = new PerformanceObserver((entries) => {
     for (const { name, startTime } of entries.getEntries()) {
-      const file = site.file.test(name) ? fileOf(site, name) : undefined
-      if (file !== undefined && !isReading(file.name, startTime)) {
+      const file = site.file.test(name) && !isOwn(name) ? fileOf(site, name) : undefined
+      if (file !== undefined) {
         const next = requested(latest, file.name, startTime, reads + 1)
         latest = next.latest
         if (next.read) {
