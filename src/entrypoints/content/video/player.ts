@@ -37,6 +37,6 @@ export const playerOf = (video: HTMLVideoElement): HTMLElement | undefined => {
 /** Any site's player. The selectors are where players we know draw their own subtitles from the video's tracks. */
 export const VIDEO_HOST: Host = {
   bars: (player) => ({ top: 0, bottom: Math.max(MIN_BAR_PX, player.clientHeight * BAR_RATIO) }),
-  // Vimeo, Plyr and ArtPlayer.
-  ownSubtitles: ".vp-captions, .plyr__captions, .art-subtitle",
+  // Vimeo, Plyr, ArtPlayer, and Red Bee Media's, as on TV5MONDEplus.
+  ownSubtitles: ".vp-captions, .plyr__captions, .art-subtitle, .redbee-player-subtitle-container",
 }
