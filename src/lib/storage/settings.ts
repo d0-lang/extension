@@ -121,7 +121,7 @@ export const setVideoSubtitles = async (videoSubtitles: boolean): Promise<void> 
 }
 
 /** Sites with code of their own for their subtitles, each with its switch. */
-export type SubtitleSite = "ard" | "zdf" | "arte" | "rtve" | "nhk"
+export type SubtitleSite = "ard" | "zdf" | "arte" | "rtve" | "nhk" | "dw"
 
 /** The storage key of `site`'s switch. */
 export const siteSubtitlesKey = (site: SubtitleSite): string => `${site}Subtitles`
