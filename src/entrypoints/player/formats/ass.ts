@@ -1,5 +1,5 @@
 /** ASS and SSA subtitle files: the lines their characters say or sing, without signs or drawings. */
-import { styledOf, type Char } from "$lib/subtitles/chars"
+import { styledOf, type Char, type Reading } from "$lib/subtitles/chars"
 import type { Cue } from "$lib/subtitles/cues"
 import type { TextStyle } from "$lib/subtitles/rows"
 
@@ -44,16 +44,14 @@ const KARAOKE = /\\[kK][fo]?\d/u
 const LEAD_IN = /^\{[^}]*?\\[kK][fo]?(\d+)[^}]*\}(?=\{)/u
 
 /**
- * A karaoke syllable without its furigana: `忘|わ` is 忘 read わ, and `#|す` goes on with the reading of the one
- * before, so it has nothing of its own.
+ * A karaoke syllable and its furigana: `忘|わ` is 忘 read わ, and `#|す` goes on with the reading of the one before, so
+ * it has no characters of its own.
  */
-const withoutFurigana = (syllable: string): string => {
+const furiganaOf = (syllable: string): { base: string; reading: string | undefined } => {
   const bar = syllable.indexOf("|")
-  if (bar === -1) {
-    return syllable
-  }
-  const base = syllable.slice(0, bar)
-  return base === "#" ? "" : base
+  return bar === -1
+    ? { base: syllable, reading: undefined }
+    : { base: syllable.slice(0, bar), reading: syllable.slice(bar + 1) }
 }
 
 /** How a style or a tag draws text. `colour` is `#rrggbb`. */
@@ -117,23 +115,36 @@ const overridden = (pen: Pen, block: string, base: Pen, pens: ReadonlyMap<string
 
 /**
  * An event's text as characters, each with how it is drawn: `\N` breaks a line, and `\n` and `\h` are spaces unless
- * the file asks otherwise. A karaoke line loses the readings over its syllables. Every `{…}` goes, since one without a
- * backslash is a comment.
+ * the file asks otherwise. A karaoke line's furigana are readings over its syllables. Every `{…}` goes, since one
+ * without a backslash is a comment.
  */
 const charsOf = (text: string, base: Pen, pens: ReadonlyMap<string, Pen>): Array<Char> => {
   const karaoke = KARAOKE.test(text)
   const chars: Array<Char> = []
   let pen = base
+  let last: Reading | undefined
   // Split on the blocks, which leaves the text at even places.
   for (const [index, part] of text.split(/(\{[^}]*\})/u).entries()) {
     if (index % 2 === 1) {
       pen = overridden(pen, part, base, pens)
       continue
     }
-    const shown = (karaoke ? withoutFurigana(part) : part).replace(/\\N/gu, "\n").replace(/\\[nh]/gu, " ")
+    // Blocks next to each other leave nothing between them, which ends no reading.
+    if (part === "") {
+      continue
+    }
+    const { base: said, reading } = karaoke ? furiganaOf(part) : { base: part, reading: undefined }
+    if (karaoke && said === "#") {
+      if (last !== undefined && reading !== undefined) {
+        last.text += reading
+      }
+      continue
+    }
+    last = reading === undefined || reading === "" ? undefined : { text: reading }
+    const shown = said.replace(/\\N/gu, "\n").replace(/\\[nh]/gu, " ")
     const style = styleOf(pen)
     for (const char of shown.split("")) {
-      chars.push({ char, style })
+      chars.push({ char, style, reading: last })
     }
   }
   return chars
@@ -217,7 +228,7 @@ const sectionsOf = (text: string): { pens: Map<string, Pen>; events: Array<Event
 
 /**
  * The cues of an ASS or SSA file, in the order the file has them, in their styles' colours, italics and bold. A song's
- * karaoke lines show whole.
+ * karaoke lines show whole, with their furigana over the kanji.
  * An event with an effect, a place on the picture or a drawing is left out, and so is a copy of one at the same time,
  * like a second layer drawn for its outline.
  *
@@ -236,9 +247,11 @@ export const readAss = (text: string): Array<Cue> => {
     const raw = fields.get("text") ?? ""
     const start = msOf(fields.get("start") ?? "")
     const endMs = msOf(fields.get("end") ?? "")
-    const { text: said, styles } = styledOf(
-      charsOf(raw, pens.get(styleName(fields.get("style") ?? "")) ?? PLAIN, pens),
-    )
+    const {
+      text: said,
+      styles,
+      ruby,
+    } = styledOf(charsOf(raw, pens.get(styleName(fields.get("style") ?? "")) ?? PLAIN, pens))
     const key = JSON.stringify([start, endMs, said])
     if (
       !shown ||
@@ -252,16 +265,17 @@ export const readAss = (text: string): Array<Cue> => {
     }
     seen.add(key)
     const startMs = start + Number(LEAD_IN.exec(raw)?.[1] ?? 0) * 10
-    cues.push({ startMs: Math.min(startMs, endMs), endMs, text: said, styles, sung: KARAOKE.test(raw) })
+    cues.push({ startMs: Math.min(startMs, endMs), endMs, text: said, styles, ruby, sung: KARAOKE.test(raw) })
   }
   const sungFrom = new Map<number, number>()
   for (const { startMs, endMs, sung } of cues.filter(({ sung }) => sung)) {
     sungFrom.set(endMs, Math.min(startMs, sungFrom.get(endMs) ?? startMs))
   }
-  return cues.map(({ startMs, endMs, text, styles, sung }) => ({
+  return cues.map(({ startMs, endMs, text, styles, ruby, sung }) => ({
     startMs: sung ? sungFrom.get(endMs)! : startMs,
     endMs,
     text,
     ...(styles !== undefined && { styles }),
+    ...(ruby !== undefined && { ruby }),
   }))
 }

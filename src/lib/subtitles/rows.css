@@ -55,3 +55,33 @@
 [data-dadict-captions] [data-word]:hover:not([data-mark], [data-picked]) {
   background: rgb(255 255 255 / 0.25);
 }
+
+/* A line with readings over some of its characters, like furigana, has its background reach up behind them. */
+[data-dadict-captions] [data-line]:has([data-ruby]) {
+  padding-top: 0.55em;
+}
+
+/*
+ * The characters a reading is over make room for it above them, which grows only their row, and only upward. The
+ * reading is drawn from the attribute, so it is never text that is looked up, selected or copied, and a click on it,
+ * also where it is wider than them, is one on them.
+ */
+[data-dadict-captions] [data-ruby] {
+  position: relative;
+  display: inline-block;
+  padding-top: 0.55em;
+  /* Its box hugs the characters, so the reading sits just above them rather than above the line's spacing. */
+  line-height: 1;
+}
+
+[data-dadict-captions] [data-ruby]::before {
+  content: attr(data-ruby);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  font-size: 0.5em;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}

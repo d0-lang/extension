@@ -1,8 +1,11 @@
 /** A cue read a character at a time, with how each is drawn, for subtitles that style parts of a cue. */
-import type { StyleRun, Styled, TextStyle } from "./rows"
+import type { Ruby, StyleRun, Styled, TextStyle } from "./rows"
 
-/** A character of a cue, and how it is drawn. */
-export type Char = { char: string; style: TextStyle | undefined }
+/** A reading over characters, which each of them holds, so the ones a reading is over stay together. */
+export type Reading = { text: string }
+
+/** A character of a cue, how it is drawn, and the reading over it, if any. */
+export type Char = { char: string; style: TextStyle | undefined; reading?: Reading | undefined }
 
 /** One space between words, none at the ends, as `tidy` makes them. A space keeps the style of the first it stands for. */
 const tidyLine = (line: ReadonlyArray<Char>): Array<Char> => {
@@ -11,7 +14,7 @@ const tidyLine = (line: ReadonlyArray<Char>): Array<Char> => {
     if (!/\s/u.test(char.char)) {
       tidied.push(char)
     } else if (tidied.length > 0 && tidied.at(-1)!.char !== " ") {
-      tidied.push({ char: " ", style: char.style })
+      tidied.push({ char: " ", style: char.style, reading: char.reading })
     }
   }
   if (tidied.at(-1)?.char === " ") {
@@ -24,21 +27,48 @@ const sameStyle = (a: TextStyle, b: TextStyle): boolean => JSON.stringify(a) ===
 
 const styleIn = ({ from: _from, to: _to, ...style }: StyleRun): TextStyle => style
 
+/** Where each character starts in the text, as strings count, where a character past U+FFFF takes two. */
+const offsetsOf = (chars: ReadonlyArray<Char>): Array<{ from: number; to: number }> => {
+  let offset = 0
+  return chars.map(({ char }) => ({ from: offset, to: (offset += char.length) }))
+}
+
 /** Where each style runs. Unstyled text has none. */
 const runsOf = (chars: ReadonlyArray<Char>): Array<StyleRun> => {
   const runs: Array<StyleRun> = []
+  const offsets = offsetsOf(chars)
   for (const [index, { style }] of chars.entries()) {
     const last = runs.at(-1)
+    const { from, to } = offsets[index]!
     if (style === undefined) {
       continue
     }
-    if (last !== undefined && last.to === index && sameStyle(styleIn(last), style)) {
-      last.to = index + 1
+    if (last !== undefined && last.to === from && sameStyle(styleIn(last), style)) {
+      last.to = to
     } else {
-      runs.push({ ...style, from: index, to: index + 1 })
+      runs.push({ ...style, from, to })
     }
   }
   return runs
+}
+
+/** Where each reading is over. */
+const rubyOf = (chars: ReadonlyArray<Char>): Array<Ruby> => {
+  const ruby: Array<Ruby & { reading: Reading }> = []
+  const offsets = offsetsOf(chars)
+  for (const [index, { reading }] of chars.entries()) {
+    const last = ruby.at(-1)
+    const { from, to } = offsets[index]!
+    if (reading === undefined) {
+      continue
+    }
+    if (last !== undefined && last.to === from && last.reading === reading) {
+      last.to = to
+    } else {
+      ruby.push({ from, to, text: reading.text, reading })
+    }
+  }
+  return ruby.map(({ from, to, text }) => ({ from, to, text }))
 }
 
 /**
@@ -58,5 +88,10 @@ export const styledOf = (chars: ReadonlyArray<Char>): Styled => {
     ...line,
   ])
   const styles = runsOf(tidied)
-  return { text: tidied.map(({ char }) => char).join(""), ...(styles.length > 0 && { styles }) }
+  const ruby = rubyOf(tidied)
+  return {
+    text: tidied.map(({ char }) => char).join(""),
+    ...(styles.length > 0 && { styles }),
+    ...(ruby.length > 0 && { ruby }),
+  }
 }

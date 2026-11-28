@@ -1,5 +1,5 @@
 /** The text of a cue as subtitle files mark it up, like WebVTT and SRT. */
-import { styledOf, type Char } from "./chars"
+import { styledOf, type Char, type Reading } from "./chars"
 import type { Styled, TextStyle } from "./rows"
 
 /** Entities a cue's text may hold, as WebVTT writes them. */
@@ -14,12 +14,16 @@ const ENTITIES: Record<string, string> = {
   "&rlm;": "‏",
 }
 
+/** A reading in WebVTT's ruby, or the brackets around one, up to its end tag or the ruby's. */
+const READING = /<(r[tp])(?:[.\s][^>]*)?>.*?(?:<\/\1>|(?=<\/ruby>)|$)/gsu
+
 /**
  * A cue's text without its tags, like `<i>`, a speaker's `<v Anna>` or the `{\an8}` SRT files take from ASS, with one
- * space between words and no empty lines.
+ * space between words and no empty lines. Readings over words go, which would otherwise run into them.
  */
 export const plainText = (text: string): string =>
   text
+    .replace(READING, "")
     .replace(/<[^>]*>/gu, "")
     .replace(/\{\\[^}]*\}/gu, "")
     .replace(/&(?:amp|lt|gt|quot|#39|nbsp|lrm|rlm);/gu, (entity) => ENTITIES[entity]!)
@@ -103,25 +107,54 @@ const drawnStyle = ({ color, italic, bold }: TextStyle): TextStyle | undefined =
 /**
  * A cue's text and its styles, from the tags that style it: WebVTT's classes, like `<c.yellow>`, with the colours of
  * `colours` or WebVTT's own names, `<i>`, `<b>`, and SRT's `<font color>`. Other tags go, and spaces are tidied as
- * `plainText` tidies them.
+ * `plainText` tidies them. WebVTT's ruby, like `<ruby>漢字<rt>かんじ</rt></ruby>`, puts its readings over the
+ * characters before each `<rt>`.
  */
 export const styledText = (text: string, colours: ReadonlyMap<string, string> = new Map()): Styled => {
   const open: Array<{ tag: string; style: TextStyle }> = []
   const chars: Array<Char> = []
+  /** The characters of the ruby open now that no reading is over yet. */
+  let base: Array<Char> | undefined
+  /** The reading being read, inside `<rt>`, and whether the text is a bracket for browsers without ruby, in `<rp>`. */
+  let reading: string | undefined
+  let bracket = false
+  const endReading = () => {
+    if (reading !== undefined && base !== undefined && base.length > 0) {
+      const over: Reading = { text: reading.trim() }
+      for (const char of base) {
+        char.reading = over
+      }
+      base = []
+    }
+    reading = undefined
+  }
   for (const [token, close, tag, classes = "", attributes = ""] of text.matchAll(TOKEN)) {
-    if (tag !== undefined) {
+    if (tag === "ruby") {
+      endReading()
+      base = close === "/" ? undefined : []
+    } else if (tag === "rt") {
+      endReading()
+      reading = close === "/" ? undefined : ""
+    } else if (tag === "rp") {
+      bracket = close !== "/"
+    } else if (tag !== undefined) {
       if (close === "/") {
         const at = open.findLastIndex((entry) => entry.tag === tag)
         open.splice(at < 0 ? open.length : at)
       } else {
         open.push({ tag, style: tagStyle(tag, classes, attributes, colours) })
       }
-    } else if (!token.startsWith("<") || token === "<") {
-      if (!token.startsWith("{\\")) {
-        const style = drawnStyle(Object.assign({}, ...open.map((entry) => entry.style)))
-        for (const char of ENTITIES[token] ?? token) {
-          chars.push({ char, style })
-        }
+    } else if ((!token.startsWith("<") || token === "<") && !token.startsWith("{\\") && !bracket) {
+      const decoded = ENTITIES[token] ?? token
+      if (reading !== undefined) {
+        reading += decoded
+        continue
+      }
+      const style = drawnStyle(Object.assign({}, ...open.map((entry) => entry.style)))
+      for (const char of decoded) {
+        const added: Char = { char, style }
+        chars.push(added)
+        base?.push(added)
       }
     }
   }

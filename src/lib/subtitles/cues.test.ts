@@ -51,6 +51,24 @@ describe("shownAt", () => {
     expect(shownAt(cues, 12_500, true)).toBeUndefined()
   })
 
+  it("shows readings over words with the styles off, for the cue before too", () => {
+    const read: Array<Cue> = [
+      { startMs: 0, endMs: 1000, text: "漢字", ruby: [{ from: 0, to: 2, text: "かんじ" }] },
+      {
+        startMs: 1000,
+        endMs: 2000,
+        text: "東京",
+        styles: [{ color: "#ffff00", from: 0, to: 2 }],
+        ruby: [{ from: 0, to: 2, text: "とうきょう" }],
+      },
+    ]
+    expect(shownAt(read, 1500, false)).toEqual({
+      text: "東京",
+      ruby: [{ from: 0, to: 2, text: "とうきょう" }],
+      previous: { text: "漢字", ruby: [{ from: 0, to: 2, text: "かんじ" }] },
+    })
+  })
+
   it("leaves out a cue before that was in another place", () => {
     const placed: Array<Cue> = [
       { startMs: 0, endMs: 1000, text: "Raz" },
@@ -132,6 +150,34 @@ describe("inOrder", () => {
       { startMs: 3000, endMs: 4000, text: "Raz" },
       { startMs: 5000, endMs: 6000, text: "Raz" },
     ])
+  })
+
+  it("moves the readings of a cue that starts with another past that one's text", () => {
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 1000, text: "漢字", ruby: [{ from: 0, to: 2, text: "かんじ" }] },
+        { startMs: 0, endMs: 1000, text: "東京", ruby: [{ from: 0, to: 2, text: "とうきょう" }] },
+      ]),
+    ).toEqual([
+      {
+        startMs: 0,
+        endMs: 1000,
+        text: "漢字\n東京",
+        ruby: [
+          { from: 0, to: 2, text: "かんじ" },
+          { from: 3, to: 5, text: "とうきょう" },
+        ],
+      },
+    ])
+  })
+
+  it("keeps apart cues with the same text and other readings", () => {
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 1000, text: "生", ruby: [{ from: 0, to: 1, text: "なま" }] },
+        { startMs: 1000, endMs: 2000, text: "生", ruby: [{ from: 0, to: 1, text: "せい" }] },
+      ]),
+    ).toHaveLength(2)
   })
 
   it("keeps a cue that carries on the one before as one whatever order its styles name their parts in", () => {

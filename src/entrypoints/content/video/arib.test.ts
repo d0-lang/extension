@@ -44,20 +44,37 @@ describe("captions from Japanese TV", () => {
     ).toBe("京劇団の中での競争は\nとても激しいものでした。")
   })
 
-  it("leave out the reading over a word", () => {
+  it("put the reading over a word above the characters it is over", () => {
     expect(
       read(
         `${SCREEN}[SSZ][APS_12_10][NSZ][YLF][COL_4][COL_5_1]改易となるか[MSZ]　[NSZ]それとも[MSZ][APS_6_17][SSZ]おんごく[MSZ][APS_7_11][NSZ]どこか遠国にでも移封となるのか[MSZ]。`,
-      ).text,
-    ).toBe("改易となるか それとも\nどこか遠国にでも移封となるのか。")
+      ),
+    ).toMatchObject({
+      text: "改易となるか それとも\nどこか遠国にでも移封となるのか。",
+      ruby: [{ from: 15, to: 17, text: "おんごく" }],
+    })
     expect(
       read(
         `${SCREEN}[SSZ][APS_12_13][NSZ][WHF][COL_4][COL_5_1]殿下への年頭の御礼[APS_6_7][SSZ]まこと[NSZ][APS_7_7]真に行かぬおつもりですか[MSZ]。[TIME_63][TIME_7][CS]`,
-      ).text,
-    ).toBe("殿下への年頭の御礼\n真に行かぬおつもりですか。")
+      ),
+    ).toEqual({
+      text: "殿下への年頭の御礼\n真に行かぬおつもりですか。",
+      ruby: [{ from: 10, to: 11, text: "まこと" }],
+    })
+  })
+
+  it("leave out a reading over characters another one is over already", () => {
+    expect(read("[CS][SSZ][APS_14_0]とうきょう[APS_14_2]きょう[NSZ][APS_7_0]東京")).toEqual({
+      text: "東京",
+      ruby: [{ from: 0, to: 2, text: "とうきょう" }],
+    })
+  })
+
+  it("leave out a reading over nothing", () => {
+    expect(read(`${SCREEN}[APS_7_2][WHF]はっ！[APS_6_30][SSZ]よみ`)).toEqual({ text: "はっ！" })
   })
 
   it("keep a line whole around a reading over a word in it", () => {
-    expect(aribMarkup("[CS][APS_7_2]遠[MSZ][APS_6_3][SSZ]えん[MSZ][APS_7_3][NSZ]国")).toBe("遠国")
+    expect(read("[CS][APS_7_2]遠[MSZ][APS_6_3][SSZ]えん[MSZ][APS_7_3][NSZ]国").text).toBe("遠国")
   })
 })

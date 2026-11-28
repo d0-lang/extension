@@ -78,15 +78,49 @@ describe("readAss", () => {
     ).toEqual([{ startMs: 1900, endMs: 3000, text: "Razem" }])
   })
 
-  it("shows a song's kanji and romaji together, after the lead-in, without the readings over the kanji", () => {
+  it("shows a song's kanji and romaji together, after the lead-in, with the readings over the kanji", () => {
     const song = events(
       "Comment: 0,0:00:10.20,0:00:16.12,Kanji,,0,0,0,karaoke,{\\k90}{\\k19}ね{\\k52}ぇ　{\\k17}忘|わ{\\k17}#|す{\\k16}れ{\\k16}な{\\k17}い{\\k27}で",
       "Comment: 0,0:00:11.20,0:00:16.12,Romaji,,0,0,0,karaoke,{\\k19}ne{\\k52}e {\\k17}wa{\\k17}su{\\k16}re{\\k16}na{\\k17}i{\\k27}de",
     )
     expect(readAss(song)).toEqual([
-      { startMs: 11_100, endMs: 16_120, text: "ねぇ 忘れないで" },
+      { startMs: 11_100, endMs: 16_120, text: "ねぇ 忘れないで", ruby: [{ from: 3, to: 4, text: "わす" }] },
       { startMs: 11_100, endMs: 16_120, text: "nee wasurenaide" },
     ])
+  })
+
+  it("puts a reading over each kanji of a karaoke line, and none over a syllable without one", () => {
+    expect(
+      readAss(
+        events(
+          "Dialogue: 0,0:00:01.00,0:00:03.00,OP,,0,0,0,,{\\k10}明|あ{\\k10}#|し{\\k10}#|た{\\k10}の{\\k10}空|そら",
+        ),
+      ),
+    ).toEqual([
+      {
+        startMs: 1000,
+        endMs: 3000,
+        text: "明の空",
+        ruby: [
+          { from: 0, to: 1, text: "あした" },
+          { from: 2, to: 3, text: "そら" },
+        ],
+      },
+    ])
+  })
+
+  it("goes on with a karaoke reading past tags of its own between its syllables", () => {
+    expect(
+      readAss(
+        events("Dialogue: 0,0:00:01.00,0:00:03.00,OP,,0,0,0,,{\\k10}明|あ{\\i1}{\\k10}#|し{\\k10}#|た"),
+      ),
+    ).toMatchObject([{ text: "明", ruby: [{ from: 0, to: 1, text: "あした" }] }])
+  })
+
+  it("keeps a # of a line that is not sung", () => {
+    expect(
+      readAss(events("Dialogue: 0,0:00:01.00,0:00:03.00,Default,,0,0,0,,C{\\i1}#{\\i0} major")),
+    ).toMatchObject([{ text: "C# major" }])
   })
 
   it("keeps one of the same line drawn twice, like an outline under it", () => {
