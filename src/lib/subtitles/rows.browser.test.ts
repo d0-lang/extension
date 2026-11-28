@@ -103,6 +103,17 @@ describe("createRows", () => {
     expect(read.height).toBeCloseTo(plain.height, 0)
   })
 
+  it("draws a reading inside its line's background", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: false }, () => {})
+    show({ text: "我らは賤ヶ岳での戦以来", ruby: [{ from: 3, to: 6, text: "しずがたけ" }] }, "ja", false)
+    const base = root.querySelector<HTMLElement>("[data-ruby]")!
+    // The reading takes the top of its characters' box.
+    expect(base.closest("[data-line]")!.getBoundingClientRect().top).toBeLessThanOrEqual(
+      base.getBoundingClientRect().top,
+    )
+  })
+
   it("takes a click on a reading as one on the word it is over", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: false }, () => {})

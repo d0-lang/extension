@@ -69,6 +69,8 @@
   position: relative;
   display: inline-block;
   padding-top: 0.55em;
+  /* Its box hugs the characters, so the reading sits just above them rather than above the line's spacing. */
+  line-height: 1;
 }
 
 [data-dadict-captions] [data-ruby]::before {
