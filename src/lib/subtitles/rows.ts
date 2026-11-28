@@ -8,8 +8,18 @@ export type TextStyle = { color?: string; italic?: boolean; bold?: boolean }
 /** A style over a cue's text, from the character at `from` up to the one at `to`. */
 export type StyleRun = TextStyle & { from: number; to: number }
 
-/** A cue's text, lines apart with `\n`, and how a creator styled parts of it. */
-export type Styled = { text: string; styles?: ReadonlyArray<StyleRun> | undefined }
+/** A reading over a cue's text, like furigana over kanji, from the character at `from` up to the one at `to`. */
+export type Ruby = { from: number; to: number; text: string }
+
+/**
+ * A cue's text, lines apart with `\n`, how a creator styled parts of it, and the readings over parts of it, in order.
+ * A reading is never part of `text`, so it is not looked up or copied.
+ */
+export type Styled = {
+  text: string
+  styles?: ReadonlyArray<StyleRun> | undefined
+  ruby?: ReadonlyArray<Ruby> | undefined
+}
 
 /**
  * Where a creator put a cue: the point of it that `anchor` names, from 0 at the top left to 8 at the bottom right,
@@ -33,28 +43,66 @@ export type RowSettings = {
 /** How long the cue that ended takes to slide up, and the next one to fade in. */
 const SLIDE_MS = 150
 
+/** A line's words and what is between them. A reading over parts of two words makes them one, read together. */
+const partsOf = (
+  text: string,
+  lang: string,
+  ruby: ReadonlyArray<Ruby>,
+): Array<{ text: string; word: boolean; from: number }> => {
+  const parts: Array<{ text: string; word: boolean; from: number }> = []
+  let offset = 0
+  for (const segment of segmentsOf(text, lang)) {
+    const last = parts.at(-1)
+    if (last !== undefined && ruby.some(({ from, to }) => from < offset && offset < to)) {
+      last.text += segment.text
+      last.word ||= segment.word
+    } else {
+      parts.push({ text: segment.text, word: segment.word, from: offset })
+    }
+    offset += segment.text.length
+  }
+  return parts
+}
+
+/**
+ * Fills `part`, which starts at `from` in its line, with its text. The characters a reading is over get a span of their
+ * own that draws it above them, from an attribute, so it is never the page's text.
+ */
+const fill = (part: HTMLElement, text: string, from: number, ruby: ReadonlyArray<Ruby>) => {
+  let at = 0
+  for (const reading of ruby) {
+    if (reading.from >= from && reading.to <= from + text.length) {
+      const base = document.createElement("span")
+      base.dataset.ruby = reading.text
+      base.textContent = text.slice(reading.from - from, reading.to - from)
+      part.append(text.slice(at, reading.from - from), base)
+      at = reading.to - from
+    }
+  }
+  part.append(text.slice(at))
+}
+
 /**
  * A line with each word in its own span, so hovering and clicking a word need no hit testing.
- * What is between words gets a span too, so a mark over a phrase has no gaps.
+ * What is between words gets a span too, so a mark over a phrase has no gaps. `ruby` counts from the line's start.
  */
 const lineOf = (
   text: string,
   lang: string,
   styleAt: (offset: number) => TextStyle | undefined,
+  ruby: ReadonlyArray<Ruby>,
 ): HTMLElement => {
   const line = document.createElement("span")
   line.dataset.line = ""
   // A right-to-left line keeps its punctuation at its own end.
   line.dir = "auto"
-  let offset = 0
-  for (const segment of segmentsOf(text, lang)) {
+  for (const segment of partsOf(text, lang, ruby)) {
     const part = document.createElement("span")
     if (segment.word) {
       part.dataset.word = ""
     }
-    part.textContent = segment.text
-    paint(part, styleAt(offset))
-    offset += segment.text.length
+    fill(part, segment.text, segment.from, ruby)
+    paint(part, styleAt(segment.from))
     line.append(part)
   }
   return line
@@ -81,7 +129,7 @@ const paint = (part: HTMLElement, style: TextStyle | undefined) => {
  * A cue's lines in one span. A line break in the text, which `pre-line` shows, parts them. A `<br>` or a block per
  * line would end the text a word's sentence is read from, and the server should get the whole cue.
  */
-const cueOf = ({ text, styles = [] }: Styled, lang: string): HTMLElement => {
+const cueOf = ({ text, styles = [], ruby = [] }: Styled, lang: string): HTMLElement => {
   const cue = document.createElement("span")
   cue.dataset.cue = ""
   let start = 0
@@ -89,14 +137,17 @@ const cueOf = ({ text, styles = [] }: Styled, lang: string): HTMLElement => {
     const from = start
     const styleAt = (offset: number) =>
       styles.find((run) => run.from <= from + offset && from + offset < run.to)
-    cue.append(...(index === 0 ? [] : ["\n"]), lineOf(line, lang, styleAt))
+    const lineRuby = ruby
+      .filter((reading) => reading.from >= from && reading.to <= from + line.length)
+      .map((reading) => ({ ...reading, from: reading.from - from, to: reading.to - from }))
+    cue.append(...(index === 0 ? [] : ["\n"]), lineOf(line, lang, styleAt, lineRuby))
     start += line.length + 1
   }
   return cue
 }
 
-/** Tells cues apart by their text and styles. */
-const keyOf = ({ text, styles = [] }: Styled): string => JSON.stringify([text, styles])
+/** Tells cues apart by their text, styles and readings. */
+const keyOf = ({ text, styles = [], ruby = [] }: Styled): string => JSON.stringify([text, styles, ruby])
 
 /**
  * Hides the words of a cue above the row it ends on, as it shows now. The row left keeps its words and breaks, so

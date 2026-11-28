@@ -70,4 +70,27 @@ describe("createRows", () => {
     expect((sky as HTMLElement).style.color).toMatch(/^oklch\(0\.72 /u)
     expect((night as HTMLElement).style.color).toBe("")
   })
+
+  it("draws a reading over its characters, which is not the words' text", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: false }, () => {})
+    show({ text: "どこか遠国に", ruby: [{ from: 3, to: 5, text: "おんごく" }] }, "ja", false)
+    const base = root.querySelector<HTMLElement>("[data-ruby]")!
+    expect(base.textContent).toBe("遠国")
+    expect(base.dataset.ruby).toBe("おんごく")
+    expect(base.closest("[data-word]")?.textContent).toContain("遠国")
+    expect(root.textContent).toBe("どこか遠国に")
+    const reading = getComputedStyle(base, "::before")
+    expect(reading.content).toBe('"おんごく"')
+    // The line makes room for the readings above it.
+    expect(parseFloat(getComputedStyle(base.closest("[data-line]")!).paddingTop)).toBeGreaterThan(0)
+  })
+
+  it("makes the words a reading is over one word", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: false }, () => {})
+    show({ text: "Ich lese gern", ruby: [{ from: 2, to: 6, text: "x" }] }, "de", false)
+    const words = [...root.querySelectorAll("[data-word]")].map((word) => word.textContent)
+    expect(words).toEqual(["Ich lese", "gern"])
+  })
 })

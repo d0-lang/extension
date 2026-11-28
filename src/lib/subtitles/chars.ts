@@ -1,8 +1,11 @@
 /** A cue read a character at a time, with how each is drawn, for subtitles that style parts of a cue. */
-import type { StyleRun, Styled, TextStyle } from "./rows"
+import type { Ruby, StyleRun, Styled, TextStyle } from "./rows"
 
-/** A character of a cue, and how it is drawn. */
-export type Char = { char: string; style: TextStyle | undefined }
+/** A reading over characters, which each of them holds, so the ones a reading is over stay together. */
+export type Reading = { text: string }
+
+/** A character of a cue, how it is drawn, and the reading over it, if any. */
+export type Char = { char: string; style: TextStyle | undefined; reading?: Reading | undefined }
 
 /** One space between words, none at the ends, as `tidy` makes them. A space keeps the style of the first it stands for. */
 const tidyLine = (line: ReadonlyArray<Char>): Array<Char> => {
@@ -11,7 +14,7 @@ const tidyLine = (line: ReadonlyArray<Char>): Array<Char> => {
     if (!/\s/u.test(char.char)) {
       tidied.push(char)
     } else if (tidied.length > 0 && tidied.at(-1)!.char !== " ") {
-      tidied.push({ char: " ", style: char.style })
+      tidied.push({ char: " ", style: char.style, reading: char.reading })
     }
   }
   if (tidied.at(-1)?.char === " ") {
@@ -41,6 +44,23 @@ const runsOf = (chars: ReadonlyArray<Char>): Array<StyleRun> => {
   return runs
 }
 
+/** Where each reading is over. */
+const rubyOf = (chars: ReadonlyArray<Char>): Array<Ruby> => {
+  const ruby: Array<Ruby & { reading: Reading }> = []
+  for (const [index, { reading }] of chars.entries()) {
+    const last = ruby.at(-1)
+    if (reading === undefined) {
+      continue
+    }
+    if (last !== undefined && last.to === index && last.reading === reading) {
+      last.to = index + 1
+    } else {
+      ruby.push({ from: index, to: index + 1, text: reading.text, reading })
+    }
+  }
+  return ruby.map(({ from, to, text }) => ({ from, to, text }))
+}
+
 /**
  * A cue's text from its characters, with `\n` between lines, and where each style runs. Every line is tidied, and an
  * empty one left out. `styles` is left out when nothing is styled.
@@ -58,5 +78,10 @@ export const styledOf = (chars: ReadonlyArray<Char>): Styled => {
     ...line,
   ])
   const styles = runsOf(tidied)
-  return { text: tidied.map(({ char }) => char).join(""), ...(styles.length > 0 && { styles }) }
+  const ruby = rubyOf(tidied)
+  return {
+    text: tidied.map(({ char }) => char).join(""),
+    ...(styles.length > 0 && { styles }),
+    ...(ruby.length > 0 && { ruby }),
+  }
 }

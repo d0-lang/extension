@@ -55,3 +55,30 @@
 [data-dadict-captions] [data-word]:hover:not([data-mark], [data-picked]) {
   background: rgb(255 255 255 / 0.25);
 }
+
+/*
+ * A line with readings over some of its characters, like furigana, is taller by a row of them, so they stay inside its
+ * background and clear of the line above.
+ */
+[data-dadict-captions] [data-line]:has([data-ruby]) {
+  padding-top: 0.55em;
+  line-height: 2.1;
+}
+
+/* Drawn from the attribute, so a reading is never text that is looked up, selected or copied. */
+[data-dadict-captions] [data-ruby] {
+  position: relative;
+}
+
+[data-dadict-captions] [data-ruby]::before {
+  content: attr(data-ruby);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  translate: -50% 0;
+  font-size: 0.5em;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}

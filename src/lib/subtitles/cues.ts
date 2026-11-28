@@ -1,5 +1,5 @@
 /** Cues of a subtitle track, and what of them shows at a time. */
-import type { Place, Shown, StyleRun, Styled } from "$lib/subtitles/rows"
+import type { Place, Ruby, Shown, StyleRun, Styled } from "$lib/subtitles/rows"
 
 /** `text` has its lines apart with `\n`. Styles and a place come only with tracks that set them, like a creator's on YouTube. */
 export type Cue = Styled & { startMs: number; endMs: number; place?: Place | undefined }
@@ -83,17 +83,21 @@ const endedAt = (cues: ReadonlyArray<Cue>, ms: number): number | undefined => {
 
 /** What shows while the cue at `index` does. */
 const shownOf = (cues: ReadonlyArray<Cue>, index: number, styled: boolean): Shown => {
-  const { text, styles, place, startMs } = cues[index]!
+  const { text, styles, ruby, place, startMs } = cues[index]!
   const before = cues[index - 1]
   const follows =
     before !== undefined &&
     startMs - before.endMs <= PREVIOUS_GAP_MS &&
     (!styled || JSON.stringify(before.place) === JSON.stringify(place))
+  // Readings are what the words say, not how they look, so they show without the styles too.
   return {
     text,
     styles: styled ? styles : undefined,
+    ruby,
     place: styled ? place : undefined,
-    previous: follows ? { text: before.text, styles: styled ? before.styles : undefined } : undefined,
+    previous: follows
+      ? { text: before.text, styles: styled ? before.styles : undefined, ruby: before.ruby }
+      : undefined,
   }
 }
 
@@ -128,20 +132,20 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
   for (const cue of sorted) {
     const last = together.at(-1)
     if (last !== undefined && last.startMs === cue.startMs) {
-      const styles = [
-        ...(last.styles ?? []),
-        // Past the first cue's text and the line break after it.
-        ...(cue.styles ?? []).map((run) => ({
-          ...run,
-          from: run.from + last.text.length + 1,
-          to: run.to + last.text.length + 1,
-        })),
-      ]
+      // Past the first cue's text and the line break after it.
+      const shift = <T extends { from: number; to: number }>(run: T): T => ({
+        ...run,
+        from: run.from + last.text.length + 1,
+        to: run.to + last.text.length + 1,
+      })
+      const styles = [...(last.styles ?? []), ...(cue.styles ?? []).map(shift)]
+      const ruby = [...(last.ruby ?? []), ...(cue.ruby ?? []).map(shift)]
       together[together.length - 1] = {
         ...last,
         endMs: Math.max(last.endMs, cue.endMs),
         text: `${last.text}\n${cue.text}`,
         ...(styles.length > 0 && { styles }),
+        ...(ruby.length > 0 && { ruby }),
       }
     } else {
       together.push(cue)
@@ -167,11 +171,15 @@ const MEET_MS = 1
 const sameRun = (a: StyleRun, b: StyleRun): boolean =>
   a.from === b.from && a.to === b.to && a.color === b.color && a.italic === b.italic && a.bold === b.bold
 
-/** Whether two cues show the same, styles and place too. */
+const sameReading = (a: Ruby, b: Ruby): boolean => a.from === b.from && a.to === b.to && a.text === b.text
+
+/** Whether two cues show the same, styles, readings and place too. */
 const sameText = (a: Cue, b: Cue): boolean =>
   a.text === b.text &&
   (a.styles ?? []).length === (b.styles ?? []).length &&
   (a.styles ?? []).every((run, index) => sameRun(run, b.styles![index]!)) &&
+  (a.ruby ?? []).length === (b.ruby ?? []).length &&
+  (a.ruby ?? []).every((reading, index) => sameReading(reading, b.ruby![index]!)) &&
   a.place?.anchor === b.place?.anchor &&
   a.place?.x === b.place?.x &&
   a.place?.y === b.place?.y

@@ -57,6 +57,19 @@ describe("createOverlay", () => {
     )
   })
 
+  it("looks up a word with a reading over it without the reading, in its sentence", () => {
+    let hit: WordHit | undefined
+    const overlay = createOverlay(ctx(), player(), HOST, (picked) => (hit = picked), SETTINGS)
+    overlay.show(
+      { text: "どこか遠国にでも移封となるのか。", ruby: [{ from: 3, to: 5, text: "おんごく" }] },
+      "ja",
+    )
+    document.querySelector<HTMLElement>("[data-ruby]")!.closest<HTMLElement>("[data-word]")!.click()
+    expect(hit?.word).toContain("遠国")
+    expect(hit?.word).not.toContain("おんごく")
+    expect(sentenceAround(hit!.range, hit!.word, "ja")?.text).toBe("どこか遠国にでも移封となるのか。")
+  })
+
   it("keeps a click on a word from the player", () => {
     const box = player()
     const onPlayer = vi.fn()

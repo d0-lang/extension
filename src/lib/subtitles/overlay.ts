@@ -89,10 +89,39 @@ const addStyle = (host: Host) => {
   }
 }
 
-/** Whether `range` covers some of `text`, not only touches it. */
-const overlaps = (range: Range, text: Text): boolean => {
-  const whole = document.createRange()
-  whole.selectNodeContents(text)
+/** The text nodes of `element`, in order, without empty ones. */
+const textsOf = (element: HTMLElement): Array<Text> => {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  const texts: Array<Text> = []
+  while (walker.nextNode()) {
+    texts.push(walker.currentNode as Text)
+  }
+  return texts.filter((text) => text.data !== "")
+}
+
+/**
+ * From the start of `element`'s text to its end, inside its text nodes, as a word's own text node would give. A
+ * reading's characters are in a span of their own inside the word.
+ */
+const textRangeOf = (element: HTMLElement): Range | undefined => {
+  const texts = textsOf(element)
+  const first = texts[0]
+  const last = texts.at(-1)
+  if (first === undefined || last === undefined) {
+    return undefined
+  }
+  const range = document.createRange()
+  range.setStart(first, 0)
+  range.setEnd(last, last.length)
+  return range
+}
+
+/** Whether `range` covers some of `part`'s text, not only touches it. */
+const overlaps = (range: Range, part: HTMLElement): boolean => {
+  const whole = textRangeOf(part)
+  if (whole === undefined) {
+    return false
+  }
   return (
     range.compareBoundaryPoints(Range.END_TO_START, whole) < 0 &&
     range.compareBoundaryPoints(Range.START_TO_END, whole) > 0
@@ -102,8 +131,7 @@ const overlaps = (range: Range, text: Text): boolean => {
 const isCovered = (part: Element | undefined, ranges: ReadonlyArray<Range>): boolean =>
   part instanceof HTMLElement &&
   part.dataset.word !== undefined &&
-  part.firstChild instanceof Text &&
-  ranges.some((range) => overlaps(range, part.firstChild as Text))
+  ranges.some((range) => overlaps(range, part))
 
 /** The words `ranges` cover in `root`, and what is between two of them on a line. */
 const coveredParts = (root: HTMLElement, ranges: ReadonlyArray<Range>): Array<HTMLElement> =>
@@ -132,16 +160,14 @@ const tint = (root: HTMLElement, ranges: ReadonlyArray<Range>): (() => void) => 
   }
 }
 
+/** A click on `word`, which holds a reading's characters in a span of their own when it has one. */
 const hitOn = (word: HTMLElement): WordHit | undefined => {
-  const text = word.firstChild
-  if (!(text instanceof Text)) {
+  const range = textRangeOf(word)
+  if (range === undefined) {
     return undefined
   }
-  const range = document.createRange()
-  range.setStart(text, 0)
-  range.setEnd(text, text.length)
   const { top, bottom, left, right } = range.getBoundingClientRect()
-  return { word: text.data, anchor: { top, bottom, left, right }, element: word, range }
+  return { word: range.toString(), anchor: { top, bottom, left, right }, element: word, range }
 }
 
 /**

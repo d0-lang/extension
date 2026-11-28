@@ -21,8 +21,17 @@ export const activeTrack = (video: HTMLVideoElement): TextTrack | undefined => {
 }
 
 /** A cue's text as plain text, or with its colours when it comes from Japanese TV, which names them by command. */
-const textOf = (text: string): Styled =>
-  isArib(text) ? styledText(aribMarkup(text)) : { text: plainText(text) }
+const textOf = (text: string): Styled => {
+  if (isArib(text)) {
+    return styledText(aribMarkup(text))
+  }
+  if (/<ruby\b/u.test(text)) {
+    // Readings over words, as WebVTT's ruby writes them, are kept, but not the styles the browser would draw.
+    const { text: plain, ruby } = styledText(text)
+    return { text: plain, ...(ruby !== undefined && { ruby }) }
+  }
+  return { text: plainText(text) }
+}
 
 /** `track`'s cues, in the order they show. */
 export const cuesOf = (track: TextTrack): Array<Cue> =>
