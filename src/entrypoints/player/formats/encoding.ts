@@ -88,18 +88,39 @@ export const decodeSubtitles = async (
   if (bytes[0] === 0xfe && bytes[1] === 0xff) {
     return new TextDecoder("utf-16be").decode(bytes)
   }
+  // A file that says it is UTF-8 is, with any broken character in it replaced.
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8").decode(bytes)
+  }
   const utf8 = decode(bytes, "utf-8")
   if (utf8 !== undefined) {
     return utf8
   }
-  if (lang !== undefined) {
-    const named = encodingsOf(lang)
-    const valid = named.map((encoding) => decode(bytes, encoding)).find((text) => text !== undefined)
-    return valid ?? decode(bytes, named[0]!, false)!
+  if (lang === undefined) {
+    return (await found(bytes, TRIED, sample, detect)) ?? new TextDecoder("utf-8").decode(bytes)
   }
-  for (const encoding of TRIED) {
-    const text = decode(bytes, encoding)
-    if (text !== undefined && !HALF_WIDTH_KANA.test(text)) {
+  const named = encodingsOf(lang)
+  // Of a language with more than one, the encoding its text is found in, as one may read the other's bytes too.
+  const chosen = named.length > 1 ? await found(bytes, named, sample, detect) : undefined
+  return chosen ?? readable(bytes, named[0]!) ?? decode(bytes, named[0]!, false)!
+}
+
+/** `bytes` in `encoding`, unless they are not valid in it or come out garbled into half-width katakana. */
+const readable = (bytes: Uint8Array, encoding: string): string | undefined => {
+  const text = decode(bytes, encoding)
+  return text === undefined || HALF_WIDTH_KANA.test(text) ? undefined : text
+}
+
+/** The text of `bytes` in the first of `encodings` whose text `detect` finds a language saved in it in. */
+const found = async (
+  bytes: Uint8Array,
+  encodings: ReadonlyArray<string>,
+  sample: (text: string) => string,
+  detect: Detect,
+): Promise<string | undefined> => {
+  for (const encoding of encodings) {
+    const text = readable(bytes, encoding)
+    if (text !== undefined) {
       const [best] = await detect(sample(text))
       if (
         best !== undefined &&
@@ -110,5 +131,5 @@ export const decodeSubtitles = async (
       }
     }
   }
-  return new TextDecoder("utf-8").decode(bytes)
+  return undefined
 }

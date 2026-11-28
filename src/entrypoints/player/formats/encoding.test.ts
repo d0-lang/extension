@@ -41,6 +41,12 @@ describe("decodeSubtitles", () => {
     expect(await read(new Uint8Array([0xef, 0xbb, 0xbf, ...bytes]).buffer)).toBe(SRT)
   })
 
+  it("reads UTF-8 that says so, with a broken character in it replaced", async () => {
+    const bytes = new TextEncoder().encode("Ça va très bien")
+    const broken = new Uint8Array([0xef, 0xbb, 0xbf, ...bytes, 0xc3])
+    expect(await read(broken.buffer, "fr")).toBe("Ça va très bien\uFFFD")
+  })
+
   it("reads UTF-16 that says so", async () => {
     const le = [
       0xff,
@@ -69,6 +75,14 @@ describe("decodeSubtitles", () => {
   it("takes the most used encoding a language is found in, as text garbled into another script is found too", async () => {
     // Russian in Windows-1251 read as Greek or Thai is found to be Greek or Thai, more surely than Russian.
     expect(await read(bytesOf("ru.windows-1251.srt"))).toContain("Привет")
+  })
+
+  it("tells the encodings of a language apart, as one reads the other's bytes without an error", async () => {
+    // Shift_JIS reads EUC-JP's kana as half-width katakana, and GBK reads Big5.
+    expect(await read(bytesOf("ja.euc-jp.srt"), "ja")).toContain("はい、ありがとうございます。")
+    expect(await read(bytesOf("ja.shift_jis.srt"), "ja")).toContain("はい、ありがとうございます。")
+    expect(await read(bytesOf("zh-Hant.big5.srt"), "zh")).toContain("謝謝你的關心")
+    expect(await read(bytesOf("zh.gbk.srt"), "zh")).toContain("谢谢你的关心")
   })
 
   it("leaves encodings that garbled text is found in as surely to the file's name", async () => {
