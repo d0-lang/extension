@@ -109,6 +109,20 @@ describe("readAss", () => {
     ])
   })
 
+  it("goes on with a karaoke reading past tags of its own between its syllables", () => {
+    expect(
+      readAss(
+        events("Dialogue: 0,0:00:01.00,0:00:03.00,OP,,0,0,0,,{\\k10}明|あ{\\i1}{\\k10}#|し{\\k10}#|た"),
+      ),
+    ).toMatchObject([{ text: "明", ruby: [{ from: 0, to: 1, text: "あした" }] }])
+  })
+
+  it("keeps a # of a line that is not sung", () => {
+    expect(
+      readAss(events("Dialogue: 0,0:00:01.00,0:00:03.00,Default,,0,0,0,,C{\\i1}#{\\i0} major")),
+    ).toMatchObject([{ text: "C# major" }])
+  })
+
   it("keeps one of the same line drawn twice, like an outline under it", () => {
     expect(
       readAss(

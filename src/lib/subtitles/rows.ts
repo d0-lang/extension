@@ -65,21 +65,64 @@ const partsOf = (
 }
 
 /**
- * Fills `part`, which starts at `from` in its line, with its text. The characters a reading is over get a span of their
- * own that draws it above them, from an attribute, so it is never the page's text.
+ * `text`, which starts at `from` in its line, as nodes: a span for each stretch in a style of its own, drawn in it.
+ * Without `inStyles`, the part around it draws its one style.
  */
-const fill = (part: HTMLElement, text: string, from: number, ruby: ReadonlyArray<Ruby>) => {
+const nodesOf = (
+  text: string,
+  from: number,
+  styleAt: (offset: number) => TextStyle | undefined,
+  inStyles: boolean,
+): Array<Node | string> => {
+  if (!inStyles) {
+    return [text]
+  }
+  const nodes: Array<Node | string> = []
+  let start = 0
+  for (let at = 1; at <= text.length; at++) {
+    const style = styleAt(from + start)
+    if (at === text.length || styleAt(from + at) !== style) {
+      const stretch = text.slice(start, at)
+      if (style === undefined) {
+        nodes.push(stretch)
+      } else {
+        const span = document.createElement("span")
+        span.textContent = stretch
+        paint(span, style)
+        nodes.push(span)
+      }
+      start = at
+    }
+  }
+  return nodes
+}
+
+/**
+ * Fills `part`, which starts at `from` in its line, with its text. The characters a reading is over get a span of their
+ * own that draws it above them, from an attribute, so it is never the page's text. `inStyles` is whether the part's
+ * text is in more than one style, as words a reading joins can be.
+ */
+const fill = (
+  part: HTMLElement,
+  text: string,
+  from: number,
+  ruby: ReadonlyArray<Ruby>,
+  styleAt: (offset: number) => TextStyle | undefined,
+  inStyles: boolean,
+) => {
   let at = 0
   for (const reading of ruby) {
     if (reading.from >= from && reading.to <= from + text.length) {
       const base = document.createElement("span")
       base.dataset.ruby = reading.text
-      base.textContent = text.slice(reading.from - from, reading.to - from)
-      part.append(text.slice(at, reading.from - from), base)
+      base.append(
+        ...nodesOf(text.slice(reading.from - from, reading.to - from), reading.from, styleAt, inStyles),
+      )
+      part.append(...nodesOf(text.slice(at, reading.from - from), from + at, styleAt, inStyles), base)
       at = reading.to - from
     }
   }
-  part.append(text.slice(at))
+  part.append(...nodesOf(text.slice(at), from + at, styleAt, inStyles))
 }
 
 /**
@@ -101,8 +144,14 @@ const lineOf = (
     if (segment.word) {
       part.dataset.word = ""
     }
-    fill(part, segment.text, segment.from, ruby)
-    paint(part, styleAt(segment.from))
+    const style = styleAt(segment.from)
+    const inStyles = Array.from({ length: segment.text.length }, (_, at) => styleAt(segment.from + at)).some(
+      (other) => other !== style,
+    )
+    fill(part, segment.text, segment.from, ruby, styleAt, inStyles)
+    if (!inStyles) {
+      paint(part, style)
+    }
     line.append(part)
   }
   return line

@@ -63,6 +63,13 @@ describe("captions from Japanese TV", () => {
     })
   })
 
+  it("leave out a reading over characters another one is over already", () => {
+    expect(read("[CS][SSZ][APS_14_0]とうきょう[APS_14_2]きょう[NSZ][APS_7_0]東京")).toEqual({
+      text: "東京",
+      ruby: [{ from: 0, to: 2, text: "とうきょう" }],
+    })
+  })
+
   it("leave out a reading over nothing", () => {
     expect(read(`${SCREEN}[APS_7_2][WHF]はっ！[APS_6_30][SSZ]よみ`)).toEqual({ text: "はっ！" })
   })

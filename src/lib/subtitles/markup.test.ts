@@ -42,6 +42,14 @@ describe("ruby", () => {
     })
   })
 
+  it("counts characters past U+FFFF as strings do, two each", () => {
+    expect(styledText("<c.yellow><ruby>𠮷<rt>よし</rt></ruby>野家</c>")).toEqual({
+      text: "𠮷野家",
+      styles: [{ color: "#ffff00", from: 0, to: 4 }],
+      ruby: [{ from: 0, to: 2, text: "よし" }],
+    })
+  })
+
   it("counts a reading from where tidied spaces leave its characters", () => {
     expect(styledText("  Ich  <ruby>lese<rt>reading</rt></ruby>")).toEqual({
       text: "Ich lese",

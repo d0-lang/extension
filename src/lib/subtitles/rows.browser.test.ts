@@ -125,6 +125,41 @@ describe("createRows", () => {
     expect(hit?.closest("[data-word]")).toBe(base.closest("[data-word]"))
   })
 
+  it("takes a click on a reading wider than its characters as one on them, out to its ends", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: false }, () => {})
+    show({ text: "志を持つ", ruby: [{ from: 0, to: 1, text: "こころざし" }] }, "ja", false)
+    const base = root.querySelector<HTMLElement>("[data-ruby]")!
+    const box = base.getBoundingClientRect()
+    const top = box.top + parseFloat(getComputedStyle(base).paddingTop) / 2
+    // The reading is wider than 志, so its last kana stand out past the character's box.
+    const hit = document.elementFromPoint(box.right + box.width * 0.4, top)
+    expect(hit?.closest("[data-word]")).toBe(base.closest("[data-word]"))
+  })
+
+  it("keeps the styles of the words a reading joins", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: false }, () => {})
+    show(
+      {
+        text: "one two",
+        styles: [
+          { color: "#ff0000", from: 0, to: 3 },
+          { color: "#0000ff", from: 4, to: 7 },
+        ],
+        ruby: [{ from: 2, to: 5, text: "x" }],
+      },
+      "en",
+      false,
+    )
+    const colourOf = (text: string) =>
+      [...root.querySelectorAll<HTMLElement>("[data-line] span")].find(
+        (span) => span.children.length === 0 && span.textContent === text,
+      )?.style.color
+    expect(colourOf("on")).not.toBe(colourOf("wo"))
+    expect(root.querySelector("[data-word]")?.textContent).toBe("one two")
+  })
+
   it("makes the words a reading is over one word", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: false }, () => {})

@@ -108,11 +108,14 @@ const baseOf = (reading: Placed, chars: ReadonlyArray<Placed>): Array<number> =>
 export const aribMarkup = (text: string): string => {
   const { chars, readings } = layOut(text)
   const over = new Map<number, { reading: string; last: number }>()
+  /** The characters a reading is over already, which a second one over any of them leaves alone. */
+  const taken = new Set<number>()
   for (const reading of readings) {
     const base = baseOf(reading, chars)
     const first = base[0]
-    if (first !== undefined && base.every((index, at) => index === first + at && !over.has(index))) {
+    if (first !== undefined && base.every((index, at) => index === first + at && !taken.has(index))) {
       over.set(first, { reading: reading.text, last: base.at(-1)! })
+      base.forEach((index) => taken.add(index))
     }
   }
   let markup = ""

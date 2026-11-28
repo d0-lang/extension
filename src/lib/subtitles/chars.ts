@@ -27,18 +27,26 @@ const sameStyle = (a: TextStyle, b: TextStyle): boolean => JSON.stringify(a) ===
 
 const styleIn = ({ from: _from, to: _to, ...style }: StyleRun): TextStyle => style
 
+/** Where each character starts in the text, as strings count, where a character past U+FFFF takes two. */
+const offsetsOf = (chars: ReadonlyArray<Char>): Array<{ from: number; to: number }> => {
+  let offset = 0
+  return chars.map(({ char }) => ({ from: offset, to: (offset += char.length) }))
+}
+
 /** Where each style runs. Unstyled text has none. */
 const runsOf = (chars: ReadonlyArray<Char>): Array<StyleRun> => {
   const runs: Array<StyleRun> = []
+  const offsets = offsetsOf(chars)
   for (const [index, { style }] of chars.entries()) {
     const last = runs.at(-1)
+    const { from, to } = offsets[index]!
     if (style === undefined) {
       continue
     }
-    if (last !== undefined && last.to === index && sameStyle(styleIn(last), style)) {
-      last.to = index + 1
+    if (last !== undefined && last.to === from && sameStyle(styleIn(last), style)) {
+      last.to = to
     } else {
-      runs.push({ ...style, from: index, to: index + 1 })
+      runs.push({ ...style, from, to })
     }
   }
   return runs
@@ -47,15 +55,17 @@ const runsOf = (chars: ReadonlyArray<Char>): Array<StyleRun> => {
 /** Where each reading is over. */
 const rubyOf = (chars: ReadonlyArray<Char>): Array<Ruby> => {
   const ruby: Array<Ruby & { reading: Reading }> = []
+  const offsets = offsetsOf(chars)
   for (const [index, { reading }] of chars.entries()) {
     const last = ruby.at(-1)
+    const { from, to } = offsets[index]!
     if (reading === undefined) {
       continue
     }
-    if (last !== undefined && last.to === index && last.reading === reading) {
-      last.to = index + 1
+    if (last !== undefined && last.to === from && last.reading === reading) {
+      last.to = to
     } else {
-      ruby.push({ from: index, to: index + 1, text: reading.text, reading })
+      ruby.push({ from, to, text: reading.text, reading })
     }
   }
   return ruby.map(({ from, to, text }) => ({ from, to, text }))

@@ -63,7 +63,8 @@
 
 /*
  * The characters a reading is over make room for it above them, which grows only their row, and only upward. The
- * reading is drawn from the attribute, so it is never text that is looked up, selected or copied.
+ * reading is drawn from the attribute, so it is never text that is looked up, selected or copied, and a click on it,
+ * also where it is wider than them, is one on them.
  */
 [data-dadict-captions] [data-ruby] {
   position: relative;
@@ -83,5 +84,4 @@
   font-weight: 400;
   line-height: 1;
   white-space: nowrap;
-  pointer-events: none;
 }

@@ -129,8 +129,12 @@ const charsOf = (text: string, base: Pen, pens: ReadonlyMap<string, Pen>): Array
       pen = overridden(pen, part, base, pens)
       continue
     }
+    // Blocks next to each other leave nothing between them, which ends no reading.
+    if (part === "") {
+      continue
+    }
     const { base: said, reading } = karaoke ? furiganaOf(part) : { base: part, reading: undefined }
-    if (said === "#") {
+    if (karaoke && said === "#") {
       if (last !== undefined && reading !== undefined) {
         last.text += reading
       }
