@@ -152,7 +152,7 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
     .filter(({ startMs, endMs }) => startMs < endMs)
     .reduce<Array<Cue>>((joined, cue) => {
       const last = joined.at(-1)
-      if (last !== undefined && last.endMs === cue.startMs && sameText(last, cue)) {
+      if (last !== undefined && Math.abs(cue.startMs - last.endMs) < MEET_MS && sameText(last, cue)) {
         joined[joined.length - 1] = { ...last, endMs: cue.endMs }
       } else {
         joined.push(cue)
@@ -160,6 +160,9 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
       return joined
     }, [])
 }
+
+/** Cues this close meet, as times read from a stream can be off by a hair either way. */
+const MEET_MS = 1
 
 /** Whether two cues show the same, styles and place too. */
 const sameText = (a: Cue, b: Cue): boolean =>

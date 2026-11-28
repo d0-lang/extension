@@ -133,4 +133,13 @@ describe("inOrder", () => {
       { startMs: 5000, endMs: 6000, text: "Raz" },
     ])
   })
+
+  it("keeps a cue that carries on the one before as one when their times are a hair apart", () => {
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 674505.1333333333, text: "Raz" },
+        { startMs: 674505.1333333557, endMs: 680000, text: "Raz" },
+      ]),
+    ).toEqual([{ startMs: 0, endMs: 680000, text: "Raz" }])
+  })
 })
