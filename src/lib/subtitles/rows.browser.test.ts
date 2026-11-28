@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
+import { readableColour } from "./colour"
 import { createRows } from "./rows"
 import "./rows.css"
 
@@ -156,7 +157,14 @@ describe("createRows", () => {
       [...root.querySelectorAll<HTMLElement>("[data-line] span")].find(
         (span) => span.children.length === 0 && span.textContent === text,
       )?.style.color
-    expect(colourOf("on")).not.toBe(colourOf("wo"))
+    // As an element's style reads a colour back, lightened the way the rows draw a dark one.
+    const drawn = (colour: string) => {
+      const probe = document.createElement("span")
+      probe.style.color = readableColour(colour) ?? ""
+      return probe.style.color
+    }
+    expect(colourOf("on")).toBe(drawn("#ff0000"))
+    expect(colourOf("wo")).toBe(drawn("#0000ff"))
     expect(root.querySelector("[data-word]")?.textContent).toBe("one two")
   })
 
