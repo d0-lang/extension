@@ -71,3 +71,19 @@ it("reads the whole file once for all of its pieces", async () => {
   await new Promise((resolve) => setTimeout(resolve, 200))
   expect(text).toHaveBeenCalledOnce()
 })
+
+it("reads a file that failed again only when the player asks for it again, not on its own request", async () => {
+  const requests = vi.spyOn(window, "fetch")
+  const files = watchSiteFiles(ctx, { ...site, file: /\/missing\.ttml$/u })
+  const asked = () => requests.mock.calls.filter(([url]) => String(url).endsWith("/missing.ttml")).length
+  await fetch("/missing.ttml")
+  await vi.waitFor(() => expect(asked()).toBe(2))
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  expect(asked()).toBe(2)
+  await fetch("/missing.ttml")
+  await vi.waitFor(() => expect(asked()).toBe(4))
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  expect(asked()).toBe(4)
+  expect(files.track()).toBeUndefined()
+  requests.mockRestore()
+})

@@ -68,16 +68,32 @@ export const watchSiteFiles = (
   let track: Track | undefined
   let latest: Request | undefined
   let reads = 0
+  /**
+   * The file read last, and from when until when. The page lists the extension's own requests with the player's, so a
+   * request for it in that time is the read's, which would otherwise start another read once it failed.
+   */
+  let reading: { name: string; from: number; to: number } | undefined
+  const isReading = (name: string, start: number): boolean =>
+    reading !== undefined && name === reading.name && start >= reading.from && start <= reading.to
 
   const read = (file: SiteFile, url: string, number: number) => {
     track = undefined
+    const from = performance.now()
+    reading = { name: file.name, from, to: Infinity }
+    const done = () => {
+      if (reading?.from === from) {
+        reading = { ...reading, to: performance.now() }
+      }
+    }
     void file.text().match(
       (text) => {
+        done()
         if (latest?.read === number) {
           track = trackOf(text, site, url)
         }
       },
       (error) => {
+        done()
         console.warn("Could not read the subtitle file", file.name, error)
         if (latest?.read === number) {
           latest = { ...latest, failed: true }
@@ -89,7 +105,7 @@ export const watchSiteFiles = (
   const observer = new PerformanceObserver((entries) => {
     for (const { name, startTime } of entries.getEntries()) {
       const file = site.file.test(name) ? fileOf(site, name) : undefined
-      if (file !== undefined) {
+      if (file !== undefined && !isReading(file.name, startTime)) {
         const next = requested(latest, file.name, startTime, reads + 1)
         latest = next.latest
         if (next.read) {
