@@ -33,6 +33,9 @@ const trackOf = (text: string, site: SiteFiles, url: string): Track => {
 const fileOf = (site: SiteFiles, url: string): SiteFile | undefined =>
   site.wholeFile === undefined ? { name: url, text: () => fetchText(url) } : site.wholeFile(url)
 
+/** How many reads are kept to tell the extension's requests from the player's, more than the player makes at once. */
+const READS_KEPT = 8
+
 /** A read of a file the player asked for, and when it last asked for it. */
 type Request = { url: string; start: number; failed: boolean; read: number }
 
@@ -69,21 +72,23 @@ export const watchSiteFiles = (
   let latest: Request | undefined
   let reads = 0
   /**
-   * The file read last, and from when until when. The page lists the extension's own requests with the player's, so a
-   * request for it in that time is the read's, which would otherwise start another read once it failed.
+   * Each file read, and from when until when. The page lists the extension's own requests with the player's, so a
+   * request for one in that time is the read's, which would otherwise start another read once it failed, or a read of
+   * an older file once the player asked for another.
    */
-  let reading: { name: string; from: number; to: number } | undefined
+  const reading: Array<{ name: string; from: number; to: number }> = []
   const isReading = (name: string, start: number): boolean =>
-    reading !== undefined && name === reading.name && start >= reading.from && start <= reading.to
+    reading.some((read) => name === read.name && start >= read.from && start <= read.to)
 
   const read = (file: SiteFile, url: string, number: number) => {
     track = undefined
-    const from = performance.now()
-    reading = { name: file.name, from, to: Infinity }
+    const record = { name: file.name, from: performance.now(), to: Infinity }
+    reading.push(record)
+    if (reading.length > READS_KEPT) {
+      reading.shift()
+    }
     const done = () => {
-      if (reading?.from === from) {
-        reading = { ...reading, to: performance.now() }
-      }
+      record.to = performance.now()
     }
     void file.text().match(
       (text) => {

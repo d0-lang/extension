@@ -87,3 +87,15 @@ it("reads a file that failed again only when the player asks for it again, not o
   expect(files.track()).toBeUndefined()
   requests.mockRestore()
 })
+
+it("reads the file the player asked for last, when it asks for two at once", async () => {
+  const requests = vi.spyOn(window, "fetch")
+  const files = watchSiteFiles(ctx, { ...site, file: /\/fixtures\/ard\.ttml\?(?:first|second)$/u })
+  const asked = (file: string) =>
+    requests.mock.calls.filter(([url]) => String(url).endsWith(`?${file}`)).length
+  await Promise.all([fetch(`${FIXTURE}?first`), fetch(`${FIXTURE}?second`)])
+  await vi.waitFor(() => expect(files.track()).toBeDefined())
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  expect([asked("first"), asked("second")]).toEqual([2, 2])
+  requests.mockRestore()
+})
