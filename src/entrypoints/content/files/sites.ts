@@ -206,7 +206,35 @@ const RTVE: SiteFiles = {
   host: RTVE_HOST,
 }
 
-const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF, RTVE]
+/** DW's video.js controls show while the video is paused or the viewer uses the player, its seek bar along the bottom. */
+const DW_HOST: SiteFiles["host"] = {
+  bars: (player) =>
+    clearOf(
+      player,
+      player.matches(".vjs-user-inactive.vjs-playing") ? undefined : player.querySelector(".vjs-control-bar"),
+    ),
+  ownSubtitles: ".vjs-text-track-display",
+  ownControls: ".vjs-control-bar, .vjs-big-play-button",
+}
+
+/**
+ * DW Learn German's player is video.js, which keeps the cues to itself. Its subtitles are a whole WebVTT file, always
+ * in German, which the page's own language does not say, as it is the language the course is taught in.
+ */
+const DW: SiteFiles = {
+  id: "dw",
+  hosts: /^learngerman\.dw\.com$/u,
+  file: /^https:\/\/static\.dw\.com\/binaries\/subtitles\/.+\.vtt$/u,
+  format: "webvtt",
+  lang: () => "de",
+  player: (video) => video.closest<HTMLElement>(".video-js") ?? undefined,
+  // Its menu stays in the player when closed, with "captions off" as a choice.
+  isOn: (video) =>
+    video.closest(".video-js")?.querySelector('.vjs-subtitles-menu-item[aria-checked="true"]') != null,
+  host: DW_HOST,
+}
+
+const SITES: ReadonlyArray<SiteFiles> = [ARD, ARTE, ZDF, RTVE, DW]
 
 /** The site `hostname` is, if its player is one of these. */
 export const siteFilesOf = (hostname: string): SiteFiles | undefined =>

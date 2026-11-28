@@ -192,3 +192,51 @@ describe("RTVE Play", () => {
     expect(rtve.host.bars(fullscreen("vjs-user-inactive vjs-playing")).bottom).toBeCloseTo(600 * 0.12)
   })
 })
+
+const dw = siteFilesOf("learngerman.dw.com")!
+
+describe("DW Learn German", () => {
+  it("reads its subtitle files in German, not its video playlists", () => {
+    const file =
+      "https://static.dw.com/binaries/subtitles/d05b78c9157f70b2fb0fadc3cb07512db4239ca34177ecb961024c4f04baf3d2e6e90c852a8cab385d518bc8e5704ade82aaafdb6fb66f10e65129954fd6e167/A1_E0_L1_F1.vtt"
+    expect(dw.file.test(file)).toBe(true)
+    expect(
+      dw.file.test("https://hlsvod.dw.com/i/Events/mp4/nicosweg/A1_E0_L1_F1_,sd,hd,.mp4.csmil/master.m3u8"),
+    ).toBe(false)
+    expect(dw.lang?.(file)).toBe("de")
+    expect(siteFilesOf("www.dw.com")).toBeUndefined()
+  })
+
+  /** DW's player as far as the rule reads it: its controls 144 px up a 810 px tall player. */
+  const dwPlayer = (state: string, checked: "de" | "off") => {
+    document.body.innerHTML = `
+      <div class="video-js vjs-has-started ${state}" style="position: absolute; width: 1440px; height: 810px">
+        <video></video>
+        <div class="vjs-text-track-display"></div>
+        <div class="vjs-control-bar" style="position: absolute; bottom: 0; height: 144px; width: 100%"></div>
+        <ul>
+          <li class="vjs-menu-item" aria-checked="${checked === "off"}">captions off</li>
+          <li class="vjs-menu-item vjs-subtitles-menu-item" aria-checked="${checked === "de"}">Deutsch/Deutsch</li>
+        </ul>
+      </div>`
+    return {
+      player: document.querySelector<HTMLElement>(".video-js")!,
+      video: document.querySelector("video")!,
+    }
+  }
+
+  it("has its subtitles on while one is checked in its menu, in the player it names", () => {
+    const on = dwPlayer("vjs-paused", "de")
+    expect(dw.player?.(on.video)).toBe(on.player)
+    expect(replacesOwn(dw, on.video, on.player)).toBe(true)
+    expect(dw.isOn(dwPlayer("vjs-paused", "off").video)).toBe(false)
+  })
+
+  it("keeps the subtitles above its controls only while they show", () => {
+    expect(dw.host.bars(dwPlayer("vjs-paused vjs-user-inactive", "de").player).bottom).toBe(144)
+    expect(dw.host.bars(dwPlayer("vjs-playing vjs-user-active", "de").player).bottom).toBe(144)
+    expect(dw.host.bars(dwPlayer("vjs-playing vjs-user-inactive", "de").player).bottom).toBeCloseTo(
+      810 * 0.12,
+    )
+  })
+})
