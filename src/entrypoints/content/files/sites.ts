@@ -168,21 +168,25 @@ const ZDF: SiteFiles = {
 
 /**
  * Once a video starts, RTVE shortens the picture for a strip of controls under it, so the subtitles keep clear of all
- * of it. In fullscreen, the controls are over the picture.
+ * of it. In fullscreen, the controls are over the picture, so the subtitles move above its seek bar while they show.
  */
 const RTVE_HOST: SiteFiles["host"] = {
   bars: (player) => {
     const picture = player.querySelector<HTMLElement>(".vjs-tech") ?? player
-    const strip = player.getBoundingClientRect().bottom - picture.getBoundingClientRect().bottom
-    return { top: 0, bottom: Math.max(0, strip) + VIDEO_HOST.bars(picture).bottom }
+    const strip = Math.max(0, player.getBoundingClientRect().bottom - picture.getBoundingClientRect().bottom)
+    // Like video.js, RTVE fades its controls out only while the video plays with nobody using it.
+    const idle = player.matches(".vjs-has-started.vjs-user-inactive:not(.vjs-paused)")
+    const controls = clearOf(player, idle ? undefined : player.querySelector(".vjs-progress-control"))
+    return { top: 0, bottom: Math.max(strip + VIDEO_HOST.bars(picture).bottom, controls.bottom) }
   },
   ownSubtitles: ".theoplayer-texttracks",
   // The bars, the skip buttons and the play button that covers the whole player.
   ownControls: ".vjs-control-bar",
   // Its shade stops at the seek bar, and is darkest right behind the subtitles.
   ownShade: ".theo-player-wrapper",
-  // In fullscreen, a second play button sits between the skip buttons, over the picture, where the subtitles go.
-  inTheWay: ".custom-big-play-pause-button",
+  // In fullscreen, a second play button sits between the skip buttons, over the picture, where the subtitles go. On a
+  // phone, it is the only one, and higher up.
+  inTheWay: ".theoplayer-skin:not(.theo-mobile) .custom-big-play-pause-button",
 }
 
 /** RTVE Play's player is THEOplayer, in a video.js skin, which streams the subtitles picked in its menu in pieces. */
