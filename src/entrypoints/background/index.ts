@@ -10,7 +10,7 @@ import { action, openSetup, openSetupIfUnbound, syncAction, syncBadge } from "./
 import { inAnki } from "./anki"
 import { fetchAudio } from "./audio"
 import { checkServers, isDailyCheck, scheduleDailyCheck } from "./check"
-import { answer } from "./lookup"
+import { answer, senderHost } from "./lookup"
 import { createMenuItem, listenToMenu, showMenuItem } from "./menu"
 import { isServerNotification, notify } from "./notifications"
 import { openReportBeside } from "./report"
@@ -107,7 +107,7 @@ export default defineBackground(() => {
     if (!isLookupRequestMessage(message)) {
       return
     }
-    void answer(message, sender.url).then(sendResponse)
+    void answer(message, senderHost(sender)).then(sendResponse)
     // Chrome only keeps the channel open for `sendResponse` when the listener returns true.
     return true
   })

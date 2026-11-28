@@ -74,7 +74,8 @@ export const createPopoverHost = (ctx: ContentScriptContext, css?: string) => {
         }
       },
     })
-    if (thisOpen !== latestOpen) {
+    // A context invalidated while this was pending, like by a frame's new document, no longer removes what it mounts.
+    if (thisOpen !== latestOpen || ctx.isInvalid) {
       return
     }
     ui.mount()
