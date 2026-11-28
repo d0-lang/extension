@@ -86,6 +86,23 @@ describe("createRows", () => {
     expect(parseFloat(getComputedStyle(base.closest("[data-line]")!).paddingTop)).toBeGreaterThan(0)
   })
 
+  it("makes room for readings above their row only, leaving the line below where it was", () => {
+    const gapBelowFirst = (ruby: Array<{ from: number; to: number; text: string }>) => {
+      const root = centred()
+      const show = createRows(root, { previous: true, slide: false }, () => {})
+      show({ text: "我らは賤ヶ岳での戦以来\n命を的に数々の功を", ruby }, "ja", false)
+      const [first, second] = [...root.querySelectorAll("[data-line]")].map((line) =>
+        line.getBoundingClientRect(),
+      )
+      root.parentElement!.remove()
+      return { gap: second!.top - first!.bottom, height: second!.height }
+    }
+    const plain = gapBelowFirst([])
+    const read = gapBelowFirst([{ from: 3, to: 6, text: "しずがたけ" }])
+    expect(read.gap).toBeCloseTo(plain.gap, 0)
+    expect(read.height).toBeCloseTo(plain.height, 0)
+  })
+
   it("makes the words a reading is over one word", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: false }, () => {})
