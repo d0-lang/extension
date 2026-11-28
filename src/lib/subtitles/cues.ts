@@ -1,5 +1,5 @@
 /** Cues of a subtitle track, and what of them shows at a time. */
-import type { Place, Shown, Styled } from "$lib/subtitles/rows"
+import type { Place, Shown, StyleRun, Styled } from "$lib/subtitles/rows"
 
 /** `text` has its lines apart with `\n`. Styles and a place come only with tracks that set them, like a creator's on YouTube. */
 export type Cue = Styled & { startMs: number; endMs: number; place?: Place | undefined }
@@ -164,8 +164,14 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
 /** Cues this close meet, as times read from a stream can be off by a hair either way. */
 const MEET_MS = 1
 
+const sameRun = (a: StyleRun, b: StyleRun): boolean =>
+  a.from === b.from && a.to === b.to && a.color === b.color && a.italic === b.italic && a.bold === b.bold
+
 /** Whether two cues show the same, styles and place too. */
 const sameText = (a: Cue, b: Cue): boolean =>
   a.text === b.text &&
-  JSON.stringify(a.styles) === JSON.stringify(b.styles) &&
-  JSON.stringify(a.place) === JSON.stringify(b.place)
+  (a.styles ?? []).length === (b.styles ?? []).length &&
+  (a.styles ?? []).every((run, index) => sameRun(run, b.styles![index]!)) &&
+  a.place?.anchor === b.place?.anchor &&
+  a.place?.x === b.place?.x &&
+  a.place?.y === b.place?.y

@@ -56,4 +56,8 @@ describe("captions from Japanese TV", () => {
       ).text,
     ).toBe("殿下への年頭の御礼\n真に行かぬおつもりですか。")
   })
+
+  it("keep a line whole around a reading over a word in it", () => {
+    expect(aribMarkup("[CS][APS_7_2]遠[MSZ][APS_6_3][SSZ]えん[MSZ][APS_7_3][NSZ]国")).toBe("遠国")
+  })
 })

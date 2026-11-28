@@ -31,13 +31,20 @@ const SMALL = "SSZ"
 export const aribMarkup = (text: string): string => {
   let size = "NSZ"
   let colour: string | undefined
+  /** The row text goes on next, and the row of the text written last, which a reading between them leaves alone. */
   let row: number | undefined
+  let written: number | undefined
   let markup = ""
   let at = 0
   const write = (part: string) => {
-    if (size !== SMALL && part !== "") {
-      markup += colour === undefined ? part : `<c.${colour}>${part}</c>`
+    if (size === SMALL || part === "") {
+      return
     }
+    if (written !== undefined && row !== written) {
+      markup += "\n"
+    }
+    written = row
+    markup += colour === undefined ? part : `<c.${colour}>${part}</c>`
   }
   for (const { 0: command, 1: name = "", 2: numbers = "", index } of text.matchAll(COMMAND)) {
     write(text.slice(at, index))
@@ -47,11 +54,7 @@ export const aribMarkup = (text: string): string => {
     } else if (name in COLOURS) {
       colour = COLOURS[name]
     } else if (name === "APS") {
-      const placed = Number(numbers.split("_")[1]) / (size === SMALL ? 2 : 1)
-      if (row !== undefined && placed !== row) {
-        markup += "\n"
-      }
-      row = placed
+      row = Number(numbers.split("_")[1]) / (size === SMALL ? 2 : 1)
     }
   }
   write(text.slice(at))
