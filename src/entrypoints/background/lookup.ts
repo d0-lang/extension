@@ -3,12 +3,18 @@ import { boundLanguages, lookupWord, rankLanguages } from "$lib/dict"
 import type { LookupReply, LookupRequestMessage } from "$lib/messages"
 import { isSiteBlocked } from "$lib/storage"
 
-/** `pageUrl` is the frame the word was picked in. Without one, the site counts as blocked. */
+/**
+ * The host of the frame a message came from. A frame without one of its own, like `about:blank`, has the origin of
+ * the page that made it. Unset when neither says, like for a sandboxed frame.
+ */
+export const senderHost = ({ url, origin }: { url?: string; origin?: string }): string | undefined =>
+  URL.parse(url ?? "")?.hostname || URL.parse(origin ?? "")?.hostname || undefined
+
+/** `host` is the frame the word was picked in. Without one, the site counts as blocked. */
 export const answer = async (
   { word, hints, context }: LookupRequestMessage,
-  pageUrl: string | undefined,
+  host: string | undefined,
 ): Promise<LookupReply> => {
-  const host = URL.parse(pageUrl ?? "")?.hostname
   const [{ languages, paused }, siteBlocked] = await Promise.all([
     boundLanguages().unwrapOr({ languages: [], paused: [] }),
     host === undefined ? true : isSiteBlocked(host),
