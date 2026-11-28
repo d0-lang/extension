@@ -103,6 +103,17 @@ describe("createRows", () => {
     expect(read.height).toBeCloseTo(plain.height, 0)
   })
 
+  it("takes a click on a reading as one on the word it is over", () => {
+    const root = centred()
+    const show = createRows(root, { previous: true, slide: false }, () => {})
+    show({ text: "我らは賤ヶ岳での戦以来", ruby: [{ from: 3, to: 6, text: "しずがたけ" }] }, "ja", false)
+    const base = root.querySelector<HTMLElement>("[data-ruby]")!
+    const box = base.getBoundingClientRect()
+    const reading = parseFloat(getComputedStyle(base).paddingTop) / 2
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + reading)
+    expect(hit?.closest("[data-word]")).toBe(base.closest("[data-word]"))
+  })
+
   it("makes the words a reading is over one word", () => {
     const root = centred()
     const show = createRows(root, { previous: true, slide: false }, () => {})
