@@ -167,8 +167,8 @@ const ZDF: SiteFiles = {
 }
 
 /**
- * RTVE's controls take a strip under the picture once a video starts, as RTVE shortens the picture for them, so the
- * subtitles keep clear of all of it.
+ * Once a video starts, RTVE shortens the picture for a strip of controls under it, so the subtitles keep clear of all
+ * of it. In fullscreen, the controls are over the picture.
  */
 const RTVE_HOST: SiteFiles["host"] = {
   bars: (player) => {
@@ -177,6 +177,12 @@ const RTVE_HOST: SiteFiles["host"] = {
     return { top: 0, bottom: Math.max(0, strip) + VIDEO_HOST.bars(picture).bottom }
   },
   ownSubtitles: ".theoplayer-texttracks",
+  // The bars, the skip buttons and the play button that covers the whole player.
+  ownControls: ".vjs-control-bar",
+  // Its shade stops at the seek bar, and is darkest right behind the subtitles.
+  ownShade: ".theo-player-wrapper",
+  // In fullscreen, a second play button sits between the skip buttons, over the picture, where the subtitles go.
+  inTheWay: ".custom-big-play-pause-button",
 }
 
 /** RTVE Play's player is THEOplayer, in a video.js skin, which streams the subtitles picked in its menu in pieces. */
