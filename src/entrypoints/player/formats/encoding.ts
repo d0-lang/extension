@@ -40,8 +40,15 @@ const WESTERN = "windows-1252"
 const encodingsOf = (lang: string): ReadonlyArray<string> =>
   ENCODINGS[lang] ?? ENCODINGS[lang.split("-")[0]!] ?? [WESTERN]
 
-/** Every encoding tried on a file whose name says no language. */
-const TRIED = [...new Set([WESTERN, ...Object.values(ENCODINGS).flat()])]
+/**
+ * The encodings tried on a file whose name says no language, most used first. The browser's detection goes by script,
+ * so text garbled into another script, like Russian read as Greek or Thai, or any of these read as Korean, is found to
+ * be in its language as surely. Those encodings are left to the file's name.
+ */
+const TRIED = [WESTERN, "windows-1251", "windows-1250", "shift_jis", "gbk", "big5"]
+
+/** How much of a text has to be found in one language for its encoding to be taken. */
+const MIN_PERCENTAGE = 50
 
 /**
  * Half-width katakana, which an older Western or Cyrillic file read as Shift_JIS turns into, and which subtitles hardly
@@ -63,9 +70,10 @@ export type Detect = (text: string) => Promise<ReadonlyArray<{ language: string;
 
 /**
  * The text of a file's `bytes`. A byte order mark says UTF-16 or UTF-8, and text that is valid UTF-8 is that. Else it
- * is in an older encoding: the one `lang`, the language the file's name says, is mostly saved in, or else the one whose
- * text `detect` finds a language in that is saved in it, which garbled text is not. `sample` is the part of a text the
- * language is read from, like its cues without the file's own words around them. Nothing found reads it as UTF-8 still.
+ * is in an older encoding: the one `lang`, the language the file's name says, is mostly saved in, or else the first of
+ * the most used ones whose text `detect` finds a language in that is saved in it, which garbled text mostly is not.
+ * `sample` is the part of a text the language is read from, like its cues without the file's own words around them.
+ * Nothing found reads it as UTF-8 still.
  */
 export const decodeSubtitles = async (
   buffer: ArrayBuffer,
@@ -89,20 +97,18 @@ export const decodeSubtitles = async (
     const valid = named.map((encoding) => decode(bytes, encoding)).find((text) => text !== undefined)
     return valid ?? decode(bytes, named[0]!, false)!
   }
-  const read = await Promise.all(
-    TRIED.map(async (encoding) => {
-      const text = decode(bytes, encoding)
-      if (text === undefined || HALF_WIDTH_KANA.test(text)) {
-        return undefined
-      }
+  for (const encoding of TRIED) {
+    const text = decode(bytes, encoding)
+    if (text !== undefined && !HALF_WIDTH_KANA.test(text)) {
       const [best] = await detect(sample(text))
-      return best !== undefined && encodingsOf(best.language).includes(encoding)
-        ? { text, percentage: best.percentage }
-        : undefined
-    }),
-  )
-  const found = read.reduce((best, next) =>
-    next !== undefined && (best === undefined || next.percentage > best.percentage) ? next : best,
-  )
-  return found?.text ?? new TextDecoder("utf-8").decode(bytes)
+      if (
+        best !== undefined &&
+        best.percentage >= MIN_PERCENTAGE &&
+        encodingsOf(best.language).includes(encoding)
+      ) {
+        return text
+      }
+    }
+  }
+  return new TextDecoder("utf-8").decode(bytes)
 }

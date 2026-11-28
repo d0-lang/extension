@@ -9,16 +9,27 @@ const bytesOf = (name: string): ArrayBuffer => {
   return file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength)
 }
 
-/** Stands in for the browser's detection: a language for a word of it, which garbled text does not have. */
+/**
+ * Stands in for the browser's detection as it answers on these files: real text by its words, and text garbled into
+ * Greek, Thai or Korean letters as surely in those languages, which is how it goes by script.
+ */
 const detect: Detect = async (text) => {
-  const words: Array<[string, RegExp]> = [
-    ["ru", /спасибо/u],
-    ["ja", /ありがとう/u],
-    ["zh-CN", /谢谢/u],
-    ["pl", /szybciej/u],
-    ["fr", /merci/u],
+  const letters = [...text].filter((char) => /\p{L}/u.test(char))
+  const mostlyIn = (script: RegExp) => letters.filter((char) => script.test(char)).length > letters.length / 2
+  const found: Array<[string, boolean]> = [
+    ["ru", /спасибо/u.test(text)],
+    ["ja", /ありがとう/u.test(text)],
+    ["zh", /谢谢/u.test(text)],
+    ["zh-Hant", /謝謝/u.test(text)],
+    ["pl", /szybciej/u.test(text)],
+    ["fr", /merci/u.test(text)],
+    ["el", mostlyIn(/[\u0370-\u03ff]/u)],
+    ["th", mostlyIn(/[\u0e00-\u0e7f]/u)],
+    ["ko", mostlyIn(/[\uac00-\ud7a3]/u)],
   ]
-  return words.flatMap(([language, word]) => (word.test(text) ? [{ language, percentage: 95 }] : []))
+  return found.flatMap(([language, here]) =>
+    here ? [{ language, percentage: language === "ru" ? 98 : 100 }] : [],
+  )
 }
 
 const read = (buffer: ArrayBuffer, lang?: string) => decodeSubtitles(buffer, lang, (text) => text, detect)
@@ -55,16 +66,15 @@ describe("decodeSubtitles", () => {
     expect(await read(bytesOf("fr.windows-1252.srt"))).toContain("Ça va très bien, merci beaucoup.")
   })
 
-  it("keeps an encoding only when the language found in it is one saved in it", async () => {
-    // Russian in Windows-1251 read as a Western encoding is garbled into accented letters, found to be Japanese here.
-    const garbled: Detect = async (text) =>
-      /[\u0400-\u04ff]/u.test(text)
-        ? [{ language: "ru", percentage: 60 }]
-        : /[À-ÿ]/u.test(text)
-          ? [{ language: "ja", percentage: 99 }]
-          : []
-    const text = await decodeSubtitles(bytesOf("ru.windows-1251.srt"), undefined, (text) => text, garbled)
-    expect(text).toContain("Привет")
+  it("takes the most used encoding a language is found in, as text garbled into another script is found too", async () => {
+    // Russian in Windows-1251 read as Greek or Thai is found to be Greek or Thai, more surely than Russian.
+    expect(await read(bytesOf("ru.windows-1251.srt"))).toContain("Привет")
+  })
+
+  it("leaves encodings that garbled text is found in as surely to the file's name", async () => {
+    expect(await read(bytesOf("el.windows-1253.srt"), "el")).toContain("Γεια σου")
+    expect(await read(bytesOf("ko.euc-kr.srt"), "ko")).toContain("안녕하세요")
+    expect(await read(bytesOf("zh-Hant.big5.srt"))).toContain("謝謝你的關心")
   })
 
   it("takes a reading with half-width katakana for garbled, as a Western or Cyrillic file read as Shift_JIS is", async () => {
