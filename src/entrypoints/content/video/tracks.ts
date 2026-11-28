@@ -1,6 +1,8 @@
 /** The subtitle track a video has on, as the browser holds it, whether the page's player or the browser draws it. */
 import { inOrder, type Cue } from "$lib/subtitles/cues"
-import { plainText } from "$lib/subtitles/markup"
+import type { Styled } from "$lib/subtitles/rows"
+import { plainText, styledText } from "$lib/subtitles/markup"
+import { aribMarkup, isArib } from "./arib"
 
 const SUBTITLE_KINDS = new Set(["subtitles", "captions"])
 
@@ -18,12 +20,16 @@ export const activeTrack = (video: HTMLVideoElement): TextTrack | undefined => {
   return tracks.find(({ mode }) => mode === "showing") ?? tracks.find(({ mode }) => mode === "hidden")
 }
 
-/** `track`'s cues as plain text, in the order they show. */
+/** A cue's text as plain text, or with its colours when it comes from Japanese TV, which names them by command. */
+const textOf = (text: string): Styled =>
+  isArib(text) ? styledText(aribMarkup(text)) : { text: plainText(text) }
+
+/** `track`'s cues, in the order they show. */
 export const cuesOf = (track: TextTrack): Array<Cue> =>
   inOrder(
     [...(track.cues ?? [])].map((cue) => ({
       startMs: cue.startTime * 1000,
       endMs: cue.endTime * 1000,
-      text: plainText("text" in cue && typeof cue.text === "string" ? cue.text : ""),
+      ...textOf("text" in cue && typeof cue.text === "string" ? cue.text : ""),
     })),
   )

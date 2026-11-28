@@ -117,4 +117,42 @@ describe("inOrder", () => {
       },
     ])
   })
+
+  it("keeps a cue that carries on the one before as one, so it does not show again as the line before", () => {
+    const line = { text: "Raz", styles: [{ color: "#ffff00", from: 0, to: 3 }] }
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 1000, ...line },
+        { startMs: 1000, endMs: 3000, ...line },
+        { startMs: 3000, endMs: 4000, text: "Raz" },
+        { startMs: 5000, endMs: 6000, text: "Raz" },
+      ]),
+    ).toEqual([
+      { startMs: 0, endMs: 3000, ...line },
+      { startMs: 3000, endMs: 4000, text: "Raz" },
+      { startMs: 5000, endMs: 6000, text: "Raz" },
+    ])
+  })
+
+  it("keeps a cue that carries on the one before as one whatever order its styles name their parts in", () => {
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 1000, text: "Raz", styles: [{ color: "#ffff00", from: 0, to: 3 }] },
+        { startMs: 1000, endMs: 2000, text: "Raz", styles: [{ from: 0, to: 3, color: "#ffff00" }] },
+        { startMs: 2000, endMs: 3000, text: "Raz", styles: [{ color: "#00ff00", from: 0, to: 3 }] },
+      ]),
+    ).toEqual([
+      { startMs: 0, endMs: 2000, text: "Raz", styles: [{ color: "#ffff00", from: 0, to: 3 }] },
+      { startMs: 2000, endMs: 3000, text: "Raz", styles: [{ color: "#00ff00", from: 0, to: 3 }] },
+    ])
+  })
+
+  it("keeps a cue that carries on the one before as one when their times are a hair apart", () => {
+    expect(
+      inOrder([
+        { startMs: 0, endMs: 674505.1333333333, text: "Raz" },
+        { startMs: 674505.1333333557, endMs: 680000, text: "Raz" },
+      ]),
+    ).toEqual([{ startMs: 0, endMs: 680000, text: "Raz" }])
+  })
 })

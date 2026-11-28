@@ -22,7 +22,7 @@ To start, add **DaDict public**, `https://server.dadict.com`: German, Spanish, F
 ## Features
 
 - **Lookup on any page.** Hold <kbd>Alt</kbd> over a word, or use the context menu on a word or selection. On a phone, select a word and tap the **Look up** button under it.
-- **Clickable subtitles.** On YouTube, the ARD Mediathek, tagesschau.de, ZDF, Arte and RTVE Play, and on other sites whose videos have subtitle tracks, like Vimeo, click a word in the subtitles to look it up. The video pauses while the lookup is open, and the line before stays above the current one. Right-click a line to copy it.
+- **Clickable subtitles.** On YouTube, the ARD Mediathek, tagesschau.de, ZDF, Arte, RTVE Play and NHK, and on other sites whose videos have subtitle tracks, like Vimeo, click a word in the subtitles to look it up. The video pauses while the lookup is open, and the line before stays above the current one. Right-click a line to copy it.
 - **Anki**. Click <kbd>Q</kbd> to add a word to the flashcard queue, than if needed edit what u want to keep (remove senses, edit the sentence)
 - **Video player.** Watch a video file from your computer with SRT, WebVTT or ASS subtitles you can click, from **Watch a video file** in the popup.
 - **Phrases.** With the sentence around the word, a server can find the phrase it belongs to and highlight its pieces.

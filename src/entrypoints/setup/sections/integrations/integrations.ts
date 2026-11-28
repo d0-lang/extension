@@ -22,7 +22,7 @@ export type Integration = {
   set: (on: boolean) => Promise<void>
 }
 
-/** A site whose subtitle files the extension reads, with its own switch. */
+/** A site with code of its own for its subtitles, with its own switch. */
 const siteIntegration = (site: SubtitleSite, name: string, description: string): Integration => ({
   name,
   kind: "Video",
@@ -45,6 +45,7 @@ export const integrations: ReadonlyArray<Integration> = [
   siteIntegration("zdf", "ZDF", "Clickable subtitles"),
   siteIntegration("arte", "Arte", "Clickable subtitles"),
   siteIntegration("rtve", "RTVE Play", "Clickable subtitles"),
+  siteIntegration("nhk", "NHK", "Clickable subtitles"),
   {
     name: "Other sites",
     kind: "Video",

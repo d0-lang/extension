@@ -1,5 +1,5 @@
 /** Cues of a subtitle track, and what of them shows at a time. */
-import type { Place, Shown, Styled } from "$lib/subtitles/rows"
+import type { Place, Shown, StyleRun, Styled } from "$lib/subtitles/rows"
 
 /** `text` has its lines apart with `\n`. Styles and a place come only with tracks that set them, like a creator's on YouTube. */
 export type Cue = Styled & { startMs: number; endMs: number; place?: Place | undefined }
@@ -116,7 +116,8 @@ export const shownAt = (cues: ReadonlyArray<Cue>, ms: number, styled: boolean): 
 
 /**
  * `cues` in the order they show, one at a time, without empty ones. Cues that start together, like two speakers', are
- * one cue with a line each, and an overlap ends at the next start.
+ * one cue with a line each, and an overlap ends at the next start. A cue that only carries on the one before, with the
+ * same text from where it ends, is part of it, so the line does not show again as the one before.
  */
 export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
   const sorted = cues
@@ -149,4 +150,28 @@ export const inOrder = (cues: ReadonlyArray<Cue>): Array<Cue> => {
   return together
     .map((cue, index) => ({ ...cue, endMs: Math.min(cue.endMs, together[index + 1]?.startMs ?? Infinity) }))
     .filter(({ startMs, endMs }) => startMs < endMs)
+    .reduce<Array<Cue>>((joined, cue) => {
+      const last = joined.at(-1)
+      if (last !== undefined && Math.abs(cue.startMs - last.endMs) < MEET_MS && sameText(last, cue)) {
+        joined[joined.length - 1] = { ...last, endMs: cue.endMs }
+      } else {
+        joined.push(cue)
+      }
+      return joined
+    }, [])
 }
+
+/** Cues this close meet, as times read from a stream can be off by a hair either way. */
+const MEET_MS = 1
+
+const sameRun = (a: StyleRun, b: StyleRun): boolean =>
+  a.from === b.from && a.to === b.to && a.color === b.color && a.italic === b.italic && a.bold === b.bold
+
+/** Whether two cues show the same, styles and place too. */
+const sameText = (a: Cue, b: Cue): boolean =>
+  a.text === b.text &&
+  (a.styles ?? []).length === (b.styles ?? []).length &&
+  (a.styles ?? []).every((run, index) => sameRun(run, b.styles![index]!)) &&
+  a.place?.anchor === b.place?.anchor &&
+  a.place?.x === b.place?.x &&
+  a.place?.y === b.place?.y

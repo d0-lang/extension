@@ -165,8 +165,20 @@ export const showSubtitles = (
     )
   }
 
+  /** Whether the last update failed, so a failure that goes on is reported once. */
+  let failing = false
   const tick = () => {
-    update()
+    try {
+      update()
+      failing = false
+    } catch (error) {
+      // Without the overlay, the site's own subtitles show, and the next frame tries again.
+      removeOverlay()
+      if (!failing) {
+        console.warn("Could not show the subtitles", error)
+      }
+      failing = true
+    }
     ctx.requestAnimationFrame(tick)
   }
 
