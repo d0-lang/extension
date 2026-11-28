@@ -5,6 +5,7 @@ import { getAnkiEnabled, getMarkStyle, getShowIpa, getTheme } from "$lib/storage
 import { isDark } from "$lib/theme"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { watchAltHold } from "./page/hold"
+import { listenWhileValid } from "./listen"
 import { MAX_WORD_CHARS, selectedText, wordAt, type AnchorRect, type WordHit } from "./page/pick"
 import { isDarkBehind } from "./page/scheme"
 import { watchTouchSelection } from "./page/select"
@@ -150,7 +151,7 @@ export const createLookup = (ctx: ContentScriptContext, { isEnabled, css }: Look
     selected: () => selectedText(session.locale()),
     show: ({ word, element, context }, anchor) => void open(word, anchor, element, undefined, context),
   })
-  browser.storage.onChanged.addListener((changes) => {
+  listenWhileValid(ctx, browser.storage.onChanged, (changes) => {
     // A server's sentence setting and the blocked sites decide what an answer was based on, the order which
     // language it came from.
     if (["servers", "serverByLang", "contextSites", "languageOrder"].some((key) => key in changes)) {

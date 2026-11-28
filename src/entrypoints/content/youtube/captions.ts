@@ -1,5 +1,6 @@
 /** YouTube's subtitles, shown by the extension in place of the player's own. */
 import { ORIGINAL_ATTRIBUTE } from "$lib/captions"
+import { listenWhileValid } from "$lib/listen"
 import { getLookupEnabled, getYoutubeCaptions } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
 import { showSubtitles, type Subtitles, type SubtitlesOptions } from "$lib/subtitles/controller"
@@ -25,7 +26,7 @@ export const showYouTubeCaptions = (ctx: ContentScriptContext, options: Subtitle
     document.documentElement.toggleAttribute(ORIGINAL_ATTRIBUTE, youtube && lookup)
   }
   void markOriginal()
-  browser.storage.onChanged.addListener((changes) => {
+  listenWhileValid(ctx, browser.storage.onChanged, (changes) => {
     if ("youtubeCaptions" in changes || "lookupEnabled" in changes) {
       void markOriginal()
     }

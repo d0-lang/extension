@@ -6,6 +6,7 @@ import {
   type SubtitleSettings,
 } from "$lib/storage"
 import type { ContentScriptContext } from "wxt/utils/content-script-context"
+import { listenWhileValid } from "../listen"
 import type { WordHit } from "../page/pick"
 import type { Paint } from "../popover/highlight"
 import { addCopyMenu } from "./copy"
@@ -94,7 +95,7 @@ export const showSubtitles = (
     }
   }
   void loadSettings()
-  browser.storage.onChanged.addListener((changes) => {
+  listenWhileValid(ctx, browser.storage.onChanged, (changes) => {
     if ([...source.keys, ...SUBTITLE_KEYS].some((name) => name in changes)) {
       void loadSettings()
     }
